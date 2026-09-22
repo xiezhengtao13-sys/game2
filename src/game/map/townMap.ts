@@ -51,7 +51,30 @@ const SHAPES: Shape[] = [
   { x: 6, y: 13, w: 1, h: 5, type: "path", note: "通往农田的小路" },
 
   // The farmland itself.
-  { x: 4, y: 18, w: 4, h: 8, type: "farmland", note: "v1 的农田，种小麦" }
+  { x: 4, y: 18, w: 4, h: 8, type: "farmland", note: "v1 的农田，种小麦" },
+
+  // --- buildings -------------------------------------------------------------
+  // Each building is a wall ring with a roof filling the interior, one shape per
+  // building, wall first then roof. The roof must be exactly (w-2) x (h-2) and
+  // offset by (1, 1): any other size leaves a hole in a wall or spills over it.
+  // Buildings must also stay clear of the street rows and the farmland.
+
+  // The player's cottage, north-west of the crossroads.
+  { x: 8, y: 6, w: 5, h: 5, type: "wall", note: "玩家的住处（外墙）" },
+  { x: 9, y: 7, w: 3, h: 3, type: "roof", note: "玩家的住处（屋顶）" },
+
+  // The town hall, north-east. Where the mayor will stand in TASK-108.
+  { x: 24, y: 6, w: 6, h: 5, type: "wall", note: "镇公所（外墙）" },
+  { x: 25, y: 7, w: 4, h: 3, type: "roof", note: "镇公所（屋顶）" },
+
+  // A cottage south of the street, west of the crossroads. South of row 13 so it
+  // never blocks the main street.
+  { x: 11, y: 15, w: 4, h: 4, type: "wall", note: "民居（外墙）" },
+  { x: 12, y: 16, w: 2, h: 2, type: "roof", note: "民居（屋顶）" },
+
+  // The mill, east of the crossroads. TASK-110 turns it into a workbench.
+  { x: 24, y: 15, w: 4, h: 4, type: "wall", note: "磨坊（外墙）" },
+  { x: 25, y: 16, w: 2, h: 2, type: "roof", note: "磨坊（屋顶）" }
 ];
 
 function buildGrid(): TileType[] {

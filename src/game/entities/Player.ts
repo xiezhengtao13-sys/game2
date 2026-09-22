@@ -1,4 +1,6 @@
 import type { Input } from "../../engine/input/Input";
+import type { TileMap } from "../map/TileMap";
+import { resolveMovement } from "../map/collision";
 import { PLAYER_SPEED } from "../config";
 
 /**
@@ -29,8 +31,20 @@ export function readDirection(input: Input): { dx: number; dy: number } {
  * only needs the player to exist and to be followable by the camera.
  */
 export class Player {
+  /**
+   * Full sprite size, used for drawing. `bottom-center` anchored, so (x, y) is
+   * the top-left of this box.
+   */
   readonly width = 32;
   readonly height = 48;
+
+  /**
+   * Collision box, covering the feet rather than the whole sprite. A top-down
+   * character's head may overlap a wall visually without that looking wrong, and
+   * using the full 32x48 box would make doorways and gaps feel too tight.
+   */
+  readonly colliderWidth = 22;
+  readonly colliderHeight = 16;
 
   constructor(public x: number, public y: number) {}
 
@@ -43,9 +57,28 @@ export class Player {
     return this.y + this.height / 2;
   }
 
-  update(dt: number, input: Input): void {
+  /** The collision box, aligned to the bottom-centre of the sprite. */
+  colliderAt(x = this.x, y = this.y) {
+    return {
+      x: x + (this.width - this.colliderWidth) / 2,
+      y: y + this.height - this.colliderHeight,
+      width: this.colliderWidth,
+      height: this.colliderHeight
+    };
+  }
+
+  update(dt: number, input: Input, map: TileMap): void {
     const { dx, dy } = readDirection(input);
-    this.x += dx * PLAYER_SPEED * dt;
-    this.y += dy * PLAYER_SPEED * dt;
+    const moved = resolveMovement(
+      map,
+      this.colliderAt(),
+      dx * PLAYER_SPEED * dt,
+      dy * PLAYER_SPEED * dt
+    );
+
+    // `resolveMovement` works on the collider; shift the result back to the
+    // sprite's top-left so drawing stays aligned.
+    this.x = moved.x - (this.width - this.colliderWidth) / 2;
+    this.y = moved.y - (this.height - this.colliderHeight);
   }
 }

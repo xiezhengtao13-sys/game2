@@ -1,13 +1,15 @@
-import { describe, test } from "node:test";
+﻿import { describe, test } from "node:test";
 import assert from "node:assert/strict";
 import { Player, readDirection } from "../src/game/entities/Player";
 import { PLAYER_SPEED } from "../src/game/config";
+import { TileMap } from "../src/game/map/TileMap";
 import type { Input } from "../src/engine/input/Input";
 
 // Movement tests carried over from TASK-002. The bounds clamp that used to live
-// in DemoWorld is gone -- TASK-105 replaces it with real tile collision -- but
-// the diagonal-normalization behaviour must survive, because "diagonal movement
-// is not faster than straight movement" is a standing requirement.
+// in DemoWorld is gone -- TASK-105 replaced it with real tile collision, which
+// is covered in collision.test.ts. What must survive here is the
+// diagonal-normalization behaviour, because "diagonal movement is not faster
+// than straight movement" is a standing requirement.
 
 /** A stand-in Input that reports a fixed set of held keys. */
 function fakeInput(codes: string[]): Input {
@@ -16,7 +18,15 @@ function fakeInput(codes: string[]): Input {
 
 const DT = 0.016;
 
-/** Fresh player plus its start position. */
+/**
+ * A wide-open map, so these tests measure movement alone. Tile collision has
+ * its own tests; mixing the two would make a failure ambiguous.
+ */
+function openMap() {
+  return new TileMap(new Array(40 * 40).fill("grass"), 40, 40, 48);
+}
+
+/** Fresh player plus its start position, standing in the middle of open ground. */
 function freshPlayer() {
   const player = new Player(500, 500);
   return { player, start: { x: player.x, y: player.y } };
@@ -24,7 +34,7 @@ function freshPlayer() {
 
 function measure(keys: string[]) {
   const { player, start } = freshPlayer();
-  player.update(DT, fakeInput(keys));
+  player.update(DT, fakeInput(keys), openMap());
   const vx = player.x - start.x;
   const vy = player.y - start.y;
   return { vx, vy, distance: Math.hypot(vx, vy), speed: Math.hypot(vx, vy) / DT };
@@ -34,7 +44,7 @@ describe("Player direction (TASK-104)", () => {
   test("no keys held produces no movement and no NaN", () => {
     const { player, start } = freshPlayer();
 
-    player.update(DT, fakeInput([]));
+    player.update(DT, fakeInput([]), openMap());
 
     assert.equal(player.x, start.x);
     assert.equal(player.y, start.y);
@@ -92,7 +102,7 @@ describe("Player movement speed (TASK-104)", () => {
   test("cancels out when opposing keys are held together", () => {
     const { player, start } = freshPlayer();
 
-    player.update(DT, fakeInput(["KeyA", "KeyD"]));
+    player.update(DT, fakeInput(["KeyA", "KeyD"]), openMap());
 
     assert.equal(player.x, start.x);
     assert.equal(player.y, start.y);

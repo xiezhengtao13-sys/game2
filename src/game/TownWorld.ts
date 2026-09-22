@@ -15,7 +15,9 @@ const TILE_FALLBACK: Record<string, string> = {
   grass: "#7ec850",
   path: "#b98b5e",
   water: "#4aa3d8",
-  farmland: "#8a5f3c"
+  farmland: "#8a5f3c",
+  wall: "#efe0c8",
+  roof: "#c8593f"
 };
 
 /**
@@ -40,7 +42,7 @@ export class TownWorld implements GameWorld {
   }
 
   update(dt: number, input: Input): void {
-    this.player.update(dt, input);
+    this.player.update(dt, input, this.map);
   }
 
   getCamera(): GameCamera {

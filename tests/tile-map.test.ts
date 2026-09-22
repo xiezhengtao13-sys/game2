@@ -2,6 +2,8 @@ import { describe, test } from "node:test";
 import assert from "node:assert/strict";
 import { TileMap, type WorldRect } from "../src/game/map/TileMap";
 import { createTownMap, TOWN_SHAPES } from "../src/game/map/townMap";
+import { isBoxBlocked } from "../src/game/map/collision";
+import { Player } from "../src/game/entities/Player";
 import { MAP_COLUMNS, MAP_ROWS, MAP_WIDTH, MAP_HEIGHT, TILE, PLAYER_SPAWN } from "../src/game/config";
 
 // TASK-104: the tile map. The rendering itself is checked by eye, but which
@@ -186,9 +188,58 @@ describe("town map layout (TASK-104)", () => {
 
   test("the player spawns on ground they can stand on", () => {
     const map = createTownMap();
+    const player = new Player(PLAYER_SPAWN.x, PLAYER_SPAWN.y);
 
-    // Not inside the river, and inside the map at all.
-    const under = map.atPixel(PLAYER_SPAWN.x, PLAYER_SPAWN.y);
-    assert.equal(under, "grass");
+    // The spawn must not be inside a solid tile: collision assumes a valid
+    // starting position, so spawning inside a wall would leave the player stuck.
+    assert.equal(
+      isBoxBlocked(map, player.colliderAt()),
+      false,
+      "spawn point puts the player inside a solid tile"
+    );
+  });
+
+  test("no building has a hole in its wall ring", () => {
+    const map = createTownMap();
+
+    // For every roof tile, all eight neighbours must be non-walkable. This is
+    // the check that catches a roof sized wrong and overwriting a wall row,
+    // which silently leaves a gap the player can walk through.
+    const dirs = [-1, 0, 1];
+    let roofs = 0;
+
+    for (let ty = 0; ty < MAP_ROWS; ty++) {
+      for (let tx = 0; tx < MAP_COLUMNS; tx++) {
+        if (map.tileAt(tx, ty) !== "roof") continue;
+        roofs++;
+
+        for (const ox of dirs) {
+          for (const oy of dirs) {
+            if (ox === 0 && oy === 0) continue;
+            const neighbour = map.tileAt(tx + ox, ty + oy);
+            assert.ok(
+              neighbour === "roof" || neighbour === "wall",
+              `gap beside roof at ${tx},${ty}: neighbour ${tx + ox},${ty + oy} is ${neighbour}`
+            );
+          }
+        }
+      }
+    }
+
+    assert.ok(roofs > 0, "expected the town to have buildings");
+  });
+
+  test("buildings never block the streets", () => {
+    const map = createTownMap();
+
+    // Buildings are placed relative to the street rows, so a later move could
+    // silently wall the town off. Walk the main street and the side street and
+    // require them to stay passable end to end.
+    for (let x = 4; x <= 34; x++) {
+      assert.equal(map.tileAt(x, 12), "path", `main street blocked at ${x},12`);
+    }
+    for (let y = 6; y <= 26; y++) {
+      assert.equal(map.tileAt(18, y), "path", `side street blocked at 18,${y}`);
+    }
   });
 });

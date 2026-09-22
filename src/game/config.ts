@@ -19,8 +19,12 @@ export const MAP_HEIGHT = MAP_ROWS * TILE;
 /** Player movement, in pixels per second. */
 export const PLAYER_SPEED = 170;
 
-/** Spawn point of a new resident, in pixels. The clinic doorstep. */
-export const PLAYER_SPAWN = { x: 9 * TILE + TILE / 2, y: 8 * TILE + TILE / 2 };
+/**
+ * Spawn point of a new resident, in pixels: the crossroads in the middle of
+ * town, on the main street. Kept clear of buildings so the player never starts
+ * inside a wall.
+ */
+export const PLAYER_SPAWN = { x: 18 * TILE + TILE / 2, y: 12 * TILE + TILE / 2 };
 
 /** Sanity check used at startup and by tests: the map must fill the world. */
 export function assertMapMatchesConfig(map: TileMap): void {

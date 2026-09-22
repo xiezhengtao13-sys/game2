@@ -2,10 +2,19 @@
  * Tile kinds. The string values are the asset ids in the manifest, so a tile
  * type maps straight to its art with no lookup table in between.
  *
- * `grass` is the default fill. Water and farmland are ground here; buildings and
- * trees arrive later as world objects layered on top of the ground.
+ * `grass` is the default fill. Buildings live here as tiles too: they are static
+ * and do not need depth sorting against the player, so a second object layer
+ * would add complexity for nothing.
  */
-export type TileType = "grass" | "path" | "water" | "farmland";
+export type TileType = "grass" | "path" | "water" | "farmland" | "wall" | "roof";
+
+/** Tile kinds the player cannot walk through. */
+const SOLID_TILES: ReadonlySet<TileType> = new Set<TileType>(["water", "wall", "roof"]);
+
+/** True when the player is blocked by this tile kind. */
+export function isSolidTile(type: TileType): boolean {
+  return SOLID_TILES.has(type);
+}
 
 /** A tile position within the map grid. */
 export interface TileCoord {
