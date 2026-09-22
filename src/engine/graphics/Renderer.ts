@@ -17,7 +17,10 @@ export interface SpriteOptions {
   anchor?: "center" | "bottom-center";
   /** Mirror horizontally, so one facing can serve both left and right. */
   flipX?: boolean;
+  /** Scale the image. Ignored when `size` is given. */
   scale?: number;
+  /** Draw size in pixels. Required when there is no image to measure. */
+  size?: { w: number; h: number };
   /**
    * Flat colour to draw instead of the image. Used when an asset has no image
    * yet, so the game still shows something recognisable.
@@ -54,7 +57,16 @@ export interface Renderer {
   clear(color?: Color): void;
 
   drawRect(x: number, y: number, width: number, height: number, options?: RectOptions): void;
-  drawSprite(image: CanvasImageSource, x: number, y: number, options?: SpriteOptions): void;
+  /**
+   * Draw a world sprite. `image` may be null, in which case `fallbackColor` is
+   * drawn instead -- that is how the game stays playable while art is missing.
+   */
+  drawSprite(
+    image: CanvasImageSource | null,
+    x: number,
+    y: number,
+    options?: SpriteOptions
+  ): void;
   /** Screen-space text (UI). */
   drawText(text: string, x: number, y: number, options?: TextOptions): void;
   /** World-space text, for labels pinned to objects on the map. */

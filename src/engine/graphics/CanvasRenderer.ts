@@ -44,26 +44,38 @@ export class CanvasRenderer implements Renderer {
     this.withCamera(() => this.rect(x, y, width, height, options));
   }
 
-  drawSprite(image: CanvasImageSource, x: number, y: number, options: SpriteOptions = {}): void {
-    const { anchor = "center", flipX = false, scale = 1, fallbackColor } = options;
+  drawSprite(
+    image: CanvasImageSource | null,
+    x: number,
+    y: number,
+    options: SpriteOptions = {}
+  ): void {
+    const { anchor = "center", flipX = false, scale = 1, size, fallbackColor } = options;
 
     this.withCamera(() => {
-      const { w, h } = this.imageSize(image, scale);
+      const resolved = size ?? (image ? this.imageSize(image, scale) : { w: 16, h: 16 });
+      const { w, h } = resolved;
       // Anchor decides where (x, y) sits on the sprite.
-      const left = anchor === "bottom-center" ? x - w / 2 : x - w / 2;
+      const left = x - w / 2;
       const top = anchor === "bottom-center" ? y - h : y - h / 2;
+
+      if (!image) {
+        // No art yet: a flat block keeps the layout readable.
+        this.rect(left, top, w, h, { color: fallbackColor ?? "#ff00ff", radius: 4 });
+        return;
+      }
 
       if (flipX) {
         const { ctx } = this;
         ctx.save();
         ctx.translate(left + w / 2, 0);
         ctx.scale(-1, 1);
-        this.blit(image, -w / 2, top, w, h, fallbackColor);
+        ctx.drawImage(image, Math.round(-w / 2), Math.round(top), w, h);
         ctx.restore();
         return;
       }
 
-      this.blit(image, left, top, w, h, fallbackColor);
+      this.ctx.drawImage(image, Math.round(left), Math.round(top), w, h);
     });
   }
 
@@ -117,21 +129,6 @@ export class CanvasRenderer implements Renderer {
       ctx.strokeStyle = options.stroke.color;
       ctx.stroke();
     }
-  }
-
-  private blit(
-    image: CanvasImageSource,
-    x: number,
-    y: number,
-    w: number,
-    h: number,
-    fallbackColor?: Color
-  ): void {
-    if (fallbackColor) {
-      this.rect(x, y, w, h, { color: fallbackColor, radius: 4 });
-      return;
-    }
-    this.ctx.drawImage(image, Math.round(x), Math.round(y), w, h);
   }
 
   private text(text: string, x: number, y: number, options: TextOptions): void {
