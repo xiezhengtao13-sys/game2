@@ -9,6 +9,10 @@ dist/
 .vite/
 *.local
 
+# Scratch dirs for headless-browser screenshot verification
+.shot-profile/
+.shots/
+
 # Editors / OS
 .DS_Store
 Thumbs.db
