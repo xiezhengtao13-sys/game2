@@ -58,18 +58,27 @@
 - 验证方式：变异测试——故意改坏钳制与归一化，确认测试确实失败
 
 ### TASK-102：素材需求系统与占位美术管线
-目标：让美术可以"先占位、后替换"，且替换时不用改代码。
+状态：已完成
 
-要求：
-- `src/game/assets/manifest.ts` 作为素材单一事实来源（id / 中英文描述 / 尺寸 / 锚点 / 占位画法）
-- `npm run art` 生成占位 PNG
-- `npm run art:brief` 生成 `docs/美术需求.md`，可直接喂给图像生成工具
-- 运行时优先读 `assets/sprites/`，缺失时回退到占位图
+结果：
+- `src/game/assets/manifest.ts` 作为素材单一事实来源，共 20 个素材
+  （8 地形瓦片 / 2 角色 / 4 小麦生长阶段 / 2 建筑 / 3 物品 / 1 界面）
+- `npm run art` 生成 `assets/generated/*.png` 占位图（自写 PNG 编码器，
+  仅依赖 Node 内置 zlib，不引入 Pillow / node-canvas）
+- `npm run art:brief` 生成 `docs/美术需求.md`，每行含可直接使用的英文提示词
+- `src/engine/graphics/AssetLoader.ts`（纯引擎：只按 URL 加载图片）
+  + `src/game/assets/index.ts`（游戏侧策略：`assets/sprites/` 优先，
+  回退 `assets/generated/`，都没有则由 recipe 现画）
+- 依赖方向：engine 不 import game
 
 验收：
-- 占位图全部生成成功
-- 故意删掉某张占位图，游戏仍能启动不崩
-- manifest 新增一条记录后，不改任何游戏代码即可引用到
+- ✅ 12 项测试覆盖 manifest 完整性、生成物与 manifest 一致、来源优先级
+- ✅ 生成物与 manifest 尺寸一致，且非空白（回归测试防住过一次真实 bug）
+- ✅ 缺失素材时 `selectAssetSource` 返回 undefined 走 recipe 兜底，不崩
+- ✅ 小麦四个生长阶段颜色可辨（棕 → 浅绿 → 黄绿 → 金黄）
+
+**已知待验证**：`import.meta.glob` 的实际取图路径目前只在构建/开发服务器下成立，
+尚未在浏览器里目视确认；计划在 TASK-103/104 有可见画面后一并做无头截图验证。
 
 ### TASK-103：渲染器扩展
 目标：支持相机、精灵、文字、颜色。

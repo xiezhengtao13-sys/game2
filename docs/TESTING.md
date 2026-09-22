@@ -61,6 +61,26 @@ Vite（以及被它用来做 TS 转换的 esbuild）走的是 esbuild 的 **serv
 代价：**测试文件之间没有进程隔离**（`node --test` 的每文件隔离用不了）。当前够用；
 如果将来出现需要隔离的测试（例如互相污染全局状态），再说。
 
+### 测试里怎么拿到项目根目录
+
+测试被打包到临时目录后再运行，所以 **`import.meta.url` 指向的是临时目录，不是 `tests/`**，
+不能用它推算项目根目录。runner 会通过环境变量把根目录传进来：
+
+```ts
+const projectRoot = process.env.TOWN_PROJECT_ROOT;
+if (!projectRoot) throw new Error("TOWN_PROJECT_ROOT is not set; run tests via `npm test`");
+```
+
+需要读文件的测试（例如 `tests/assets.test.ts` 校验生成的 PNG）都走这条路。
+
+## 测试里不能用的东西
+
+- **不要 import 依赖 `import.meta.glob` 的模块**（如 `src/game/assets/index.ts` 的
+  `loadGameAssets`）。那是 Vite 的构建期转换，在 `node` 下不存在。
+  把需要测试的**纯逻辑单独导出**，例如同文件里的 `selectAssetSource` 就是为此拆出来的。
+- 不要依赖浏览器 API。`src/game` 本就不该有，`src/engine` 里有（如 `AssetLoader` 用 `Image`），
+  所以引擎里可测的部分要尽量抽成纯函数。
+
 ## 写测试的约定
 
 - 测试放在 `tests/`，文件名 `*.test.ts`

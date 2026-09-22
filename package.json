@@ -7,7 +7,9 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "test": "node scripts/run-tests.mjs"
+    "test": "node scripts/run-tests.mjs",
+    "art": "node scripts/gen-placeholder-art.mjs",
+    "art:brief": "node scripts/gen-art-brief.mjs"
   },
   "devDependencies": {
     "typescript": "^5.6.0",

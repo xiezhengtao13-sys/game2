@@ -76,7 +76,16 @@ try {
   // isolated per file. Failures are aggregated below.
   const failed = [];
   for (const bundle of bundles) {
-    const run = spawnSync(process.execPath, [bundle], { stdio: "inherit", cwd: projectRoot });
+    const run = spawnSync(process.execPath, [bundle], {
+      stdio: "inherit",
+      cwd: projectRoot,
+      env: {
+        ...process.env,
+        // The bundle lives in a temp dir, so tests cannot derive the project
+        // root from import.meta.url. Pass it explicitly instead.
+        TOWN_PROJECT_ROOT: projectRoot
+      }
+    });
 
     if (run.error) {
       console.error(`Failed to run ${bundle}: ${run.error.message}`);
