@@ -22,20 +22,32 @@ function fakeInput(codes: string[]): Input {
   return { isDown: (code: string) => codes.includes(code) } as unknown as Input;
 }
 
+/** A Renderer that records the last rect drawn and ignores everything else. */
+function spyRenderer(onRect: (x: number, y: number, w: number, h: number) => void) {
+  const camera = { worldX: 0, worldY: 0, viewportWidth: 1280, viewportHeight: 720, centerOn() {}, clampTo() {} };
+  return {
+    width: 1280,
+    height: 720,
+    camera,
+    clear() {},
+    drawRect: onRect,
+    drawSprite() {},
+    drawText() {},
+    drawWorldText() {}
+  } as unknown as Renderer;
+}
+
 /** Render the world through a spy and return the rect it drew. */
 function observe(world: DemoWorld): Pos {
   const pos: Pos = { x: NaN, y: NaN, width: NaN, height: NaN };
   let calls = 0;
-  const spy: Renderer = {
-    clear() {},
-    drawRect(x, y, width, height) {
-      calls++;
-      pos.x = x;
-      pos.y = y;
-      pos.width = width;
-      pos.height = height;
-    }
-  };
+  const spy = spyRenderer((x, y, width, height) => {
+    calls++;
+    pos.x = x;
+    pos.y = y;
+    pos.width = width;
+    pos.height = height;
+  });
   world.render(spy);
   // Guard against a silent no-draw masking a broken assertion.
   assert.equal(calls, 1, "expected exactly one drawRect call");

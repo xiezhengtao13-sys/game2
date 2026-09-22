@@ -25,9 +25,18 @@ export class Game {
     this.lastTime = time;
 
     this.world.update(dt, this.input);
-    this.renderer.beginFrame();
+
+    // Frame the camera before drawing, so the whole frame renders consistently.
+    const target = this.world.getCamera();
+    const { camera } = this.renderer;
+    camera.centerOn(target.x, target.y);
+    camera.clampTo(target.mapWidth, target.mapHeight);
+
+    this.renderer.clear("#1b1b1b");
     this.world.render(this.renderer);
-    this.renderer.endFrame();
+
+    // Input edges last exactly one frame.
+    this.input.endFrame();
 
     requestAnimationFrame(this.loop);
   };

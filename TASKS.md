@@ -81,13 +81,27 @@
 尚未在浏览器里目视确认；计划在 TASK-103/104 有可见画面后一并做无头截图验证。
 
 ### TASK-103：渲染器扩展
-目标：支持相机、精灵、文字、颜色。
+状态：已完成
 
-要求：
-- `drawRect` 增加颜色与圆角/描边选项
-- 新增 `drawSprite`（锚点、水平翻转）、`drawText`、`setCamera` / `resetCamera`
-- `GameWorld` 新增 `getCamera()`，`Game.ts` 转交给渲染器
-- 世界代码永远只画世界坐标，不出现像素级视口计算
+结果：
+- `Renderer` 接口扩为：`drawRect`（颜色 / 圆角 / 描边）、`drawSprite`
+  （锚点 / 水平翻转 / 缩放 / 缺图时的兜底色）、`drawText`（屏幕空间）、
+  `drawWorldText`（世界空间）
+- 新增 `Camera` 接口与 `SimpleCamera` 实现（纯数学，无 DOM，可单测）
+- **世界空间是默认**：`drawRect` / `drawSprite` 收世界坐标，相机由渲染器施加，
+  游戏代码里不出现任何视口计算
+- `GameWorld` 新增 `getCamera()`；`Game` 每帧在绘制前取景
+- `Input` 新增 `wasPressed()`（边沿触发，且忽略自动重复）与 `endFrame()`，
+  供后续 E 键交互与对话推进使用
+
+验收：
+- ✅ 10 项相机测试：取景、平移、四边夹紧、地图小于视口时居中、幂等
+- ✅ 变异验证：禁用 `clampAxis` 后 6 项测试失败
+- ✅ 39 项测试全绿；`tsc` 严格 + `vite build` 通过
+- ✅ 无头截图确认游戏仍正常渲染（重构前后画面一致）
+
+**已知遗留**：`assets/generated` 的图片目前还没有任何代码在画，且
+`import.meta.glob` 的取图路径仍未在浏览器里验证。移到 TASK-104 一并处理。
 
 ### TASK-104：瓦片地图与相机取景
 验收：
