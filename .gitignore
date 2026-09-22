@@ -1,0 +1,16 @@
+node_modules/
+dist/
+
+# npm cache redirected into the workspace because the sandbox denies writes
+# to the default location (%LOCALAPPDATA%\npm-cache)
+.npm-cache/
+
+# Vite
+.vite/
+*.local
+
+# Editors / OS
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
