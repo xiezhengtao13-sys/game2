@@ -20,6 +20,11 @@ const TILE_FALLBACK: Record<string, string> = {
   roof: "#c8593f"
 };
 
+/** Every tile asset id, so they can be preloaded in one go. */
+export function tileAssetIds(): string[] {
+  return Object.keys(TILE_FALLBACK).map((type) => `tile_${type}`);
+}
+
 /**
  * The town: ground layer plus the player, drawn in world coordinates.
  *
@@ -88,12 +93,15 @@ export class TownWorld implements GameWorld {
   }
 
   private renderPlayer(renderer: Renderer): void {
-    const image = this.assets?.image("player") ?? null;
+    const frame = this.player.animation.frame;
+    const image = this.assets?.image(frame.assetId) ?? null;
     const { width, height } = this.player;
 
-    // bottom-center anchor: (x, y) is the player's feet.
+    // bottom-center anchor: (x, y) is the player's feet. `flipX` is what lets a
+    // single set of right-facing art serve both directions.
     renderer.drawSprite(image, this.player.centerX, this.player.y + height, {
       anchor: "bottom-center",
+      flipX: frame.flipX,
       size: { w: width, h: height },
       fallbackColor: "#4a5fb0"
     });

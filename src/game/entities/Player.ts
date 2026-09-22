@@ -2,6 +2,8 @@ import type { Input } from "../../engine/input/Input";
 import type { TileMap } from "../map/TileMap";
 import { resolveMovement } from "../map/collision";
 import { PLAYER_SPEED } from "../config";
+import { Animation } from "./Animation";
+import type { Facing } from "../assets/animationSpec";
 
 /**
  * Movement direction from the keyboard, as a unit vector.
@@ -25,10 +27,21 @@ export function readDirection(input: Input): { dx: number; dy: number } {
 }
 
 /**
- * The new resident. For now just a position, moved by WASD.
+ * Which way the character should face for a movement direction.
  *
- * Collision arrives in TASK-105 and the walk animation in TASK-106; this task
- * only needs the player to exist and to be followable by the camera.
+ * Vertical wins ties, which is what keeps a diagonal walk from flickering
+ * between a side view and a front view as the player drifts across the screen.
+ */
+export function facingFor(dx: number, dy: number): Facing {
+  if (dy > 0) return "down";
+  if (dy < 0) return "up";
+  if (dx > 0) return "right";
+  if (dx < 0) return "left";
+  return "down";
+}
+
+/**
+ * The new resident: position, facing, and a walk cycle.
  */
 export class Player {
   /**
@@ -46,6 +59,8 @@ export class Player {
   readonly colliderWidth = 22;
   readonly colliderHeight = 16;
 
+  readonly animation = new Animation();
+
   constructor(public x: number, public y: number) {}
 
   /** Centre of the player, which is what the camera frames. */
@@ -55,6 +70,11 @@ export class Player {
 
   get centerY(): number {
     return this.y + this.height / 2;
+  }
+
+  /** Which way the character is facing. */
+  get facing(): Facing {
+    return this.animation.facing;
   }
 
   /** The collision box, aligned to the bottom-centre of the sprite. */
@@ -80,5 +100,12 @@ export class Player {
     // sprite's top-left so drawing stays aligned.
     this.x = moved.x - (this.width - this.colliderWidth) / 2;
     this.y = moved.y - (this.height - this.colliderHeight);
+
+    // Facing follows the keys, not the resulting movement, so pushing against a
+    // wall still turns the character -- and the walk cycle then plays on the
+    // spot, which is the usual convention for this kind of game.
+    const moving = dx !== 0 || dy !== 0;
+    if (moving) this.animation.face(facingFor(dx, dy));
+    this.animation.update(dt, moving);
   }
 }

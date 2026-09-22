@@ -81,6 +81,44 @@ if (!projectRoot) throw new Error("TOWN_PROJECT_ROOT is not set; run tests via `
 - 不要依赖浏览器 API。`src/game` 本就不该有，`src/engine` 里有（如 `AssetLoader` 用 `Image`），
   所以引擎里可测的部分要尽量抽成纯函数。
 
+## 无头浏览器验证（截图与 DOM 检查）
+
+本沙箱下 Chromium 需要命名管道，**默认会被拒绝**，必须单独授权。已验证可用的命令：
+
+```powershell
+msedge --headless=new --disable-gpu --hide-scrollbars --window-size=1280,800 `
+  --virtual-time-budget=6000 `
+  --screenshot="<out.png>" --user-data-dir="<workspace>/.shot-profile" `
+  "http://localhost:4321/"
+```
+
+`--virtual-time-budget` 会让游戏真正推进几秒再截图，所以能验证动画与相机跟随，不只是首帧。
+
+### 怎么读到游戏内部状态
+
+Canvas 对外是不透明的，截图只能看像素，所以游戏会把实时状态写进一个隐藏的
+`#debug-probe` 元素，并在 `window.__probe()` 暴露同一份数据：
+
+```powershell
+msedge --headless=new --disable-gpu --virtual-time-budget=6000 `
+  --user-data-dir="<workspace>/.shot-profile" --dump-dom "http://localhost:4321/"
+```
+
+输出里搜 `id="debug-probe"` 即可拿到 JSON（相机、玩家坐标、精灵帧的屏幕位置等）。
+
+### 用像素验证渲染位置时的坑
+
+**不要拿两次不同页面加载的数据互相比较。** 曾经因此误判了整整一轮：
+一次加载读到的相机坐标，与另一次加载截出的图，被当成同一帧来解释，于是得出
+「渲染位置不对」的错误结论，实际代码完全正确。
+
+要比较就用同一次加载：加 `?debug=1`，游戏会在 canvas 里画出标记
+（原点 6×6、精灵帧左上角 3×3），标记和状态来自同一帧。
+
+另外注意 **canvas 被 CSS 缩放过**（`max-height: calc(100vh - 40px)`），
+浏览器窗口不是 1280×800 时，屏幕坐标 ≠ canvas 坐标，比对前必须先算出缩放比。
+先从截图里找 `#1b1b1b` 背景的范围即可推出来。
+
 ## 写测试的约定
 
 - 测试放在 `tests/`，文件名 `*.test.ts`

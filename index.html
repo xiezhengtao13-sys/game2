@@ -3,14 +3,29 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Agent Web Game</title>
+  <title>小镇</title>
   <link rel="stylesheet" href="/src/style.css" />
 </head>
 <body>
+  <!--
+    Surfaces uncaught errors in the HUD instead of only the console. This makes
+    "no obvious console errors" checkable from a headless screenshot or DOM dump,
+    which is otherwise impossible in this environment.
+  -->
+  <script>
+    window.__errors = [];
+    function showError(message) {
+      window.__errors.push(String(message));
+      var el = document.getElementById("status");
+      if (el) el.textContent = "ERROR: " + message;
+    }
+    window.addEventListener("error", function (e) { showError(e.message); });
+    window.addEventListener("unhandledrejection", function (e) { showError(e.reason); });
+  </script>
   <div id="app">
     <div id="hud">
-      <span>Agent Web Game</span>
-      <span id="status">Prototype</span>
+      <span>小镇</span>
+      <span id="status">加载中…</span>
     </div>
     <canvas id="gameCanvas" width="1280" height="720"></canvas>
   </div>

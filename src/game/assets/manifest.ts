@@ -111,24 +111,179 @@ export const TERRAIN: AssetSpec[] = [
 
 // --- characters --------------------------------------------------------------
 
-export const CHARACTERS: AssetSpec[] = [
-  {
-    id: "player",
-    nameZh: "玩家角色",
-    descZh: "新搬来的居民。靛蓝上衣、圆脸、小小的黑眼睛。",
-    descEn:
-      "Cute chibi cartoon villager sprite seen from a top-down three-quarter view, indigo blue hoodie, round cream-colored face with two tiny black dot eyes, short dark brown hair, simple rounded shapes, thick dark outlines, flat 2D vector style, plain background, single character centered, no text",
+/**
+ * Build one direction-and-pose frame of the player character.
+ *
+ * The palette and framing are shared so every frame lines up pixel-for-pixel;
+ * only the head, eyes and leg positions change between poses.
+ *
+ * `dir` is the direction the character faces. Only the right-facing frames are
+ * drawn by hand: the generator mirrors them for "left", which halves the art
+ * needed for four directions and is why the renderer supports `flipX`.
+ */
+function playerFrame(
+  dir: "right" | "down" | "up",
+  pose: "idle" | "walkA" | "walkB",
+  descEn: string
+): AssetSpec {
+  // Legs swing in opposition between the two walk frames, and the body bobs,
+  // so motion reads even as a flat placeholder.
+  const bob = pose === "idle" ? 0 : pose === "walkA" ? -1 : 0;
+  const leftLeg = pose === "walkA" ? 2 : pose === "walkB" ? -2 : 0;
+  const rightLeg = -leftLeg;
+  const isUp = dir === "up";
+
+  return {
+    id: `player_${dir}_${pose}`,
+    nameZh: `玩家·${dir}·${pose}`,
+    descZh: `${dir} 朝向的玩家角色，${pose} 姿势。`,
+    descEn,
     size: { w: 32, h: 48 },
     anchor: "bottom-center",
     category: "character",
     placeholder: {
       shapes: [
-        { kind: "rect", x: -13, y: -30, w: 26, h: 30, color: "#4a5fb0", radius: 8, stroke: { width: 2, color: "#2b3566" } },
-        { kind: "rect", x: -12, y: -48, w: 24, h: 22, color: "#f6d7b0", radius: 9, stroke: { width: 2, color: "#2b3566" } },
-        { kind: "rect", x: -8, y: -42, w: 4, h: 4, color: "#2b2b2b", radius: 2 },
-        { kind: "rect", x: 4, y: -42, w: 4, h: 4, color: "#2b2b2b", radius: 2 }
+        // Head first, so the body overlaps it and reads as "in front".
+        {
+          kind: "rect",
+          x: -12,
+          y: -48 + bob,
+          w: 24,
+          h: 22,
+          color: isUp ? "#6b4a2f" : "#f6d7b0",
+          radius: 9,
+          stroke: { width: 2, color: "#2b3566" }
+        },
+        // Eyes are omitted when facing away from the camera.
+        ...(isUp
+          ? []
+          : [
+              { kind: "rect" as const, x: -8 + leftLeg / 4, y: -42 + bob, w: 4, h: 4, color: "#2b2b2b", radius: 2 },
+              { kind: "rect" as const, x: 4 + leftLeg / 4, y: -42 + bob, w: 4, h: 4, color: "#2b2b2b", radius: 2 }
+            ]),
+        // Body.
+        {
+          kind: "rect",
+          x: -13,
+          y: -30 + bob,
+          w: 26,
+          h: 26,
+          color: "#4a5fb0",
+          radius: 8,
+          stroke: { width: 2, color: "#2b3566" }
+        },
+        // Legs.
+        {
+          kind: "rect",
+          x: -10 + leftLeg,
+          y: -8,
+          w: 8,
+          h: 8,
+          color: "#3a4a8f",
+          radius: 3,
+          stroke: { width: 2, color: "#2b3566" }
+        },
+        {
+          kind: "rect",
+          x: 2 + rightLeg,
+          y: -8,
+          w: 8,
+          h: 8,
+          color: "#3a4a8f",
+          radius: 3,
+          stroke: { width: 2, color: "#2b3566" }
+        }
       ]
     }
+  };
+}
+
+const PLAYER_LOOK = "indigo blue hoodie, round cream-coloured face, tiny black dot eyes";
+
+export const CHARACTERS: AssetSpec[] = [
+  playerFrame(
+    "down",
+    "idle",
+    `Cute chibi cartoon villager game sprite facing the camera (south), seen from a top-down three-quarter view, ${PLAYER_LOOK}, arms at rest, both feet together, ${"flat 2D vector style"}, thick dark outlines, plain transparent background, single character centred, no text`
+  ),
+  playerFrame(
+    "down",
+    "walkA",
+    `Cute chibi cartoon villager game sprite facing the camera (south), seen from a top-down three-quarter view, mid-stride walk cycle frame 1, left leg forward and right leg back, body raised slightly, ${PLAYER_LOOK}, flat 2D vector style, thick dark outlines, plain transparent background, single character centred, no text`
+  ),
+  playerFrame(
+    "down",
+    "walkB",
+    `Cute chibi cartoon villager game sprite facing the camera (south), seen from a top-down three-quarter view, mid-stride walk cycle frame 2, right leg forward and left leg back, body lowered slightly, ${PLAYER_LOOK}, flat 2D vector style, thick dark outlines, plain transparent background, single character centred, no text`
+  ),
+  playerFrame(
+    "right",
+    "idle",
+    `Cute chibi cartoon villager game sprite facing right (east), seen from a top-down three-quarter view, ${PLAYER_LOOK}, arms at rest, both feet together, flat 2D vector style, thick dark outlines, plain transparent background, single character centred, no text`
+  ),
+  playerFrame(
+    "right",
+    "walkA",
+    `Cute chibi cartoon villager game sprite facing right (east), seen from a top-down three-quarter view, mid-stride walk cycle frame 1, front leg forward, body raised slightly, ${PLAYER_LOOK}, flat 2D vector style, thick dark outlines, plain transparent background, single character centred, no text`
+  ),
+  playerFrame(
+    "right",
+    "walkB",
+    `Cute chibi cartoon villager game sprite facing right (east), seen from a top-down three-quarter view, mid-stride walk cycle frame 2, back leg forward, body lowered slightly, ${PLAYER_LOOK}, flat 2D vector style, thick dark outlines, plain transparent background, single character centred, no text`
+  ),
+  playerFrame(
+    "up",
+    "idle",
+    `Cute chibi cartoon villager game sprite seen from behind (facing away, north), top-down three-quarter view, indigo blue hoodie, back of a brown-haired head with no face visible, arms at rest, both feet together, flat 2D vector style, thick dark outlines, plain transparent background, single character centred, no text`
+  ),
+  playerFrame(
+    "up",
+    "walkA",
+    `Cute chibi cartoon villager game sprite seen from behind (facing away, north), top-down three-quarter view, walking away, mid-stride walk cycle frame 1, body raised slightly, indigo blue hoodie, back of a brown-haired head with no face visible, flat 2D vector style, thick dark outlines, plain transparent background, single character centred, no text`
+  ),
+  playerFrame(
+    "up",
+    "walkB",
+    `Cute chibi cartoon villager game sprite seen from behind (facing away, north), top-down three-quarter view, walking away, mid-stride walk cycle frame 2, body lowered slightly, indigo blue hoodie, back of a brown-haired head with no face visible, flat 2D vector style, thick dark outlines, plain transparent background, single character centred, no text`
+  ),
+  // Left-facing frames. These are NOT drawn by hand: `npm run art` mirrors the
+  // right-facing frame of the same pose, so the art requirement stays at three
+  // directions instead of four. See MIRRORED in animationSpec.ts.
+  {
+    ...playerFrame(
+      "right",
+      "idle",
+      "Cute chibi cartoon villager game sprite facing left (west), seen from a top-down three-quarter view, indigo blue hoodie, round cream-coloured face, tiny black dot eyes, arms at rest, flat 2D vector style, thick dark outlines, plain transparent background, single character centred, no text"
+    ),
+    id: "player_left_idle",
+    nameZh: "玩家·左·idle",
+    descZh: "由 player_right_idle 水平镜像得到，不需要单独出图。",
+    descEn:
+      "Cute chibi cartoon villager game sprite facing left (west), seen from a top-down three-quarter view, indigo blue hoodie, round cream-coloured face, tiny black dot eyes, arms at rest, flat 2D vector style, thick dark outlines, plain transparent background, single character centred, no text"
+  },
+  {
+    ...playerFrame(
+      "right",
+      "walkA",
+      "Cute chibi cartoon villager game sprite facing left (west), seen from a top-down three-quarter view, mid-stride walk cycle frame 1, body raised slightly, indigo blue hoodie, round cream-coloured face, tiny black dot eyes, flat 2D vector style, thick dark outlines, plain transparent background, single character centred, no text"
+    ),
+    id: "player_left_walkA",
+    nameZh: "玩家·左·walkA",
+    descZh: "由 player_right_walkA 水平镜像得到，不需要单独出图。",
+    descEn:
+      "Cute chibi cartoon villager game sprite facing left (west), seen from a top-down three-quarter view, mid-stride walk cycle frame 1, body raised slightly, indigo blue hoodie, round cream-coloured face, tiny black dot eyes, flat 2D vector style, thick dark outlines, plain transparent background, single character centred, no text"
+  },
+  {
+    ...playerFrame(
+      "right",
+      "walkB",
+      "Cute chibi cartoon villager game sprite facing left (west), seen from a top-down three-quarter view, mid-stride walk cycle frame 2, body lowered slightly, indigo blue hoodie, round cream-coloured face, tiny black dot eyes, flat 2D vector style, thick dark outlines, plain transparent background, single character centred, no text"
+    ),
+    id: "player_left_walkB",
+    nameZh: "玩家·左·walkB",
+    descZh: "由 player_right_walkB 水平镜像得到，不需要单独出图。",
+    descEn:
+      "Cute chibi cartoon villager game sprite facing left (west), seen from a top-down three-quarter view, mid-stride walk cycle frame 2, body lowered slightly, indigo blue hoodie, round cream-coloured face, tiny black dot eyes, flat 2D vector style, thick dark outlines, plain transparent background, single character centred, no text"
   },
   {
     id: "npc_mayor",

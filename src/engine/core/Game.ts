@@ -6,6 +6,7 @@ export class Game {
   private lastTime = 0;
   private readonly input = new Input();
   private readonly renderer: CanvasRenderer;
+  private afterFrame: (() => void) | null = null;
 
   constructor(
     canvas: HTMLCanvasElement,
@@ -18,6 +19,20 @@ export class Game {
     window.addEventListener("keydown", this.input.onKeyDown);
     window.addEventListener("keyup", this.input.onKeyUp);
     requestAnimationFrame(this.loop);
+  }
+
+  /**
+   * Run `callback` at the end of every frame, once the camera has been framed
+   * and the frame drawn. Used to mirror live state somewhere observable; a
+   * timer would race the loop and read half-updated values.
+   */
+  onAfterFrame(callback: () => void): void {
+    this.afterFrame = callback;
+  }
+
+  /** The camera for the current frame. */
+  get camera() {
+    return this.renderer.camera;
   }
 
   private loop = (time: number) => {
@@ -37,6 +52,8 @@ export class Game {
 
     // Input edges last exactly one frame.
     this.input.endFrame();
+
+    this.afterFrame?.();
 
     requestAnimationFrame(this.loop);
   };

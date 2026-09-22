@@ -102,9 +102,12 @@ describe("generated placeholder art (TASK-102)", () => {
       const buf = readFileSync(file);
       // Compare compressed size against an all-one-color image of the same
       // dimensions; a truly blank RGBA image deflates to almost nothing.
+      // The threshold scales with area so a 48x48 tile is not held to the same
+      // byte count as a 32x32 icon.
+      const min = Math.max(120, (spec.size.w * spec.size.h) / 24);
       assert.ok(
-        buf.length > 120,
-        `${spec.id}: generated PNG is suspiciously small (${buf.length}B) -- probably blank`
+        buf.length > min,
+        `${spec.id}: generated PNG is suspiciously small (${buf.length}B, expected > ${min}B) -- probably blank`
       );
     }
   });
@@ -123,22 +126,26 @@ describe("asset source selection (TASK-102)", () => {
   test("real art wins over placeholder art", async () => {
     const { selectAssetSource } = await import("../src/game/assets/index");
     const chosen = selectAssetSource(
-      "player",
-      { "/assets/sprites/player.png": "REAL" },
-      { "/assets/generated/player.png": "PLACEHOLDER" }
+      "player_down_idle",
+      { "/assets/sprites/player_down_idle.png": "REAL" },
+      { "/assets/generated/player_down_idle.png": "PLACEHOLDER" }
     );
     assert.equal(chosen, "REAL");
   });
 
   test("falls back to placeholder art when no real art exists", async () => {
     const { selectAssetSource } = await import("../src/game/assets/index");
-    const chosen = selectAssetSource("player", {}, { "/assets/generated/player.png": "PLACEHOLDER" });
+    const chosen = selectAssetSource(
+      "player_down_idle",
+      {},
+      { "/assets/generated/player_down_idle.png": "PLACEHOLDER" }
+    );
     assert.equal(chosen, "PLACEHOLDER");
   });
 
   test("returns undefined when neither exists, so the recipe is used", async () => {
     const { selectAssetSource } = await import("../src/game/assets/index");
-    assert.equal(selectAssetSource("player", {}, {}), undefined);
+    assert.equal(selectAssetSource("player_down_idle", {}, {}), undefined);
   });
 
   test("does not match an id that is merely a suffix of another file name", async () => {
