@@ -20,6 +20,14 @@ export const MAP_HEIGHT = MAP_ROWS * TILE;
 export const PLAYER_SPEED = 170;
 
 /**
+ * How far in front of the player's feet they can reach to interact, in pixels.
+ *
+ * Roughly one tile, so standing outside a building reaches its door while the
+ * far side of the street does not.
+ */
+export const PLAYER_INTERACT_REACH = 44;
+
+/**
  * Spawn point of a new resident, in pixels: the crossroads in the middle of
  * town, on the main street. Kept clear of buildings so the player never starts
  * inside a wall.

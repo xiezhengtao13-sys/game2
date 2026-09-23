@@ -387,6 +387,13 @@ export const BUILDINGS: AssetSpec[] = [
     "烤面包的地方，屋顶有烟囱冒烟。",
     "Top-down cartoon bakery building with a stone oven and a chimney, warm cream walls and terracotta roof, flat 2D vector style, thick clean outlines, no perspective, no text",
     "#e6d3b3"
+  ),
+  building(
+    "bld_noticeboard",
+    "告示板",
+    "立在路边的木告示板，上面贴着招工的告示。",
+    "Top-down cartoon wooden notice board on two posts with a few parchment notices pinned to it, seen from a high three-quarter angle, flat 2D vector style, thick clean outlines, clear of any background, no readable text",
+    "#c9a06a"
   )
 ];
 

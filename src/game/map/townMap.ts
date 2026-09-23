@@ -1,5 +1,6 @@
 import { MAP_COLUMNS, MAP_ROWS, TILE } from "../config";
 import { TileMap, type TileType } from "./TileMap";
+import type { Interactable } from "../systems/Interaction";
 
 /**
  * The v1 town: a 40 x 30 tile hamlet on the west bank of a river.
@@ -100,3 +101,19 @@ export function createTownMap(): TileMap {
 
 /** Exposed so tests and tooling can reason about the authored layout. */
 export const TOWN_SHAPES: readonly Shape[] = SHAPES;
+
+/**
+ * Things the player can walk up to and press E on.
+ *
+ * Each one sits on a WALKABLE tile in front of whatever it belongs to, roughly
+ * two tiles out, so the player stands at the doorstep rather than inside the
+ * wall. The prompt then appears once the player is looking at it.
+ */
+export const TOWN_INTERACTABLES: readonly Interactable[] = [
+  { id: "home", label: "家门", x: 10.5 * TILE, y: 13.5 * TILE, radius: TILE * 0.9 },
+  { id: "townhall", label: "镇公所", x: 26.5 * TILE, y: 13.5 * TILE, radius: TILE * 0.9 },
+  { id: "noticeboard", label: "告示板", x: 18.5 * TILE, y: 7.5 * TILE, radius: TILE * 0.9 },
+  { id: "cottage", label: "民居", x: 12.5 * TILE, y: 14.5 * TILE, radius: TILE * 0.9 },
+  { id: "mill", label: "磨坊", x: 25.5 * TILE, y: 19.5 * TILE, radius: TILE * 0.9 },
+  { id: "farm", label: "农田", x: 6.5 * TILE, y: 17.5 * TILE, radius: TILE * 0.9 }
+];

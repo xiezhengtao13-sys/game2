@@ -31,6 +31,24 @@ const status = document.querySelector<HTMLSpanElement>("#status");
 if (status) status.textContent = "小镇已就绪";
 
 const world = new TownWorld(map, assets);
+
+// `?spawn=x,y` moves the player and `&facing=up|down|left|right` sets which way
+// they look, so a headless screenshot can be framed at a specific spot without
+// simulating input. Development aid only.
+const params = new URLSearchParams(window.location.search);
+const spawnParam = params.get("spawn");
+if (spawnParam) {
+  const [x, y] = spawnParam.split(",").map(Number);
+  if (Number.isFinite(x) && Number.isFinite(y)) {
+    world.player.x = x;
+    world.player.y = y;
+  }
+}
+const facingParam = params.get("facing");
+if (facingParam === "up" || facingParam === "down" || facingParam === "left" || facingParam === "right") {
+  world.player.animation.face(facingParam);
+}
+
 const game = new Game(canvas, world);
 game.start();
 
@@ -39,7 +57,34 @@ game.start();
  * The canvas cannot be inspected from outside, so this is the only way a
  * screenshot script can confirm where things actually are.
  */
-function readProbe(): Record<string, number> {
+/** Live state mirrored for headless checks. */
+interface Probe {
+  tile: number;
+  mapColumns: number;
+  mapRows: number;
+  mapPixelWidth: number;
+  mapPixelHeight: number;
+  canvasWidth: number;
+  canvasHeight: number;
+  viewportWidth: number;
+  viewportHeight: number;
+  cameraX: number;
+  cameraY: number;
+  playerX: number;
+  playerY: number;
+  playerCenterX: number;
+  playerCenterY: number;
+  /** Where the player's sprite frame lands on screen, for screenshot checks. */
+  spriteLeft: number;
+  spriteTop: number;
+  /** What the player is being prompted about, or null. */
+  target: string | null;
+  targetLabel: string | null;
+  promptWorldX: number;
+  promptWorldY: number;
+}
+
+function readProbe(): Probe {
   const { camera } = game;
 
   return {
@@ -60,7 +105,11 @@ function readProbe(): Record<string, number> {
     playerCenterY: world.player.centerY,
     /** Where the player's sprite frame lands on screen, for screenshot checks. */
     spriteLeft: world.player.x - camera.worldX,
-    spriteTop: world.player.y - camera.worldY
+    spriteTop: world.player.y - camera.worldY,
+    target: world.interactionTarget?.id ?? null,
+    targetLabel: world.interactionTarget?.label ?? null,
+    promptWorldX: world.interactionTarget?.x ?? 0,
+    promptWorldY: world.interactionTarget?.y ?? 0
   };
 }
 
