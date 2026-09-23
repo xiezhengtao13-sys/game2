@@ -324,6 +324,10 @@ describe("working the field through TownWorld (TASK-109)", () => {
     world.player.x = gate.x - world.player.width / 2;
     world.player.y = gate.y + 48 - world.player.height;
     world.player.animation.face("up");
+
+    // The field is the farmer's work (TASK-111), so take the job first. The
+    // gating itself is covered in tests/jobs.test.ts.
+    world.jobs.take("farmer");
     return { world, gate };
   }
 
@@ -496,11 +500,13 @@ describe("farming and dialogue do not interfere (TASK-109)", () => {
     // The clock is not paused by talking; only the player is.
     const world = new TownWorld(createTownMap(), null);
     const gate = TOWN_INTERACTABLES.find((i) => i.id === "farm")!;
+    world.jobs.take("farmer");
     world.player.x = gate.x - world.player.width / 2;
     world.player.y = gate.y + 48 - world.player.height;
     world.player.animation.face("up");
 
     // Sow a plot directly, then open a conversation elsewhere.
+    world.jobs.take("farmer");
     const plot = world.farm.nearest(gate.x, gate.y, world.tileMap.tileSize)!;
     world.farm.till(plot);
     world.farm.plant(plot);
@@ -517,13 +523,21 @@ describe("farming and dialogue do not interfere (TASK-109)", () => {
     assert.equal(plot.state, "mature", "crops should ripen during a conversation");
   });
 
-  test("the field's reach and the normal reach are both honoured", () => {
+  test("harvested wheat lands in the inventory", () => {
     const world = new TownWorld(createTownMap(), null);
     const gate = TOWN_INTERACTABLES.find((i) => i.id === "farm")!;
-    const reach = reachPoint(gate.x, gate.y, "up", PLAYER_INTERACT_REACH);
+    world.jobs.take("farmer");
+    world.player.x = gate.x - world.player.width / 2;
+    world.player.y = gate.y + 48 - world.player.height;
+    world.player.animation.face("up");
 
-    // The farm prompt uses the ordinary reach; only the working radius is larger.
-    assert.ok(Number.isFinite(reach.x) && Number.isFinite(reach.y));
-    assert.ok(TILE > 0);
+    const press = () => world.update(0.016, fakeInput([], ["KeyE"]));
+    press(); // till
+    press(); // sow
+    world.update(10, fakeInput());
+    press(); // harvest
+
+    assert.equal(world.inventory.count("wheat"), 1);
+    assert.equal(world.harvestedCount, 1);
   });
 });

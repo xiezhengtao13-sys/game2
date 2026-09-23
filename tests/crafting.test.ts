@@ -384,7 +384,9 @@ describe("crafting through TownWorld (TASK-110)", () => {
     const world = new TownWorld(createTownMap(), null);
     const gate = TOWN_INTERACTABLES.find((i) => i.id === "farm")!;
 
-    // Grow and harvest two plots' worth by working the same plot twice.
+    // Working the field needs the farmer job (TASK-111).
+    world.jobs.take("farmer");
+
     world.player.x = gate.x - world.player.width / 2;
     world.player.y = gate.y + 48 - world.player.height;
     world.player.animation.face("up");
@@ -434,6 +436,7 @@ describe("crafting through TownWorld (TASK-110)", () => {
   test("harvested wheat lands in the inventory", () => {
     const world = new TownWorld(createTownMap(), null);
     const gate = TOWN_INTERACTABLES.find((i) => i.id === "farm")!;
+    world.jobs.take("farmer");
     world.player.x = gate.x - world.player.width / 2;
     world.player.y = gate.y + 48 - world.player.height;
     world.player.animation.face("up");

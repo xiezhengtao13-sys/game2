@@ -17,11 +17,8 @@ const DIALOGUE: Record<string, DialogueLine[]> = {
     { speaker: "镇长", text: "去看看吧，挑个你喜欢的活干。" }
   ],
 
-  noticeboard: [
-    { speaker: null, text: "告示板上贴着几张招工的告示。" },
-    { speaker: null, text: "「本镇诚招农夫一名，负责照料南边那块地。」" },
-    { speaker: "镇长", text: "想好了就按 E 告诉我。" }
-  ],
+  // The notice board has NO entry here on purpose: it opens the job menu, which
+  // builds its own text from the job list. A static entry would be dead data.
 
   home: [{ speaker: null, text: "你的新家。屋里的箱子还没拆开。" }],
 

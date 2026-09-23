@@ -15,6 +15,8 @@ import { GameTime } from "./systems/Time";
 import { Inventory, ITEM_NAMES } from "./systems/Inventory";
 import { craft, type Recipe } from "./systems/Crafting";
 import { recipeFor } from "./text/workbenches";
+import { Jobs } from "./systems/Jobs";
+import { NO_JOB_HINT, NOTICE_BOARD_TITLE, offerIndexForKey, offerLine } from "./text/jobs";
 
 /**
  * Colour used for a tile while its art is missing or still loading. Flat but
@@ -50,6 +52,7 @@ export class TownWorld implements GameWorld {
   readonly farm: Farm;
   readonly time: GameTime;
   readonly inventory = new Inventory();
+  readonly jobs = new Jobs();
   private readonly map: TileMap;
   private readonly assets: GameAssets | null;
   private readonly interactables: readonly Interactable[];
@@ -112,7 +115,9 @@ export class TownWorld implements GameWorld {
     const found = findInteractable(this.interactables, reach);
     if (!found) return false;
 
-    this.startDialogue(found);
+    // Routed through `interact`, so this exercises exactly what pressing E does
+    // -- including the notice board menu and the workbenches.
+    this.interact(found);
     return this.dialogue.isOpen;
   }
 
@@ -148,11 +153,27 @@ export class TownWorld implements GameWorld {
   /**
    * Do whatever pressing E on `target` means.
    *
-   * Three kinds of target, in order of specificity: the field is worked tile by
-   * tile, a workbench converts what you carry, and anything else just talks.
+   * Four kinds of target, in order of specificity: the notice board offers
+   * work, the field is worked tile by tile, a workbench converts what you carry,
+   * and anything else just talks.
    */
   private interact(target: Interactable): void {
+    this.faceToward(target);
+
+    if (target.id === "noticeboard") {
+      this.openJobMenu();
+      return;
+    }
+
     if (target.id === "farm") {
+      // The field is the farmer's work, so it stays shut until the job is taken.
+      // This is what makes choosing a job matter rather than being decorative.
+      if (!this.jobs.hasJob) {
+        this.target = null;
+        this.dialogue.say(null, "这块地还没有人负责。先去告示板接下乡下的活吧。");
+        this.onDialogueChange?.(this.dialogue);
+        return;
+      }
       this.workNearestPlot();
       return;
     }
@@ -164,6 +185,69 @@ export class TownWorld implements GameWorld {
     }
 
     this.startDialogue(target);
+  }
+
+  /** Turn the player to look at something. Shared by every interaction. */
+  private faceToward(target: Interactable): void {
+    const dx = target.x - this.player.centerX;
+    const dy = target.y - (this.player.y + this.player.height);
+    if (dx !== 0 || dy !== 0) this.player.animation.face(facingFor(dx, dy));
+  }
+
+  /**
+   * Show the notice board.
+   *
+   * With no job taken the board lists what is on offer; with one taken it says
+   * so instead, so the player is never asked to choose again.
+   */
+  private openJobMenu(): void {
+    this.target = null;
+
+    if (this.jobs.hasJob) {
+      const job = this.jobs.job!;
+      this.dialogue.open([
+        { speaker: NOTICE_BOARD_TITLE, text: `你现在的活是：${job.name}。` },
+        { speaker: NOTICE_BOARD_TITLE, text: job.takenText }
+      ]);
+      this.onDialogueChange?.(this.dialogue);
+      return;
+    }
+
+    const offers = this.jobs.offers();
+    const lines: DialogueLine[] = offers.map(({ job, taken }, index) => ({
+      speaker: NOTICE_BOARD_TITLE,
+      text: offerLine(index, job.name, job.description, taken)
+    }));
+    lines.push({ speaker: NOTICE_BOARD_TITLE, text: NO_JOB_HINT });
+
+    this.dialogue.open(lines);
+    this.onDialogueChange?.(this.dialogue);
+  }
+
+  /**
+   * Take the offered job for a pressed number key.
+   *
+   * Only meaningful while the board is open, so it is checked here rather than
+   * letting any stray number press change the game state.
+   */
+  private chooseJobFromKey(code: string): boolean {
+    if (!this.jobs.hasJob) {
+      const offers = this.jobs.offers();
+      const index = offerIndexForKey(code, offers.length);
+      if (index === null) return false;
+
+      const job = offers[index].job;
+      if (!this.jobs.take(job.id)) return false;
+
+      this.dialogue.open([
+        { speaker: NOTICE_BOARD_TITLE, text: `好，你就是镇上的${job.name}了。` },
+        { speaker: NOTICE_BOARD_TITLE, text: job.takenText }
+      ]);
+      this.onDialogueChange?.(this.dialogue);
+      return true;
+    }
+
+    return false;
   }
 
   /**
@@ -284,6 +368,12 @@ export class TownWorld implements GameWorld {
    * line rather than racing through the whole conversation.
    */
   private updateDialogue(input: Input): void {
+    // A number key takes a job while the board is open. Checked before the
+    // advance keys, since choosing replaces the line rather than stepping it.
+    for (const code of ["Digit1", "Digit2", "Digit3", "Digit4", "Digit5"]) {
+      if (input.wasPressed(code) && this.chooseJobFromKey(code)) return;
+    }
+
     if (input.wasPressed("KeyE") || input.wasPressed("Space")) {
       this.dialogue.advance();
       this.onDialogueChange?.(this.dialogue.isOpen ? this.dialogue : null);
