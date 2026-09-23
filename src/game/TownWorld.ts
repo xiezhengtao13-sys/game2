@@ -12,6 +12,9 @@ import { dialogueFor } from "./text/dialogue";
 import type { Npc } from "./entities/Npc";
 import { Farm, cropStageFor, WHEAT_GROW_MINUTES, type Plot } from "./systems/Farm";
 import { GameTime } from "./systems/Time";
+import { Inventory, ITEM_NAMES } from "./systems/Inventory";
+import { craft, type Recipe } from "./systems/Crafting";
+import { recipeFor } from "./text/workbenches";
 
 /**
  * Colour used for a tile while its art is missing or still loading. Flat but
@@ -46,6 +49,7 @@ export class TownWorld implements GameWorld {
   readonly dialogue = new Dialogue();
   readonly farm: Farm;
   readonly time: GameTime;
+  readonly inventory = new Inventory();
   private readonly map: TileMap;
   private readonly assets: GameAssets | null;
   private readonly interactables: readonly Interactable[];
@@ -144,15 +148,48 @@ export class TownWorld implements GameWorld {
   /**
    * Do whatever pressing E on `target` means.
    *
-   * The field is special-cased: it is worked tile by tile, so standing next to
-   * one plot tends that plot rather than the whole field.
+   * Three kinds of target, in order of specificity: the field is worked tile by
+   * tile, a workbench converts what you carry, and anything else just talks.
    */
   private interact(target: Interactable): void {
     if (target.id === "farm") {
       this.workNearestPlot();
       return;
     }
+
+    const recipe = recipeFor(target.id);
+    if (recipe) {
+      this.useWorkbench(target, recipe);
+      return;
+    }
+
     this.startDialogue(target);
+  }
+
+  /**
+   * Run a workbench recipe and say what happened.
+   *
+   * Success and failure both go through the dialogue box, so a shortage is
+   * always explained rather than the press silently doing nothing.
+   */
+  private useWorkbench(target: Interactable, recipe: Recipe): void {
+    const result = craft(this.inventory, recipe);
+
+    // Turn to face the bench either way, so the character looks like they used it.
+    const dx = target.x - this.player.centerX;
+    const dy = target.y - (this.player.y + this.player.height);
+    if (dx !== 0 || dy !== 0) this.player.animation.face(facingFor(dx, dy));
+
+    this.target = null;
+    this.dialogue.say(null, result.ok ? this.successMessage(result.recipe) : result.message);
+    this.onDialogueChange?.(this.dialogue);
+  }
+
+  private successMessage(recipe: Recipe): string {
+    const produced = recipe.outputs
+      .map(({ item, amount }) => `${ITEM_NAMES[item]}×${amount}`)
+      .join("、");
+    return `做好了：${produced}。`;
   }
 
   /**
@@ -176,18 +213,16 @@ export class TownWorld implements GameWorld {
       this.farm.plant(plot);
     } else if (this.farm.canHarvest(plot)) {
       const gathered = this.farm.harvest(plot);
-      if (gathered) this.harvested += gathered.amount;
+      if (gathered) this.inventory.add(gathered.crop, gathered.amount);
     }
     // A growing plot needs nothing from the player; pressing E does nothing.
 
     return plot;
   }
 
-  /** Wheat gathered so far. Temporary until the inventory lands in TASK-113. */
-  private harvested = 0;
-
+  /** Wheat gathered so far, for the HUD and probe. */
   get harvestedCount(): number {
-    return this.harvested;
+    return this.inventory.count("wheat");
   }
 
   /**

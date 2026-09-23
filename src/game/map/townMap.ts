@@ -115,8 +115,8 @@ export const TOWN_INTERACTABLES: readonly Interactable[] = [
   { id: "townhall", label: "镇公所", x: 26.5 * TILE, y: 13.5 * TILE, radius: TILE * 0.9 },
   { id: "mayor", label: "和镇长说话", x: 13.5 * TILE, y: 13.5 * TILE, radius: TILE * 0.9 },
   { id: "noticeboard", label: "告示板", x: 18.5 * TILE, y: 7.5 * TILE, radius: TILE * 0.9 },
-  { id: "cottage", label: "民居", x: 12.5 * TILE, y: 14.5 * TILE, radius: TILE * 0.9 },
   { id: "mill", label: "磨坊", x: 25.5 * TILE, y: 19.5 * TILE, radius: TILE * 0.9 },
+  { id: "bakery", label: "烤炉", x: 12.5 * TILE, y: 14.5 * TILE, radius: TILE * 0.9 },
   { id: "farm", label: "农田", x: 6.5 * TILE, y: 17.5 * TILE, radius: TILE * 0.9 }
 ];
 

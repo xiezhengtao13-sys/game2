@@ -118,6 +118,7 @@ interface Probe {
   growing: number;
   ripe: number;
   harvested: number;
+  inventory: string;
   plots: string;
 }
 
@@ -161,6 +162,10 @@ function readProbe(): Probe {
     growing: world.farm.all.filter((p) => p.state === "seeded").length,
     ripe: world.farm.all.filter((p) => p.state === "mature").length,
     harvested: world.harvestedCount,
+    inventory: world.inventory
+      .entries()
+      .map((e) => `${e.item}:${e.count}`)
+      .join(" ") || "-",
     plots: world
       .firstPlots(4)
       .map((p) => `${p.tx},${p.ty}:${p.state}`)

@@ -25,16 +25,7 @@ const DIALOGUE: Record<string, DialogueLine[]> = {
 
   home: [{ speaker: null, text: "你的新家。屋里的箱子还没拆开。" }],
 
-  townhall: [{ speaker: null, text: "镇公所。门锁着，镇长现在在外面。" }],
-
-  cottage: [{ speaker: null, text: "屋主似乎不在家。" }],
-
-  mill: [{ speaker: null, text: "磨坊。石磨静静地立着，等着有人拿小麦来。" }],
-
-  farm: [
-    { speaker: null, text: "一块翻好的空地，土质看起来不错。" },
-    { speaker: null, text: "（种田功能还没做好。）" }
-  ]
+  townhall: [{ speaker: null, text: "镇公所。门锁着，镇长现在在外面。" }]
 };
 
 /** The lines for an interactable, or null when it says nothing yet. */
