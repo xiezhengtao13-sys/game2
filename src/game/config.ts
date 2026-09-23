@@ -1,5 +1,7 @@
 import type { TileMap } from "./map/TileMap";
 import { TILE_SIZE } from "./assets/manifest";
+import { Farm } from "./systems/Farm";
+import { GameTime } from "./systems/Time";
 
 /**
  * All tunable gameplay numbers in one place, so balance changes do not require
@@ -28,6 +30,15 @@ export const PLAYER_SPEED = 170;
 export const PLAYER_INTERACT_REACH = 44;
 
 /**
+ * How far the player can reach to work the field, in pixels. Larger than the
+ * normal reach: you work the plot you are standing next to, not a single tile.
+ */
+export const FARM_WORK_REACH = TILE * 1.5;
+
+/** Real seconds per in-game minute. 1 means ten real minutes is one game day. */
+export const SECONDS_PER_GAME_MINUTE = 1;
+
+/**
  * Spawn point of a new resident, in pixels: the crossroads in the middle of
  * town, on the main street. Kept clear of buildings so the player never starts
  * inside a wall.
@@ -42,4 +53,23 @@ export function assertMapMatchesConfig(map: TileMap): void {
         `${MAP_COLUMNS}x${MAP_ROWS}. Update townMap.ts or config.ts so they agree.`
     );
   }
+}
+
+/**
+ * Build the farmable field from the map: every farmland tile becomes a plot.
+ *
+ * Derived from the map rather than listed separately, so moving or resizing the
+ * field in `townMap.ts` cannot leave the plots behind in the old place.
+ */
+export function createFarm(map: TileMap): Farm {
+  const farm = new Farm();
+  for (const { tx, ty } of map.tilesOfType("farmland")) {
+    farm.addPlot(tx, ty);
+  }
+  return farm;
+}
+
+/** Build the game clock. */
+export function createGameTime(): GameTime {
+  return new GameTime(SECONDS_PER_GAME_MINUTE);
 }

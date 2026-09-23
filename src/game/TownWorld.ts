@@ -3,13 +3,15 @@ import type { Input } from "../engine/input/Input";
 import type { Renderer } from "../engine/graphics/Renderer";
 import type { TileMap } from "./map/TileMap";
 import { Player, facingFor } from "./entities/Player";
-import { PLAYER_INTERACT_REACH, PLAYER_SPAWN } from "./config";
+import { PLAYER_INTERACT_REACH, PLAYER_SPAWN, FARM_WORK_REACH, createFarm, createGameTime } from "./config";
 import type { GameAssets } from "./assets";
 import { findInteractable, reachPoint, type Interactable } from "./systems/Interaction";
 import { TOWN_INTERACTABLES, TOWN_NPCS } from "./map/townMap";
 import { Dialogue, type DialogueLine } from "./systems/Dialogue";
 import { dialogueFor } from "./text/dialogue";
 import type { Npc } from "./entities/Npc";
+import { Farm, cropStageFor, WHEAT_GROW_MINUTES, type Plot } from "./systems/Farm";
+import { GameTime } from "./systems/Time";
 
 /**
  * Colour used for a tile while its art is missing or still loading. Flat but
@@ -42,6 +44,8 @@ const PROMPT_HEIGHT = 34;
 export class TownWorld implements GameWorld {
   readonly player: Player;
   readonly dialogue = new Dialogue();
+  readonly farm: Farm;
+  readonly time: GameTime;
   private readonly map: TileMap;
   private readonly assets: GameAssets | null;
   private readonly interactables: readonly Interactable[];
@@ -67,6 +71,8 @@ export class TownWorld implements GameWorld {
     this.interactables = interactables;
     this.npcs = npcs;
     this.player = new Player(PLAYER_SPAWN.x, PLAYER_SPAWN.y);
+    this.farm = createFarm(map);
+    this.time = createGameTime();
   }
 
   get tileMap(): TileMap {
@@ -107,6 +113,10 @@ export class TownWorld implements GameWorld {
   }
 
   update(dt: number, input: Input): void {
+    // The clock runs regardless, so crops keep growing while the player stands
+    // still or is mid-conversation.
+    this.farm.update(dt, this.time);
+
     if (this.dialogue.isOpen) {
       this.updateDialogue(input);
       // `target` is already null: startDialogue cleared it, and the interaction
@@ -127,8 +137,110 @@ export class TownWorld implements GameWorld {
     this.target = findInteractable(this.interactables, reach);
 
     if (this.target && input.wasPressed("KeyE")) {
-      this.startDialogue(this.target);
+      this.interact(this.target);
     }
+  }
+
+  /**
+   * Do whatever pressing E on `target` means.
+   *
+   * The field is special-cased: it is worked tile by tile, so standing next to
+   * one plot tends that plot rather than the whole field.
+   */
+  private interact(target: Interactable): void {
+    if (target.id === "farm") {
+      this.workNearestPlot();
+      return;
+    }
+    this.startDialogue(target);
+  }
+
+  /**
+   * Tend the plot closest to the player: break ground, sow, or harvest.
+   *
+   * Which action applies is decided by the plot's own state, so one key does the
+   * obvious thing at each step instead of needing a tool selector.
+   */
+  private workNearestPlot(): Plot | null {
+    const plot = this.farm.nearest(
+      this.player.centerX,
+      this.player.y + this.player.height,
+      this.map.tileSize,
+      FARM_WORK_REACH
+    );
+    if (!plot) return null;
+
+    if (plot.state === "untilled") {
+      this.farm.till(plot);
+    } else if (plot.state === "tilled") {
+      this.farm.plant(plot);
+    } else if (this.farm.canHarvest(plot)) {
+      const gathered = this.farm.harvest(plot);
+      if (gathered) this.harvested += gathered.amount;
+    }
+    // A growing plot needs nothing from the player; pressing E does nothing.
+
+    return plot;
+  }
+
+  /** Wheat gathered so far. Temporary until the inventory lands in TASK-113. */
+  private harvested = 0;
+
+  get harvestedCount(): number {
+    return this.harvested;
+  }
+
+  /**
+   * Put the first few plots into different states for inspection.
+   *
+   * A development aid: letting a headless screenshot show tilled soil, a growing
+   * crop and a ripe one side by side, which otherwise needs several in-game days
+   * of play. Uses the same Farm calls the real interaction uses.
+   */
+  seedFarmForDisplay(): void {
+    const plots = this.farm.all;
+    if (plots.length === 0) return;
+
+    // One plot broken but unsown.
+    this.farm.till(plots[0]);
+
+    if (plots.length > 1) {
+      // One sown and part-grown.
+      this.farm.till(plots[1]);
+      this.farm.plant(plots[1]);
+    }
+
+    if (plots.length > 2) {
+      // One sown and left to ripen.
+      this.farm.till(plots[2]);
+      this.farm.plant(plots[2]);
+    }
+
+    // Read in-game minutes straight off the clock, so the staging below is
+    // expressed in the same unit the farm grows in.
+    const clock = new GameTime(1);
+
+    // Two minutes of growth: enough to leave the first sprout stage, not ripe.
+    this.farm.update(2, clock);
+
+    // Then take only the third plot all the way to ripe, by temporarily
+    // unplanting the middle one -- `Farm.update` advances every growing plot, so
+    // there is no way to fast-forward one alone.
+    if (plots.length > 2) {
+      const middle = plots[1];
+      const middleState = middle.state;
+      const middleGrowth = middle.growthMinutes;
+
+      middle.state = "tilled";
+      this.farm.update(WHEAT_GROW_MINUTES, clock);
+      middle.state = middleState;
+      middle.growthMinutes = middleGrowth;
+    }
+  }
+
+  /** Debug: the first few plots, for inspecting the field's state. */
+  firstPlots(n = 4): Array<{ tx: number; ty: number; state: string }> {
+    return this.farm.all.slice(0, n).map((p) => ({ tx: p.tx, ty: p.ty, state: p.state }));
   }
 
   /**
@@ -175,10 +287,46 @@ export class TownWorld implements GameWorld {
 
   render(renderer: Renderer): void {
     this.renderGround(renderer);
+    this.renderFarm(renderer);
     this.renderProps(renderer);
     this.renderNpcs(renderer);
     this.renderPlayer(renderer);
     this.renderPrompt(renderer);
+  }
+
+  /**
+   * Draw the crop in each worked plot, on top of the farmland tile underneath.
+   *
+   * Only plots the player has actually touched are drawn: an untilled plot looks
+   * exactly like the plain field, so drawing it would be redundant.
+   */
+  private renderFarm(renderer: Renderer): void {
+    const size = this.map.tileSize;
+
+    for (const plot of this.farm.all) {
+      if (plot.state === "untilled") continue;
+
+      const cx = (plot.tx + 0.5) * size;
+      const cy = (plot.ty + 0.5) * size;
+
+      if (plot.state === "tilled") {
+        // Bare worked soil: darker than the field so the player can see which
+        // squares they have already broken.
+        renderer.drawRect(plot.tx * size + 3, plot.ty * size + 3, size - 6, size - 6, {
+          color: "#6b4526",
+          radius: 5
+        });
+        continue;
+      }
+
+      const stage = cropStageFor(plot);
+      const image = this.assets?.image(`crop_wheat_stage${stage}`) ?? null;
+      renderer.drawSprite(image, cx, cy, {
+        anchor: "center",
+        size: { w: size, h: size },
+        fallbackColor: stage >= 4 ? "#e8c34a" : "#8fc45a"
+      });
+    }
   }
 
   /** Townspeople, drawn with the same anchor convention as the player. */

@@ -50,6 +50,12 @@ if (facingParam === "up" || facingParam === "down" || facingParam === "left" || 
   world.player.animation.face(facingParam);
 }
 
+// `&farm=1` pre-works a few plots so a screenshot can show tilled soil, a
+// growing crop and a ripe one at once, without days of play.
+if (params.get("farm") === "1") {
+  world.seedFarmForDisplay();
+}
+
 const game = new Game(canvas, world);
 game.start();
 
@@ -104,6 +110,15 @@ interface Probe {
   dialogueTotal: number;
   dialogueSpeaker: string | null;
   dialogueText: string | null;
+  /** Farm and clock state, for headless checks. */
+  clock: string;
+  day: number;
+  farmPlots: number;
+  tilled: number;
+  growing: number;
+  ripe: number;
+  harvested: number;
+  plots: string;
 }
 
 function readProbe(): Probe {
@@ -137,7 +152,19 @@ function readProbe(): Probe {
     dialogueLine: world.dialogue.isOpen ? world.dialogue.lineNumber : 0,
     dialogueTotal: world.dialogue.lineCount,
     dialogueSpeaker: world.dialogue.current?.speaker ?? null,
-    dialogueText: world.dialogue.current?.text ?? null
+    dialogueText: world.dialogue.current?.text ?? null,
+    /** Farm and clock state, for headless checks. */
+    clock: world.time.clock,
+    day: world.time.day,
+    farmPlots: world.farm.size,
+    tilled: world.farm.all.filter((p) => p.state === "tilled").length,
+    growing: world.farm.all.filter((p) => p.state === "seeded").length,
+    ripe: world.farm.all.filter((p) => p.state === "mature").length,
+    harvested: world.harvestedCount,
+    plots: world
+      .firstPlots(4)
+      .map((p) => `${p.tx},${p.ty}:${p.state}`)
+      .join(" ")
   };
 }
 
@@ -160,6 +187,9 @@ const drawMarkers = new URLSearchParams(window.location.search).get("debug") ===
 game.onAfterFrame(() => {
   const snapshot = readProbe();
   probeElement.textContent = JSON.stringify(snapshot);
+
+  // The HUD clock, so the player can see the day passing.
+  if (status) status.textContent = `第 ${snapshot.day} 天 ${snapshot.clock}`;
 
   if (!drawMarkers) return;
   const ctx = canvas.getContext("2d");

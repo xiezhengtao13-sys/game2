@@ -72,6 +72,17 @@ export class TileMap {
     return this.tileAt(Math.floor(x / this.tileSize), Math.floor(y / this.tileSize));
   }
 
+  /** Every tile of a given kind, for systems that operate on a whole surface. */
+  tilesOfType(type: TileType): Array<{ tx: number; ty: number }> {
+    const found: Array<{ tx: number; ty: number }> = [];
+    for (let ty = 0; ty < this.height; ty++) {
+      for (let tx = 0; tx < this.width; tx++) {
+        if (this.grid[ty * this.width + tx] === type) found.push({ tx, ty });
+      }
+    }
+    return found;
+  }
+
   /**
    * Walk every tile that overlaps `view`, row by row.
    *
