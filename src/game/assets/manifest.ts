@@ -290,14 +290,18 @@ export const CHARACTERS: AssetSpec[] = [
     nameZh: "镇长",
     descZh: "发布工作与收下贡献的人。年纪偏大，戴帽子。",
     descEn:
-      "Cute chibi cartoon village mayor sprite seen from a top-down three-quarter view, elderly friendly man, brown coat over a cream shirt, round tan face with tiny black dot eyes, grey hair and a wide-brimmed brown hat, simple rounded shapes, thick dark outlines, flat 2D vector style, plain background, single character centered, no text",
+      "Cute chibi cartoon village mayor sprite seen from a top-down three-quarter view, elderly friendly man, brown coat over a cream shirt, round tan face with tiny black dot eyes, grey hair and a wide-brimmed brown hat, simple rounded shapes, thick dark outlines, flat 2D vector style, plain transparent background, single character centred, no text",
     size: { w: 32, h: 48 },
     anchor: "bottom-center",
     category: "character",
     placeholder: {
       shapes: [
-        { kind: "rect", x: -14, y: -28, w: 28, h: 28, color: "#8a6642", radius: 8, stroke: { width: 2, color: "#4a3524" } },
-        { kind: "rect", x: -13, y: -48, w: 26, h: 22, color: "#e8c69c", radius: 9, stroke: { width: 2, color: "#4a3524" } }
+        { kind: "rect", x: -14, y: -30, w: 28, h: 26, color: "#8a6642", radius: 8, stroke: { width: 2, color: "#4a3524" } },
+        { kind: "rect", x: -12, y: -46, w: 24, h: 20, color: "#e8c69c", radius: 8, stroke: { width: 2, color: "#4a3524" } },
+        { kind: "rect", x: -8, y: -41, w: 4, h: 4, color: "#2b2b2b", radius: 2 },
+        { kind: "rect", x: 4, y: -41, w: 4, h: 4, color: "#2b2b2b", radius: 2 },
+        // Wide-brimmed hat, drawn last so it sits on top of the head.
+        { kind: "rect", x: -15, y: -50, w: 30, h: 6, color: "#6b4a2f", radius: 3, stroke: { width: 2, color: "#4a3524" } }
       ]
     }
   }

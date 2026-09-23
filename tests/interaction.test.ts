@@ -30,9 +30,12 @@ function openMap() {
   return new TileMap(new Array(40 * 40).fill("grass"), 40, 40, 48);
 }
 
-/** A stand-in Input that reports a fixed set of held keys. */
+/** A stand-in Input that reports a fixed set of held keys and no fresh presses. */
 function fakeInput(codes: string[]): Input {
-  return { isDown: (code: string) => codes.includes(code) } as unknown as Input;
+  return {
+    isDown: (code: string) => codes.includes(code),
+    wasPressed: () => false
+  } as unknown as Input;
 }
 
 describe("facingVector (TASK-107)", () => {

@@ -1,6 +1,7 @@
 import { MAP_COLUMNS, MAP_ROWS, TILE } from "../config";
 import { TileMap, type TileType } from "./TileMap";
 import type { Interactable } from "../systems/Interaction";
+import type { Npc } from "../entities/Npc";
 
 /**
  * The v1 town: a 40 x 30 tile hamlet on the west bank of a river.
@@ -112,8 +113,30 @@ export const TOWN_SHAPES: readonly Shape[] = SHAPES;
 export const TOWN_INTERACTABLES: readonly Interactable[] = [
   { id: "home", label: "家门", x: 10.5 * TILE, y: 13.5 * TILE, radius: TILE * 0.9 },
   { id: "townhall", label: "镇公所", x: 26.5 * TILE, y: 13.5 * TILE, radius: TILE * 0.9 },
+  { id: "mayor", label: "和镇长说话", x: 13.5 * TILE, y: 13.5 * TILE, radius: TILE * 0.9 },
   { id: "noticeboard", label: "告示板", x: 18.5 * TILE, y: 7.5 * TILE, radius: TILE * 0.9 },
   { id: "cottage", label: "民居", x: 12.5 * TILE, y: 14.5 * TILE, radius: TILE * 0.9 },
   { id: "mill", label: "磨坊", x: 25.5 * TILE, y: 19.5 * TILE, radius: TILE * 0.9 },
   { id: "farm", label: "农田", x: 6.5 * TILE, y: 17.5 * TILE, radius: TILE * 0.9 }
+];
+
+/**
+ * Townspeople.
+ *
+ * Positioned in front of the building they belong to, on walkable ground, so
+ * the player meets them on the way past rather than having to hunt for them.
+ */
+export const TOWN_NPCS: readonly Npc[] = [
+  {
+    id: "mayor",
+    name: "镇长",
+    // Standing on the pavement south of the main street, in front of the
+    // cottage. Deliberately NOT sharing a spot with the townhall interactable:
+    // two targets at one point would make it ambiguous who the player is
+    // addressing, and the sprite would stand inside the prompt.
+    x: 13.5 * TILE,
+    y: 12.5 * TILE,
+    facing: "down",
+    spriteId: "npc_mayor"
+  }
 ];

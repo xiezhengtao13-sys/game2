@@ -2,11 +2,14 @@ import type { GameCamera, GameWorld } from "../engine/core/GameWorld";
 import type { Input } from "../engine/input/Input";
 import type { Renderer } from "../engine/graphics/Renderer";
 import type { TileMap } from "./map/TileMap";
-import { Player } from "./entities/Player";
+import { Player, facingFor } from "./entities/Player";
 import { PLAYER_INTERACT_REACH, PLAYER_SPAWN } from "./config";
 import type { GameAssets } from "./assets";
 import { findInteractable, reachPoint, type Interactable } from "./systems/Interaction";
-import { TOWN_INTERACTABLES } from "./map/townMap";
+import { TOWN_INTERACTABLES, TOWN_NPCS } from "./map/townMap";
+import { Dialogue, type DialogueLine } from "./systems/Dialogue";
+import { dialogueFor } from "./text/dialogue";
+import type { Npc } from "./entities/Npc";
 
 /**
  * Colour used for a tile while its art is missing or still loading. Flat but
@@ -38,21 +41,31 @@ const PROMPT_HEIGHT = 34;
  */
 export class TownWorld implements GameWorld {
   readonly player: Player;
+  readonly dialogue = new Dialogue();
   private readonly map: TileMap;
   private readonly assets: GameAssets | null;
   private readonly interactables: readonly Interactable[];
+  private readonly npcs: readonly Npc[];
 
   /** What the player is currently being prompted about, or null. */
   private target: Interactable | null = null;
 
+  /**
+   * Called whenever the open dialogue changes, so the DOM layer can redraw its
+   * box. The world never touches the DOM itself.
+   */
+  onDialogueChange: ((dialogue: Dialogue | null) => void) | null = null;
+
   constructor(
     map: TileMap,
     assets: GameAssets | null = null,
-    interactables: readonly Interactable[] = TOWN_INTERACTABLES
+    interactables: readonly Interactable[] = TOWN_INTERACTABLES,
+    npcs: readonly Npc[] = TOWN_NPCS
   ) {
     this.map = map;
     this.assets = assets;
     this.interactables = interactables;
+    this.npcs = npcs;
     this.player = new Player(PLAYER_SPAWN.x, PLAYER_SPAWN.y);
   }
 
@@ -60,12 +73,47 @@ export class TownWorld implements GameWorld {
     return this.map;
   }
 
+  get townspeople(): readonly Npc[] {
+    return this.npcs;
+  }
+
   /** The interactable the player could act on right now. */
   get interactionTarget(): Interactable | null {
     return this.target;
   }
 
+  /**
+   * Open the dialogue for the interactable under the player's nose.
+   *
+   * A development aid, for reaching a talking state from a URL parameter in a
+   * headless browser where keystrokes cannot be sent. Deliberately routed
+   * through the same `startDialogue` path the E key uses, so it exercises the
+   * real code rather than bypassing it.
+   */
+  startDialogueInReach(): boolean {
+    if (this.dialogue.isOpen) return false;
+
+    const reach = reachPoint(
+      this.player.centerX,
+      this.player.y + this.player.height,
+      this.player.facing,
+      PLAYER_INTERACT_REACH
+    );
+    const found = findInteractable(this.interactables, reach);
+    if (!found) return false;
+
+    this.startDialogue(found);
+    return this.dialogue.isOpen;
+  }
+
   update(dt: number, input: Input): void {
+    if (this.dialogue.isOpen) {
+      this.updateDialogue(input);
+      // `target` is already null: startDialogue cleared it, and the interaction
+      // scan below is skipped entirely while a box is open.
+      return;
+    }
+
     this.player.update(dt, input, this.map);
 
     // Recomputed every frame after movement, so the prompt always reflects where
@@ -77,6 +125,43 @@ export class TownWorld implements GameWorld {
       PLAYER_INTERACT_REACH
     );
     this.target = findInteractable(this.interactables, reach);
+
+    if (this.target && input.wasPressed("KeyE")) {
+      this.startDialogue(this.target);
+    }
+  }
+
+  /**
+   * While a box is open the player cannot move, and E or Space steps through the
+   * lines. `wasPressed` is edge-triggered, so one press advances exactly one
+   * line rather than racing through the whole conversation.
+   */
+  private updateDialogue(input: Input): void {
+    if (input.wasPressed("KeyE") || input.wasPressed("Space")) {
+      this.dialogue.advance();
+      this.onDialogueChange?.(this.dialogue.isOpen ? this.dialogue : null);
+    }
+  }
+
+  private startDialogue(target: Interactable): void {
+    const lines: DialogueLine[] | null = dialogueFor(target.id);
+    if (!lines || lines.length === 0) return;
+
+    // Turn to face what is being addressed, which is what makes the character
+    // look like they are talking to it rather than past it.
+    const dx = target.x - this.player.centerX;
+    const dy = target.y - (this.player.y + this.player.height);
+    if (dx !== 0 || dy !== 0) {
+      this.player.animation.face(facingFor(dx, dy));
+    }
+
+    // Cleared now rather than next frame, so the prompt never renders for one
+    // frame underneath the box that just opened. This is the only place it needs
+    // clearing: while a box is open the interaction scan below is skipped.
+    this.target = null;
+
+    this.dialogue.open(lines);
+    this.onDialogueChange?.(this.dialogue);
   }
 
   getCamera(): GameCamera {
@@ -91,8 +176,21 @@ export class TownWorld implements GameWorld {
   render(renderer: Renderer): void {
     this.renderGround(renderer);
     this.renderProps(renderer);
+    this.renderNpcs(renderer);
     this.renderPlayer(renderer);
     this.renderPrompt(renderer);
+  }
+
+  /** Townspeople, drawn with the same anchor convention as the player. */
+  private renderNpcs(renderer: Renderer): void {
+    for (const npc of this.npcs) {
+      const image = this.assets?.image(npc.spriteId) ?? null;
+      renderer.drawSprite(image, npc.x, npc.y, {
+        anchor: "bottom-center",
+        size: { w: 32, h: 48 },
+        fallbackColor: "#8a6642"
+      });
+    }
   }
 
   /**

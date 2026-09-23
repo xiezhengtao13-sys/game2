@@ -4,6 +4,7 @@ import { createTownMap } from "./game/map/townMap";
 import { assertMapMatchesConfig, TILE } from "./game/config";
 import { loadGameAssets } from "./game/assets";
 import { assertAnimationAssetsExist, playerAnimationAssetIds } from "./game/assets/animationSpec";
+import { DialogueBox } from "./ui/DialogueBox";
 
 const found = document.querySelector<HTMLCanvasElement>("#gameCanvas");
 
@@ -52,6 +53,21 @@ if (facingParam === "up" || facingParam === "down" || facingParam === "left" || 
 const game = new Game(canvas, world);
 game.start();
 
+// The dialogue box is DOM, so the world pushes its dialogue state out to it
+// rather than reaching for the document itself.
+const app = document.querySelector<HTMLElement>("#app");
+if (app) {
+  const dialogueBox = new DialogueBox(app);
+  world.onDialogueChange = (dialogue) => dialogueBox.render(dialogue);
+
+  // `&dialogue=1` opens the box immediately, so a headless screenshot can show
+  // it without being able to send keystrokes.
+  if (params.get("dialogue") === "1") {
+    world.startDialogueInReach();
+    dialogueBox.render(world.dialogue.isOpen ? world.dialogue : null);
+  }
+}
+
 /**
  * Snapshot of live game state, for automated checks in a headless browser.
  * The canvas cannot be inspected from outside, so this is the only way a
@@ -82,6 +98,12 @@ interface Probe {
   targetLabel: string | null;
   promptWorldX: number;
   promptWorldY: number;
+  /** Dialogue state, so a headless check can verify the box appearing. */
+  dialogueOpen: number;
+  dialogueLine: number;
+  dialogueTotal: number;
+  dialogueSpeaker: string | null;
+  dialogueText: string | null;
 }
 
 function readProbe(): Probe {
@@ -109,7 +131,13 @@ function readProbe(): Probe {
     target: world.interactionTarget?.id ?? null,
     targetLabel: world.interactionTarget?.label ?? null,
     promptWorldX: world.interactionTarget?.x ?? 0,
-    promptWorldY: world.interactionTarget?.y ?? 0
+    promptWorldY: world.interactionTarget?.y ?? 0,
+    /** Dialogue state, so a headless check can verify the box appearing. */
+    dialogueOpen: world.dialogue.isOpen ? 1 : 0,
+    dialogueLine: world.dialogue.isOpen ? world.dialogue.lineNumber : 0,
+    dialogueTotal: world.dialogue.lineCount,
+    dialogueSpeaker: world.dialogue.current?.speaker ?? null,
+    dialogueText: world.dialogue.current?.text ?? null
   };
 }
 

@@ -36,4 +36,52 @@ html, body {
   justify-content: space-between;
   color: white;
   background: rgba(0,0,0,.5);
+  /* The HUD sits over the canvas. Without this it would swallow pointer input
+     meant for the game. */
+  pointer-events: none;
+}
+
+/* Dialogue box: a DOM overlay at the bottom of the screen. */
+#dialogue-box {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: 24px;
+  width: min(760px, calc(100vw - 48px));
+  box-sizing: border-box;
+  padding: 18px 22px 14px;
+  border-radius: 16px;
+  border: 3px solid #2b3566;
+  background: rgba(252, 250, 244, .97);
+  color: #22283a;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, .35);
+  font-size: 17px;
+  line-height: 1.6;
+}
+
+#dialogue-box[hidden] {
+  display: none;
+}
+
+.dialogue-speaker {
+  margin: 0 0 6px;
+  font-weight: 700;
+  font-size: 15px;
+  color: #4a5fb0;
+}
+
+.dialogue-speaker[hidden] {
+  display: none;
+}
+
+.dialogue-text {
+  margin: 0;
+}
+
+.dialogue-hint {
+  display: block;
+  margin-top: 10px;
+  text-align: right;
+  font-size: 13px;
+  color: #8a8f9e;
 }
