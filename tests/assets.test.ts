@@ -124,7 +124,7 @@ describe("generated placeholder art (TASK-102)", () => {
 
 describe("asset source selection (TASK-102)", () => {
   test("real art wins over placeholder art", async () => {
-    const { selectAssetSource } = await import("../src/game/assets/index");
+    const { selectAssetSource } = await import("../src/game/assets/sources");
     const chosen = selectAssetSource(
       "player_down_idle",
       { "/assets/sprites/player_down_idle.png": "REAL" },
@@ -134,7 +134,7 @@ describe("asset source selection (TASK-102)", () => {
   });
 
   test("falls back to placeholder art when no real art exists", async () => {
-    const { selectAssetSource } = await import("../src/game/assets/index");
+    const { selectAssetSource } = await import("../src/game/assets/sources");
     const chosen = selectAssetSource(
       "player_down_idle",
       {},
@@ -144,12 +144,12 @@ describe("asset source selection (TASK-102)", () => {
   });
 
   test("returns undefined when neither exists, so the recipe is used", async () => {
-    const { selectAssetSource } = await import("../src/game/assets/index");
+    const { selectAssetSource } = await import("../src/game/assets/sources");
     assert.equal(selectAssetSource("player_down_idle", {}, {}), undefined);
   });
 
   test("does not match an id that is merely a suffix of another file name", async () => {
-    const { selectAssetSource } = await import("../src/game/assets/index");
+    const { selectAssetSource } = await import("../src/game/assets/sources");
     // "grass.png" must not be satisfied by "tile_grass.png".
     const chosen = selectAssetSource("grass", {}, { "/assets/generated/tile_grass.png": "WRONG" });
     assert.equal(chosen, undefined);

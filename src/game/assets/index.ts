@@ -1,4 +1,6 @@
 import { AssetLoader } from "../../engine/graphics/AssetLoader";
+import { selectAssetSource, type UrlMap } from "./sources";
+export { selectAssetSource } from "./sources";
 import { ALL_ASSETS, getAssetSpec } from "./manifest";
 import type { AssetSpec } from "./types";
 
@@ -15,19 +17,24 @@ import type { AssetSpec } from "./types";
  */
 
 // Vite rewrites these globs at build time into path -> URL maps.
-// `?.` keeps this module importable under plain Node (tests, build scripts),
-// where the transform does not exist and the expression is undefined.
-const spriteUrls: Record<string, string> = import.meta.glob?.("../../../assets/sprites/*.png", {
+//
+// Two silent failures have been made here, both worth avoiding again:
+//   - `import.meta.glob?.(...)` is NOT transformed. Vite matches the literal
+//     text, so the optional-call form evaluates to undefined in the browser and
+//     every asset falls back to a flat colour, with no error anywhere.
+//   - `?? {}` hides a glob that matched nothing. Left off on purpose: if the
+//     paths ever stop matching, this should break loudly instead.
+const spriteUrls: UrlMap = import.meta.glob("../../../assets/sprites/*.png", {
   query: "?url",
   import: "default",
   eager: true
-}) ?? {};
+});
 
-const generatedUrls: Record<string, string> = import.meta.glob?.("../../../assets/generated/*.png", {
+const generatedUrls: UrlMap = import.meta.glob("../../../assets/generated/*.png", {
   query: "?url",
   import: "default",
   eager: true
-}) ?? {};
+});
 
 /**
  * Find the URL for `id` inside a glob map keyed by file path.
@@ -36,28 +43,21 @@ const generatedUrls: Record<string, string> = import.meta.glob?.("../../../asset
  * `tile_grass.png`. Both separators are accepted because Windows and POSIX
  * produce different paths.
  */
-function findUrl(urls: Record<string, string>, id: string): string | undefined {
-  const wanted = new Set([`/${id}.png`, `\\${id}.png`]);
-  for (const [path, url] of Object.entries(urls)) {
-    for (const suffix of wanted) {
-      if (path.endsWith(suffix)) return url;
-    }
-  }
-  return undefined;
-}
 
 /**
  * Choose the source URL for an asset id, preferring real art over placeholder.
  *
- * Pure, and the maps are injectable, so the priority rule is unit-testable
- * without a browser or a bundler.
+ * Thin wrapper over the pure `selectAssetSource` in `sources.ts`, binding it to
+ * the maps the bundler produced. The pure version lives separately so tests can
+ * exercise the priority rule without importing a bundler-specific module.
  */
-export function selectAssetSource(
-  id: string,
-  sprites: Record<string, string> = spriteUrls,
-  generated: Record<string, string> = generatedUrls
-): string | undefined {
-  return findUrl(sprites, id) ?? findUrl(generated, id);
+export function assetSourceFor(id: string): string | undefined {
+  return selectAssetSource(id, spriteUrls, generatedUrls);
+}
+
+/** Debug: the URL chosen for an id, for diagnosing missing art. */
+export function debugSourceFor(id: string): string | undefined {
+  return assetSourceFor(id);
 }
 
 export interface GameAssets {
@@ -67,6 +67,8 @@ export interface GameAssets {
   spec(id: string): AssetSpec;
   /** Ids that were looked up but have no image, so the caller must draw them. */
   missing(): string[];
+  /** Why the failed loads failed, for diagnosing missing art. */
+  failures(): Array<{ id: string; reason: string }>;
 }
 
 class LoadedAssets implements GameAssets {
@@ -83,6 +85,11 @@ class LoadedAssets implements GameAssets {
   missing(): string[] {
     return ALL_ASSETS.filter((a) => this.loader.isMissing(a.id)).map((a) => a.id);
   }
+
+  /** Why the failed loads failed, for diagnosing missing art. */
+  failures(): Array<{ id: string; reason: string }> {
+    return [...this.loader.failures.entries()].map(([id, reason]) => ({ id, reason }));
+  }
 }
 
 /**
@@ -92,7 +99,10 @@ class LoadedAssets implements GameAssets {
 export async function loadGameAssets(ids?: Iterable<string>): Promise<GameAssets> {
   const wanted = ids ? [...ids] : ALL_ASSETS.map((a) => a.id);
   const sources = wanted
-    .map((id) => ({ id, url: selectAssetSource(id) }))
+    // `assetSourceFor` binds the bundler's maps. Calling the pure
+    // `selectAssetSource` here instead would silently resolve nothing, because
+    // its maps default to empty -- which is exactly the bug that hid all the art.
+    .map((id) => ({ id, url: assetSourceFor(id) }))
     .filter((s): s is { id: string; url: string } => s.url !== undefined);
 
   const loader = new AssetLoader();

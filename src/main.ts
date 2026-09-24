@@ -1,10 +1,11 @@
 import { Game } from "./engine/core/Game";
-import { TownWorld, tileAssetIds } from "./game/TownWorld";
+import { TownWorld } from "./game/TownWorld";
 import { createTownMap } from "./game/map/townMap";
 import { assertMapMatchesConfig, TILE } from "./game/config";
-import { loadGameAssets } from "./game/assets";
-import { assertAnimationAssetsExist, playerAnimationAssetIds } from "./game/assets/animationSpec";
+import { loadGameAssets, debugSourceFor } from "./game/assets";
+import { assertAnimationAssetsExist } from "./game/assets/animationSpec";
 import { DialogueBox } from "./ui/DialogueBox";
+import { STRUCTURES } from "./game/systems/TownGrowth";
 
 const found = document.querySelector<HTMLCanvasElement>("#gameCanvas");
 
@@ -24,7 +25,11 @@ assertAnimationAssetsExist();
 // Assets are loaded before the first frame so the world never renders a frame
 // with nothing but fallback blocks. `loadGameAssets` resolves even when files
 // are missing, so a broken asset cannot stop the game from starting.
-const assets = await loadGameAssets([...playerAnimationAssetIds(), ...tileAssetIds()]);
+// Every asset in the manifest is loaded up front. Deliberately NOT a hand-picked
+// list: an earlier version loaded only the player frames and tiles, and every
+// other picture (buildings, crops, items, UI) silently rendered as a flat
+// fallback colour for several tasks because nothing ever asked for it.
+const assets = await loadGameAssets();
 
 const status = document.querySelector<HTMLSpanElement>("#status");
 // Doubles as a startup signal: the HUD only clears the loading text once the
@@ -54,6 +59,13 @@ if (facingParam === "up" || facingParam === "down" || facingParam === "left" || 
 // growing crop and a ripe one at once, without days of play.
 if (params.get("farm") === "1") {
   world.seedFarmForDisplay();
+}
+
+// `&contribute=N` pre-earns town reputation, so a screenshot can show the
+// construction site or the finished building without playing the whole loop.
+const contributeParam = Number(params.get("contribute"));
+if (Number.isFinite(contributeParam) && contributeParam > 0) {
+  world.growth.contribute(contributeParam);
 }
 
 const game = new Game(canvas, world);
@@ -119,6 +131,17 @@ interface Probe {
   ripe: number;
   harvested: number;
   job: string;
+  reputation: number;
+  delivered: number;
+  marketState: string;
+  artGrass: string;
+  artMarket: string;
+  artGrassUrlLen: number;
+  artMarketUrlLen: number;
+  artFailureCount: number;
+  artMissingCount: number;
+  artMissingSample: string;
+  artFailureSample: string;
   inventory: string;
   plots: string;
 }
@@ -164,6 +187,24 @@ function readProbe(): Probe {
     ripe: world.farm.all.filter((p) => p.state === "mature").length,
     harvested: world.harvestedCount,
     job: world.jobs.taken ?? "none",
+    reputation: world.growth.reputationCount,
+    delivered: world.growth.deliveredCount,
+    marketState: world.growth.stateOf(STRUCTURES[0]),
+    /** Art-load state for a few ids, to tell "no art" from "art failed". */
+    artGrass: assets.image("tile_grass") ? "loaded" : "missing",
+    artMarket: assets.image("bld_market") ? "loaded" : "missing",
+    artGrassUrlLen: (debugSourceFor("tile_grass") ?? "").length,
+    artMarketUrlLen: (debugSourceFor("bld_market") ?? "").length,
+    /** Why loads failed, so a missing picture is not a mystery. */
+    artFailureCount: assets.failures().length,
+    /** Ids with no image at all, to see the shape of the problem. */
+    artMissingCount: assets.missing().length,
+    artMissingSample: assets.missing().slice(0, 6).join(","),
+    artFailureSample: assets
+      .failures()
+      .slice(0, 3)
+      .map((f) => `${f.id}:${f.reason}`)
+      .join(" | "),
     inventory: world.inventory
       .entries()
       .map((e) => `${e.item}:${e.count}`)
@@ -176,6 +217,15 @@ function readProbe(): Probe {
 }
 
 (window as unknown as { __probe: unknown }).__probe = readProbe;
+
+// Debug: expose the chosen URL and load state for a few asset ids, so a headless
+// check can tell "no art bundled" apart from "art bundled but failed to load".
+(window as unknown as { __assetDebug: unknown }).__assetDebug = (id: string) => ({
+  id,
+  url: debugSourceFor(id) ?? null,
+  hasImage: assets.image(id) !== null,
+  isMissing: assets.missing().includes(id)
+});
 
 /**
  * Mirrors live state into the DOM and, with `?debug=1`, marks the sprite's

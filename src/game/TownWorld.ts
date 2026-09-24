@@ -17,6 +17,7 @@ import { craft, type Recipe } from "./systems/Crafting";
 import { recipeFor } from "./text/workbenches";
 import { Jobs } from "./systems/Jobs";
 import { NO_JOB_HINT, NOTICE_BOARD_TITLE, offerIndexForKey, offerLine } from "./text/jobs";
+import { STRUCTURES, TownGrowth } from "./systems/TownGrowth";
 
 /**
  * Colour used for a tile while its art is missing or still loading. Flat but
@@ -53,6 +54,10 @@ export class TownWorld implements GameWorld {
   readonly time: GameTime;
   readonly inventory = new Inventory();
   readonly jobs = new Jobs();
+  readonly growth = new TownGrowth();
+
+  /** True once the mayor has explained what the town needs. */
+  private mayorHasExplained = false;
   private readonly map: TileMap;
   private readonly assets: GameAssets | null;
   private readonly interactables: readonly Interactable[];
@@ -184,7 +189,79 @@ export class TownWorld implements GameWorld {
       return;
     }
 
+    if (target.id === "mayor") {
+      this.talkToMayor();
+      return;
+    }
+
     this.startDialogue(target);
+  }
+
+  /**
+   * The mayor: explains the town's need first, then takes what the player brings.
+   *
+   * Two steps rather than one, so the player is told what is wanted before being
+   * asked to hand anything over.
+   */
+  private talkToMayor(): void {
+    this.target = null;
+
+    if (!this.mayorHasExplained) {
+      this.mayorHasExplained = true;
+      const goal = this.growth.nextGoal();
+      const lines: DialogueLine[] = [
+        { speaker: "镇长", text: "你就是新搬来的那位吧？欢迎。" },
+        { speaker: "镇长", text: "镇上人手少，但要是有人肯出力，日子就能好起来。" },
+        { speaker: "镇长", text: "你烤的面包，交给我就行，我拿去分给大家。" }
+      ];
+      if (goal) lines.push({ speaker: "镇长", text: goal.promiseText });
+
+      this.dialogue.open(lines);
+      this.onDialogueChange?.(this.dialogue);
+      return;
+    }
+
+    this.deliverBread();
+  }
+
+  /**
+   * Hand over one loaf.
+   *
+   * Nothing is taken unless there is bread to take, so a delivery either
+   * happens completely or not at all -- the same rule crafting follows.
+   */
+  private deliverBread(): void {
+    if (!this.inventory.remove("bread", 1)) {
+      this.dialogue.say("镇长", "空着手来啦？烤好面包再拿来吧。");
+      this.onDialogueChange?.(this.dialogue);
+      return;
+    }
+
+    const { unlocked } = this.growth.contribute(1);
+
+    const lines: DialogueLine[] = [
+      { speaker: "镇长", text: "好，收下了。谢谢你。" },
+      {
+        speaker: "镇长",
+        text: `这是第 ${this.growth.deliveredCount} 份贡献，镇上记着呢。`
+      }
+    ];
+
+    if (unlocked) {
+      // The payoff line: the thing the player was promised now exists.
+      lines.push({ speaker: "镇长", text: `好消息——${unlocked.doneText}` });
+    } else {
+      const goal = this.growth.nextGoal();
+      if (goal) {
+        const left = Math.max(0, goal.threshold - this.growth.reputationCount);
+        if (left > 0) {
+          lines.push({ speaker: "镇长", text: `再攒 ${left} 份，${goal.name}就能动工了。` });
+        }
+      }
+    }
+
+    this.dialogue.open(lines);
+    this.onDialogueChange?.(this.dialogue);
   }
 
   /** Turn the player to look at something. Shared by every interaction. */
@@ -414,9 +491,40 @@ export class TownWorld implements GameWorld {
     this.renderGround(renderer);
     this.renderFarm(renderer);
     this.renderProps(renderer);
+    this.renderStructures(renderer);
     this.renderNpcs(renderer);
     this.renderPlayer(renderer);
     this.renderPrompt(renderer);
+  }
+
+  /**
+   * Buildings the town has earned.
+   *
+   * Drawn on top of the ground rather than written into the tile grid, so the
+   * map itself never changes: the same clearing holds scaffolding and then a
+   * finished market depending only on how much the player has contributed.
+   */
+  private renderStructures(renderer: Renderer): void {
+    const size = this.map.tileSize;
+
+    for (const structure of STRUCTURES) {
+      const state = this.growth.stateOf(structure);
+      if (state === "none") continue;
+
+      const built = state === "built";
+      const assetId = built ? `bld_${structure.id}` : "bld_construction";
+      const image = this.assets?.image(assetId) ?? null;
+
+      // Centre of the structure's footprint.
+      const cx = (structure.tx + structure.tilesWide / 2) * size;
+      const cy = (structure.ty + structure.tilesTall / 2) * size;
+
+      renderer.drawSprite(image, cx, cy, {
+        anchor: "center",
+        size: { w: structure.tilesWide * size, h: structure.tilesTall * size },
+        fallbackColor: built ? "#d9c9a8" : "#a8865e"
+      });
+    }
   }
 
   /**

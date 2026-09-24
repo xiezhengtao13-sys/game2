@@ -119,6 +119,34 @@ msedge --headless=new --disable-gpu --virtual-time-budget=6000 `
 浏览器窗口不是 1280×800 时，屏幕坐标 ≠ canvas 坐标，比对前必须先算出缩放比。
 先从截图里找 `#1b1b1b` 背景的范围即可推出来。
 
+### 美术有没有真的加载：不能靠眼睛看
+
+**这是本项目最贵的一课。** 有一段时间所有精灵都渲染成兜底的纯色方块，
+而**截图看上去完全正常**——草地是绿的，路是棕的，房子有米色墙和红屋顶。
+因为兜底色块是按素材的真实配色挑的，肉眼根本分不出来。
+结果：从 TASK-102 到 TASK-112，横跨十个任务，「已目视确认」的截图里
+其实一张图都没加载过。
+
+两个原因叠在一起，而且**两个都不报错**：
+
+1. `import.meta.glob?.(...)` 不会被 Vite 转换。Vite 按字面文本匹配
+   `import.meta.glob(`，写成可选调用形式它就不认，运行时求值为 undefined。
+   动机本是让模块在 Node 下也能 import——代价是整个取图机制静默失效。
+2. `loadGameAssets()` 只加载一份手写清单（玩家帧 + 瓦片），
+   建筑、作物、物品、UI 全都没被请求过。
+
+所以 **判断美术是否加载，必须看状态而不是看画面**：
+
+```powershell
+msedge --headless=new --disable-gpu --virtual-time-budget=8000 `
+  --user-data-dir="<workspace>/.shot-profile" --dump-dom "<url>"
+```
+
+然后读 `#debug-probe` 里的 `artMissingCount` 与 `artFailureCount`——
+两者都必须为 `0`。这两个数字比任何截图都可靠。
+
+推论：**兜底色要挑得丑一点**。好看的兜底色块会掩盖「图没加载」这件事。
+
 ## 写测试的约定
 
 - 测试放在 `tests/`，文件名 `*.test.ts`

@@ -15,12 +15,19 @@ export interface LoadedAsset {
 export class AssetLoader {
   private readonly images = new Map<string, HTMLImageElement>();
   private readonly missing = new Set<string>();
+  /** Why each failed load failed, for diagnosing missing art. */
+  readonly failures = new Map<string, string>();
 
-  private loadImage(url: string): Promise<HTMLImageElement | null> {
+  private loadImage(id: string, url: string): Promise<HTMLImageElement | null> {
     return new Promise((resolve) => {
       const image = new Image();
       image.onload = () => resolve(image);
-      image.onerror = () => resolve(null);
+      image.onerror = (event) => {
+        // The event carries no reason in most browsers, so record what we know.
+        const detail = event instanceof Event ? event.type : String(event);
+        this.failures.set(id, `${detail} (url length ${url.length})`);
+        resolve(null);
+      };
       image.src = url;
     });
   }
@@ -31,7 +38,7 @@ export class AssetLoader {
    */
   async loadMany(sources: Iterable<{ id: string; url: string }>): Promise<LoadedAsset[]> {
     const results = await Promise.all(
-      [...sources].map(async ({ id, url }) => ({ id, image: await this.loadImage(url) }))
+      [...sources].map(async ({ id, url }) => ({ id, image: await this.loadImage(id, url) }))
     );
 
     for (const { id, image } of results) {

@@ -398,7 +398,48 @@ export const BUILDINGS: AssetSpec[] = [
     "立在路边的木告示板，上面贴着招工的告示。",
     "Top-down cartoon wooden notice board on two posts with a few parchment notices pinned to it, seen from a high three-quarter angle, flat 2D vector style, thick clean outlines, clear of any background, no readable text",
     "#c9a06a"
-  )
+  ),
+  {
+    // The site marker and the finished market. Both cover the same 3x3
+    // footprint, so the building lands exactly where the scaffolding stood.
+    id: "bld_construction",
+    nameZh: "施工中的地基",
+    descZh: "一片围起来的工地：木料、石堆和脚手架，房子还没盖起来。",
+    descEn:
+      "Top-down cartoon construction site seen from directly above, cleared ground with stacked wooden planks, a small pile of stones and a few wooden scaffolding posts, flat 2D vector style, thick clean outlines, no perspective, no text",
+    size: { w: TILE_SIZE * 3, h: TILE_SIZE * 3 },
+    anchor: "center",
+    category: "building",
+    placeholder: {
+      shapes: [
+        { kind: "rect", x: -70, y: -70, w: 140, h: 140, color: "#a8865e", radius: 8 },
+        { kind: "rect", x: -58, y: -44, w: 44, h: 20, color: "#c9a06a", radius: 4, stroke: { width: 2, color: "#6b4a2f" } },
+        { kind: "rect", x: -58, y: -18, w: 44, h: 20, color: "#c9a06a", radius: 4, stroke: { width: 2, color: "#6b4a2f" } },
+        { kind: "rect", x: 6, y: -50, w: 34, h: 34, color: "#b9b3a8", radius: 10, stroke: { width: 2, color: "#6f6a61" } },
+        { kind: "rect", x: -56, y: 30, w: 12, h: 40, color: "#8a6642", radius: 3, stroke: { width: 2, color: "#4a3524" } },
+        { kind: "rect", x: 44, y: 30, w: 12, h: 40, color: "#8a6642", radius: 3, stroke: { width: 2, color: "#4a3524" } }
+      ]
+    }
+  },
+  {
+    id: "bld_market",
+    nameZh: "集市",
+    descZh: "盖好的集市：几个铺着条纹棚子的摊位。",
+    descEn:
+      "Top-down cartoon village market seen from directly above, four small stalls with striped red and white canvas awnings, flat 2D vector style, thick clean outlines, no perspective, no text",
+    size: { w: TILE_SIZE * 3, h: TILE_SIZE * 3 },
+    anchor: "center",
+    category: "building",
+    placeholder: {
+      shapes: [
+        { kind: "rect", x: -70, y: -70, w: 140, h: 140, color: "#d9c9a8", radius: 8, stroke: { width: 2, color: "#8a7355" } },
+        { kind: "rect", x: -58, y: -54, w: 52, h: 46, color: "#d9534f", radius: 6, stroke: { width: 2, color: "#7a2f2c" } },
+        { kind: "rect", x: 4, y: -54, w: 52, h: 46, color: "#f2ece0", radius: 6, stroke: { width: 2, color: "#7a2f2c" } },
+        { kind: "rect", x: -58, y: 2, w: 52, h: 46, color: "#f2ece0", radius: 6, stroke: { width: 2, color: "#7a2f2c" } },
+        { kind: "rect", x: 4, y: 2, w: 52, h: 46, color: "#d9534f", radius: 6, stroke: { width: 2, color: "#7a2f2c" } }
+      ]
+    }
+  }
 ];
 
 // --- items -------------------------------------------------------------------

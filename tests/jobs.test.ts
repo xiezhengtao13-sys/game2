@@ -318,9 +318,10 @@ describe("job and notice board wiring (TASK-111)", () => {
 
   test("the dialogue table holds no entry for anything the game routes away", () => {
     // Every interactable either has its own handler (field, workbenches, notice
-    // board) or falls through to the dialogue table. An entry for a handled one
-    // can never appear.
-    const handled = new Set<string>(["farm", "noticeboard", ...workbenchIds()]);
+    // board, mayor) or falls through to the dialogue table. An entry for a
+    // handled one can never appear, so it is dead data. This has been a real
+    // mistake three times now, hence a standing rule.
+    const handled = new Set<string>(["farm", "noticeboard", "mayor", ...workbenchIds()]);
     for (const id of interactablesWithDialogue()) {
       assert.ok(!handled.has(id), `"${id}" is handled elsewhere, so its dialogue is dead`);
     }

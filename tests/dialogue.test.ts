@@ -123,10 +123,11 @@ describe("Dialogue (TASK-108)", () => {
 });
 
 describe("dialogue content (TASK-108)", () => {
-  test("the mayor has something to say", () => {
-    const lines = dialogueFor("mayor");
-    assert.ok(lines && lines.length > 0, "the mayor should have dialogue");
-    assert.ok(lines.some((l) => l.speaker === "镇长"), "the mayor should speak in their own name");
+  test("the mayor has his own conversation rather than a table entry", () => {
+    // TASK-112 gave the mayor a two-step handler (explain the need, then accept
+    // bread), so he must not also sit in the dialogue table: that entry would be
+    // unreachable. What he actually says is asserted in town-growth.test.ts.
+    assert.equal(dialogueFor("mayor"), null, "the mayor is handled by his own path");
   });
 
   test("every line has non-empty text", () => {
@@ -178,11 +179,17 @@ describe("town NPCs (TASK-108)", () => {
     }
   });
 
-  test("an NPC has dialogue reachable under their own id", () => {
-    // The prompt shows the interactable's label, and pressing E looks the
-    // dialogue up by that same id.
+  test("every NPC has an interactable so they can be approached and talked to", () => {
+    // The prompt comes from the interactable list, and pressing E routes by that
+    // same id. Whether the words come from the dialogue table or a bespoke
+    // handler (as the mayor's does) is up to the world; what matters here is
+    // that every NPC is reachable at all.
+    const interactableIds = new Set(TOWN_INTERACTABLES.map((i) => i.id));
     for (const npc of TOWN_NPCS) {
-      assert.ok(dialogueFor(npc.id), `${npc.id} has a sprite but nothing to say`);
+      assert.ok(
+        interactableIds.has(npc.id),
+        `${npc.id} has a sprite but no way to be approached`
+      );
     }
   });
 });
