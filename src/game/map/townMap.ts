@@ -111,13 +111,22 @@ export const TOWN_SHAPES: readonly Shape[] = SHAPES;
  * wall. The prompt then appears once the player is looking at it.
  */
 export const TOWN_INTERACTABLES: readonly Interactable[] = [
-  { id: "home", label: "家门", x: 10.5 * TILE, y: 13.5 * TILE, radius: TILE * 0.9 },
+  // Moved one tile north of the baker's pitch, so the two prompts do not fight
+  // over the same square.
+  { id: "home", label: "家门", x: 10.5 * TILE, y: 12.5 * TILE, radius: TILE * 0.9 },
   { id: "townhall", label: "镇公所", x: 26.5 * TILE, y: 13.5 * TILE, radius: TILE * 0.9 },
-  { id: "mayor", label: "和镇长说话", x: 13.5 * TILE, y: 13.5 * TILE, radius: TILE * 0.9 },
   { id: "noticeboard", label: "告示板", x: 18.5 * TILE, y: 7.5 * TILE, radius: TILE * 0.9 },
   { id: "mill", label: "磨坊", x: 25.5 * TILE, y: 19.5 * TILE, radius: TILE * 0.9 },
   { id: "bakery", label: "烤炉", x: 12.5 * TILE, y: 14.5 * TILE, radius: TILE * 0.9 },
-  { id: "farm", label: "农田", x: 6.5 * TILE, y: 17.5 * TILE, radius: TILE * 0.9 }
+  { id: "farm", label: "农田", x: 6.5 * TILE, y: 17.5 * TILE, radius: TILE * 0.9 },
+
+  // One per townsperson. Offset at least a tile from where they stand, so the
+  // prompt floats over open ground in front of them rather than under their feet.
+  { id: "mayor", label: "和镇长说话", x: 13.5 * TILE, y: 13.5 * TILE, radius: TILE * 0.9 },
+  { id: "baker", label: "和面包师说话", x: 10.5 * TILE, y: 14.5 * TILE, radius: TILE * 0.9 },
+  { id: "farmer", label: "和农夫说话", x: 5.5 * TILE, y: 23.5 * TILE, radius: TILE * 0.9 },
+  { id: "carpenter", label: "和木匠说话", x: 29.5 * TILE, y: 20.5 * TILE, radius: TILE * 0.9 },
+  { id: "kid", label: "和小孩说话", x: 20.5 * TILE, y: 16.5 * TILE, radius: TILE * 0.9 }
 ];
 
 /**
@@ -138,5 +147,41 @@ export const TOWN_NPCS: readonly Npc[] = [
     y: 12.5 * TILE,
     facing: "down",
     spriteId: "npc_mayor"
+  },
+  {
+    id: "baker",
+    name: "面包师",
+    // On the street outside the bakery.
+    x: 10.5 * TILE,
+    y: 13.5 * TILE,
+    facing: "right",
+    spriteId: "npc_baker"
+  },
+  {
+    id: "farmer",
+    name: "农夫",
+    // Out on the field, where the work is.
+    x: 5.5 * TILE,
+    y: 22.5 * TILE,
+    facing: "left",
+    spriteId: "npc_farmer"
+  },
+  {
+    id: "carpenter",
+    name: "木匠",
+    // By the mill, which is where a carpenter would be working.
+    x: 29.5 * TILE,
+    y: 19.5 * TILE,
+    facing: "up",
+    spriteId: "npc_carpenter"
+  },
+  {
+    id: "kid",
+    name: "小孩",
+    // On the corner of the crossroads, easy to bump into.
+    x: 20.5 * TILE,
+    y: 15.5 * TILE,
+    facing: "left",
+    spriteId: "npc_kid"
   }
 ];

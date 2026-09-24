@@ -6,7 +6,7 @@ import { TOWN_INTERACTABLES, TOWN_NPCS, createTownMap } from "../src/game/map/to
 import { isBoxBlocked } from "../src/game/map/collision";
 import { TownWorld } from "../src/game/TownWorld";
 import { reachPoint } from "../src/game/systems/Interaction";
-import { PLAYER_INTERACT_REACH } from "../src/game/config";
+import { PLAYER_INTERACT_REACH, PLAYER_SPAWN } from "../src/game/config";
 import { findInteractable } from "../src/game/systems/Interaction";
 import type { Input } from "../src/engine/input/Input";
 
@@ -344,13 +344,94 @@ describe("talking, through TownWorld (TASK-108)", () => {
 });
 
 describe("dialogue and interaction do not conflict (TASK-108)", () => {
-  test("no NPC shares a position with an interactable", () => {
-    // Two targets at one point would make it ambiguous who is being addressed.
+  test("every townsperson's interactable is clear of where they stand", () => {
+    // Standing in the same square would put the prompt under their feet and make
+    // it ambiguous who is being addressed. A townsperson's own interactable is
+    // expected to exist and to sit at least a tile away.
+    for (const npc of TOWN_NPCS) {
+      const own = TOWN_INTERACTABLES.find((i) => i.id === npc.id);
+      assert.ok(own, `${npc.id} has no interactable, so cannot be talked to`);
+
+      const distance = Math.hypot(own.x - npc.x, own.y - npc.y);
+      assert.ok(
+        distance >= 48,
+        `${npc.id}'s interactable is only ${distance.toFixed(0)}px away, so it sits under them`
+      );
+    }
+  });
+
+  test("no NPC is standing in the same square as a different interactable", () => {
     for (const npc of TOWN_NPCS) {
       for (const entry of TOWN_INTERACTABLES) {
+        if (entry.id === npc.id) continue;
         const same = npc.x === entry.x && npc.y === entry.y;
-        assert.equal(same, false, `${npc.id} and interactable ${entry.id} are at the same spot`);
+        assert.equal(
+          same,
+          false,
+          `${npc.id} is standing on interactable ${entry.id}, which would hide its prompt`
+        );
       }
+    }
+  });
+
+  test("every townsperson can actually be walked up to and talked to", () => {
+    // The demo is "walk around and talk to people", so this is the property that
+    // matters: from where the player starts, flood-fill the ground they can
+    // reach, then check some reachable tile prompts for each person.
+    const map = createTownMap();
+    const size = map.tileSize;
+    const collider = { width: 22, height: 16 };
+
+    const standable = (tx: number, ty: number) =>
+      !isBoxBlocked(map, {
+        x: tx * size + (size - collider.width) / 2,
+        y: ty * size + (size - collider.height) / 2,
+        ...collider
+      });
+
+    const startTx = Math.floor(PLAYER_SPAWN.x / size);
+    const startTy = Math.floor(PLAYER_SPAWN.y / size);
+    const seen = new Set<string>([`${startTx},${startTy}`]);
+    const queue = [{ tx: startTx, ty: startTy }];
+
+    while (queue.length > 0) {
+      const { tx, ty } = queue.shift()!;
+      for (const [ox, oy] of [
+        [1, 0],
+        [-1, 0],
+        [0, 1],
+        [0, -1]
+      ]) {
+        const nx = tx + ox;
+        const ny = ty + oy;
+        const key = `${nx},${ny}`;
+        if (seen.has(key) || !map.inBounds(nx, ny) || !standable(nx, ny)) continue;
+        seen.add(key);
+        queue.push({ tx: nx, ty: ny });
+      }
+    }
+
+    assert.ok(seen.size > 100, `only ${seen.size} tiles reachable from spawn`);
+
+    for (const npc of TOWN_NPCS) {
+      let reachable = false;
+
+      for (const key of seen) {
+        const [tx, ty] = key.split(",").map(Number);
+        const centerX = tx * size + size / 2;
+        const feetY = ty * size + size / 2;
+
+        for (const facing of ["up", "down", "left", "right"] as const) {
+          const reach = reachPoint(centerX, feetY, facing, PLAYER_INTERACT_REACH);
+          if (findInteractable(TOWN_INTERACTABLES, reach)?.id === npc.id) {
+            reachable = true;
+            break;
+          }
+        }
+        if (reachable) break;
+      }
+
+      assert.ok(reachable, `${npc.name} cannot be reached from the player's start`);
     }
   });
 

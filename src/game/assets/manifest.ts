@@ -200,6 +200,43 @@ function playerFrame(
 
 const PLAYER_LOOK = "indigo blue hoodie, round cream-coloured face, tiny black dot eyes";
 
+/**
+ * A townsperson, built from shared shapes so the cast reads as one art style.
+ *
+ * `shirt` is what tells them apart at a glance -- the renderer has no tinting, so
+ * each person needs their own sprite rather than one recoloured body.
+ */
+function townsfolk(
+  id: string,
+  nameZh: string,
+  descZh: string,
+  descEn: string,
+  shirt: string,
+  trousers: string,
+  extra: AssetSpec["placeholder"]["shapes"] = []
+): AssetSpec {
+  return {
+    id,
+    nameZh,
+    descZh,
+    descEn,
+    size: { w: 32, h: 48 },
+    anchor: "bottom-center",
+    category: "character",
+    placeholder: {
+      shapes: [
+        { kind: "rect", x: -12, y: -48, w: 24, h: 22, color: "#f6d7b0", radius: 9, stroke: { width: 2, color: "#3a3226" } },
+        { kind: "rect", x: -8, y: -42, w: 4, h: 4, color: "#2b2b2b", radius: 2 },
+        { kind: "rect", x: 4, y: -42, w: 4, h: 4, color: "#2b2b2b", radius: 2 },
+        { kind: "rect", x: -13, y: -30, w: 26, h: 26, color: shirt, radius: 8, stroke: { width: 2, color: "#3a3226" } },
+        { kind: "rect", x: -10, y: -8, w: 8, h: 8, color: trousers, radius: 3, stroke: { width: 2, color: "#3a3226" } },
+        { kind: "rect", x: 2, y: -8, w: 8, h: 8, color: trousers, radius: 3, stroke: { width: 2, color: "#3a3226" } },
+        ...extra
+      ]
+    }
+  };
+}
+
 export const CHARACTERS: AssetSpec[] = [
   playerFrame(
     "down",
@@ -304,7 +341,45 @@ export const CHARACTERS: AssetSpec[] = [
         { kind: "rect", x: -15, y: -50, w: 30, h: 6, color: "#6b4a2f", radius: 3, stroke: { width: 2, color: "#4a3524" } }
       ]
     }
-  }
+  },
+
+  // --- townsfolk -------------------------------------------------------------
+  // Each gets their own shirt colour so they are told apart at a glance. The
+  // real art pass can give them individual faces later.
+  townsfolk(
+    "npc_baker",
+    "面包师",
+    "面包房的师傅，围裙上总是沾着面粉。",
+    "Cute chibi cartoon village baker sprite seen from a top-down three-quarter view, warm brown apron over a cream shirt, round face with tiny black dot eyes, small white baker's hat, simple rounded shapes, thick dark outlines, flat 2D vector style, plain background, single character, no text",
+    "#e8d9b0",
+    "#8a6a48",
+    [{ kind: "rect", x: -13, y: -50, w: 26, h: 8, color: "#f4efe4", radius: 4, stroke: { width: 2, color: "#3a3226" } }]
+  ),
+  townsfolk(
+    "npc_farmer",
+    "农夫",
+    "在地里忙活的人，裤脚卷到膝盖。",
+    "Cute chibi cartoon village farmer sprite seen from a top-down three-quarter view, green work shirt with rolled sleeves, round face with tiny black dot eyes, straw hat, simple rounded shapes, thick dark outlines, flat 2D vector style, plain background, single character, no text",
+    "#7fa050",
+    "#6b5a3a",
+    [{ kind: "rect", x: -15, y: -50, w: 30, h: 7, color: "#d9c172", radius: 3, stroke: { width: 2, color: "#3a3226" } }]
+  ),
+  townsfolk(
+    "npc_carpenter",
+    "木匠",
+    "盖房子的人，肩上搭着一条毛巾。",
+    "Cute chibi cartoon village carpenter sprite seen from a top-down three-quarter view, blue-grey work shirt with a towel over one shoulder, round face with tiny black dot eyes, short dark hair, simple rounded shapes, thick dark outlines, flat 2D vector style, plain background, single character, no text",
+    "#6f8a9e",
+    "#4a5a66"
+  ),
+  townsfolk(
+    "npc_kid",
+    "小孩",
+    "镇上跑来跑去的小孩。",
+    "Cute chibi cartoon village child sprite seen from a top-down three-quarter view, bright orange shirt, round face with large black dot eyes, messy dark hair, small and round proportions, simple shapes, thick dark outlines, flat 2D vector style, plain background, single character, no text",
+    "#e08a4a",
+    "#5a6a8a"
+  )
 ];
 
 // --- crops -------------------------------------------------------------------
