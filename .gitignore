@@ -9,7 +9,11 @@ dist/
 .vite/
 *.local
 
-# Scratch dirs for headless-browser screenshot verification
+# Scratch dirs for headless-browser screenshot verification.
+#
+# Keep browser profiles OUT of the project when the dev server is running: Vite
+# watches the project directory, and Chromium's locked Cookies file crashes the
+# watcher with EBUSY. Use a temp dir for the running case, or `vite --force`.
 .shot-profile/
 .shots/
 
