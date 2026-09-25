@@ -61,7 +61,7 @@ npm run art:brief
 规则与注意事项见该目录下的 `README.md`，要点：
 
 - **平铺，不建子目录**：构建期 glob 是 `assets/sprites/*.png`
-- **第一次要重启 `npm run dev`**：目录不存在时 glob 匹配空集合，也不会建立监听
+- 放进去**刷新页面**即可；万一没生效，重启 `npm run dev` 是第一个该试的动作
 - 尺寸按 `docs/美术需求.md` 的"尺寸"列，错了会被拉伸
 - 放完跑 `npm test`：`tests/assets.test.ts` 会检查文件名、尺寸、优先级与占位图是否齐全
 - 判断有没有真的加载，看 `#debug-probe` 的 `artMissingCount` / `artFailureCount` 是否为 0，
