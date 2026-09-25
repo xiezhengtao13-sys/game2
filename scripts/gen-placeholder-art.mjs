@@ -24,13 +24,13 @@ const { ALL_ASSETS } = await loadTsModule(manifestEntry);
  * src/game/assets/animationSpec.ts, which is what the game reads at runtime.
  */
 function mirrorOf(spec) {
-  const match = /^player_left_(idle|walkA|walkB)$/.exec(spec.id);
+  const match = /^crew_left_(idle|walkA|walkB)$/.exec(spec.id);
   if (!match) return null;
   const pose = match[1];
 
-  const source = ALL_ASSETS.find((a) => a.id === `player_right_${pose}`);
+  const source = ALL_ASSETS.find((a) => a.id === `crew_right_${pose}`);
   if (!source) {
-    console.error(`Cannot mirror ${spec.id}: player_right_${pose} is missing from the manifest`);
+    console.error(`Cannot mirror ${spec.id}: crew_right_${pose} is missing from the manifest`);
     process.exit(1);
   }
   return source;

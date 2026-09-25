@@ -12,10 +12,10 @@ const SIZE = 48;
 
 /**
  * Build a small map from rows of single characters.
- *   "." grass (walkable)   "#" wall (solid)   "~" water (solid)
+ *   "." open deck (walkable)   "#" bulkhead (solid)   "~" porthole (solid)
  */
 function buildMap(rows: string[]): TileMap {
-  const legend: Record<string, TileType> = { ".": "grass", "#": "wall", "~": "water" };
+  const legend: Record<string, TileType> = { ".": "deck", "#": "wall", "~": "window" };
   const width = rows[0].length;
   const grid: TileType[] = [];
   for (const row of rows) {
@@ -35,14 +35,14 @@ function boxAt(x: number, y: number, w = 20, h = 20): Box {
 }
 
 describe("solid tiles (TASK-105)", () => {
-  test("water, walls and roofs block; grass, path and farmland do not", () => {
-    assert.equal(isSolidTile("water"), true);
+  test("bulkheads and portholes block; deck, rugs and floor lights do not", () => {
     assert.equal(isSolidTile("wall"), true);
-    assert.equal(isSolidTile("roof"), true);
+    assert.equal(isSolidTile("wall_dark"), true);
+    assert.equal(isSolidTile("window"), true, "you look through a porthole, you do not walk out of one");
 
-    assert.equal(isSolidTile("grass"), false);
-    assert.equal(isSolidTile("path"), false);
-    assert.equal(isSolidTile("farmland"), false);
+    assert.equal(isSolidTile("deck"), false);
+    assert.equal(isSolidTile("deck_rug"), false);
+    assert.equal(isSolidTile("floor_light"), false);
   });
 });
 

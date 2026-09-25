@@ -18,8 +18,7 @@ const { ALL_ASSETS } = await loadTsModule(manifestEntry);
 const CATEGORY_LABELS = {
   terrain: "地形瓦片",
   character: "角色",
-  crop: "作物",
-  building: "建筑",
+  fixture: "场景物件（家具与设备）",
   item: "物品图标",
   ui: "界面元素"
 };
@@ -46,7 +45,7 @@ const lines = [
   ""
 ];
 
-for (const category of ["terrain", "character", "crop", "building", "item", "ui"]) {
+for (const category of ["terrain", "character", "fixture", "item", "ui"]) {
   const specs = ALL_ASSETS.filter((a) => a.category === category);
   if (specs.length === 0) continue;
 

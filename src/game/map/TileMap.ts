@@ -1,15 +1,24 @@
 /**
- * Tile kinds. The string values are the asset ids in the manifest, so a tile
- * type maps straight to its art with no lookup table in between.
+ * Tile kinds for the ship's interior. The string values are the asset ids in the
+ * manifest, so a tile type maps straight to its art with no lookup table.
  *
- * `grass` is the default fill. Buildings live here as tiles too: they are static
- * and do not need depth sorting against the player, so a second object layer
- * would add complexity for nothing.
+ * `deck` is the default fill.
  */
-export type TileType = "grass" | "path" | "water" | "farmland" | "wall" | "roof";
+export type TileType =
+  | "deck"
+  | "deck_rug"
+  | "wall"
+  | "wall_dark"
+  | "window"
+  | "floor_light";
 
-/** Tile kinds the player cannot walk through. */
-const SOLID_TILES: ReadonlySet<TileType> = new Set<TileType>(["water", "wall", "roof"]);
+/**
+ * Tile kinds the player cannot walk through.
+ *
+ * Windows count as solid: you look through a porthole, you do not walk out of
+ * one. Rugs and floor lights are flat, so they stay walkable.
+ */
+const SOLID_TILES: ReadonlySet<TileType> = new Set<TileType>(["wall", "wall_dark", "window"]);
 
 /** True when the player is blocked by this tile kind. */
 export function isSolidTile(type: TileType): boolean {

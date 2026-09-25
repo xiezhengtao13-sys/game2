@@ -71,6 +71,6 @@ export interface AssetSpec {
   size: Size;
   anchor: Anchor;
   /** Category, used only to group the generated art brief. */
-  category: "terrain" | "character" | "crop" | "building" | "item" | "ui";
+  category: "terrain" | "character" | "fixture" | "item" | "ui";
   placeholder: PlaceholderRecipe;
 }

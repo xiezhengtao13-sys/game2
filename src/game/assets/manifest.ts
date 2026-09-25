@@ -2,27 +2,30 @@ import type { AssetSpec } from "./types";
 
 // The single source of truth for every visual in the game.
 //
-// Game code references assets by `id` only -- never by file path, and never by
-// hard-coded size. Replacing placeholder art with real art is then a matter of
+// Game code references assets by `id` only -- never by a file path, and never by
+// a hard-coded size. Replacing placeholder art with real art is then a matter of
 // dropping `assets/sprites/<id>.png` into place. See docs/ART_PIPELINE.md.
 //
-// `descEn` is written to be used directly as an image-generation prompt, so it
-// states the subject, the top-down viewing angle, the palette, and the line
-// style rather than just naming the object.
+// `descEn` is used directly as an image-generation prompt, so it states the
+// subject, viewing angle, palette and line style rather than just naming the
+// object. Materials and colours follow the room-by-room language in
+// docs/设定集.md. For the captain's quarters that means: dark grey, pale wood,
+// warm white, quiet and restrained.
 
+/** Pixel size of one tile, before a scene's own scale is applied. */
 export const TILE_SIZE = 48;
 
-// Palette shared by the placeholders so the world reads as one coherent town.
-const GRASS = "#7ec850";
-const GRASS_DARK = "#6ab544";
-const DIRT = "#b98b5e";
-const DIRT_DARK = "#9c6f45";
-const SOIL = "#8a5f3c";
-const WATER = "#4aa3d8";
-const WATER_LIGHT = "#7cc3ea";
-const WOOD = "#c9a06a";
-const ROOF = "#c8593f";
-const STONE = "#b9b3a8";
+// Shared palette, taken from the setting document's interior language.
+const HULL = "#b9bec6";
+const HULL_DARK = "#8d949e";
+const PANEL = "#2f3540";
+const FLOOR = "#3a4049";
+const FLOOR_ALT = "#424955";
+const WOOD = "#a9835a";
+const WOOD_DARK = "#7d5f3f";
+const WARM_WHITE = "#f0ece4";
+const SCREEN = "#2b3a4a";
+const SCREEN_LIT = "#4d7fa8";
 
 const tile = (
   id: string,
@@ -45,98 +48,261 @@ const tile = (
   }
 });
 
-// --- terrain -----------------------------------------------------------------
+// --- terrain: the room shell -------------------------------------------------
 
 export const TERRAIN: AssetSpec[] = [
   tile(
-    "tile_grass",
-    "草地",
-    "小镇的底色地面，浅绿色带少量斑点。",
-    "Seamless top-down game tile of lush cartoon grass, flat light green base with subtle darker green tufts, soft rounded shapes, thick clean outlines, flat 2D vector style, no perspective, no text",
-    GRASS,
-    { speckles: { count: 14, color: GRASS_DARK, sizeMin: 3, sizeMax: 5 } }
+    "tile_deck",
+    "舱室地板",
+    "低反光深色复合材料地板。设定集：地面为低反光深色材料。",
+    "Seamless top-down game tile of a starship interior floor, matte dark blue-grey composite deck plating with faint seam lines between panels, worn but immaculately maintained, subdued lighting, no strong reflections, flat 2D vector style, thick clean outlines, no perspective, no text",
+    FLOOR,
+    { speckles: { count: 5, color: FLOOR_ALT, sizeMin: 6, sizeMax: 14 } }
   ),
   tile(
-    "tile_path",
-    "土路",
-    "连接建筑之间的踩实土路。",
-    "Seamless top-down game tile of a packed dirt path, warm light brown with small pebbles, cartoon style, flat 2D vector art, thick clean outlines, no perspective, no text",
-    DIRT,
-    { speckles: { count: 18, color: DIRT_DARK, sizeMin: 2, sizeMax: 4 } }
-  ),
-  tile(
-    "tile_water",
-    "水面",
-    "镇边的小河 / 池塘。",
-    "Seamless top-down game tile of calm cartoon water, flat blue with lighter wave lines, soft rounded shapes, thick clean outlines, flat 2D vector style, no perspective, no text",
-    WATER,
-    { speckles: { count: 10, color: WATER_LIGHT, sizeMin: 3, sizeMax: 7 } }
-  ),
-  tile(
-    "tile_farmland",
-    "农田（未播种）",
-    "翻好的土地，等待播种。",
-    "Seamless top-down game tile of freshly tilled farmland, flat brown soil with horizontal furrow lines, cartoon style, flat 2D vector art, thick clean outlines, no perspective, no text",
-    SOIL
+    "tile_deck_rug",
+    "会客区地毯",
+    "一块低矮地毯，压住金属地板的冷硬感。",
+    "Seamless top-down game tile of a low-pile area rug on a spacecraft deck, muted dark red-brown weave with a simple border stripe, flat 2D vector style, thick clean outlines, no perspective, no text",
+    "#6b4a44"
   ),
   tile(
     "tile_wall",
-    "房屋墙体",
-    "从上方看到的房子墙壁，用来围出建筑占地。",
-    "Top-down game tile of a cartoon cottage wall seen from above, warm cream plaster with a wooden edge, flat 2D vector style, thick clean outlines, no perspective, no text",
-    "#efe0c8"
+    "舱壁",
+    "浅灰白色舱壁面板，指挥区的标准材料。",
+    "Seamless top-down game tile representing a spacecraft interior bulkhead seen from above, pale grey-white metal panelling with recessed panel divisions and small fastener details, flat 2D vector style, thick clean outlines, no perspective, no text",
+    HULL
   ),
   tile(
-    "tile_roof",
-    "屋顶",
-    "红色斜屋顶，从上方看到的瓦片。",
-    "Top-down game tile of a cartoon cottage roof, terracotta red shingles with a darker ridge line, flat 2D vector style, thick clean outlines, no perspective, no text",
-    ROOF
+    "tile_wall_dark",
+    "舱壁设备面板",
+    "装在舱壁上的深灰色控制与检修单元。",
+    "Seamless top-down game tile representing a spacecraft bulkhead equipment panel, dark grey face with a few small status lights and a recessed handle, flat 2D vector style, thick clean outlines, no perspective, no text",
+    HULL_DARK
   ),
   tile(
-    "tile_tree",
-    "树",
-    "一棵圆滚滚的卡通树，从上方看到树冠。",
-    "Top-down game tile of a single round cartoon tree, see from directly above, fluffy green canopy with a darker outline and a hint of brown trunk, flat 2D vector style, thick clean outlines, no text",
-    "#4e9e3e"
+    "tile_window",
+    "舷窗",
+    "望向船外的观察窗。大部分时间是纯粹的黑色。",
+    "Top-down game tile of a spacecraft viewing window set into a bulkhead, thick rounded frame with a deep black pane containing two or three faint distant stars, flat 2D vector style, thick clean outlines, no perspective, no text",
+    PANEL,
+    { speckles: { count: 3, color: "#ffffff", sizeMin: 2, sizeMax: 3 } }
   ),
   tile(
-    "tile_fence",
-    "栅栏",
-    "木栅栏，用来围住农田。",
-    "Top-down game tile of a short wooden fence, warm light brown planks, cartoon style, flat 2D vector art, thick clean outlines, no perspective, no text",
-    WOOD
+    "tile_floor_light",
+    "地面导引灯",
+    "嵌在地板里的线性指示光带。",
+    "Seamless top-down game tile of a recessed linear floor light strip set into a dark spacecraft deck, soft warm white glow along the centre with a thin metal surround, flat 2D vector style, thick clean outlines, no perspective, no text",
+    WARM_WHITE
   )
 ];
 
-// --- characters --------------------------------------------------------------
+// --- fixtures: what stands in the room ---------------------------------------
+
+interface FixtureSpec {
+  id: string;
+  nameZh: string;
+  descZh: string;
+  descEn: string;
+  /** Size in tiles. */
+  w: number;
+  h: number;
+  /** Placeholder fill colour. */
+  color: string;
+}
+
+const fixture = (spec: FixtureSpec): AssetSpec => ({
+  id: spec.id,
+  nameZh: spec.nameZh,
+  descZh: spec.descZh,
+  descEn: spec.descEn,
+  size: { w: spec.w * TILE_SIZE, h: spec.h * TILE_SIZE },
+  anchor: "center",
+  category: "fixture",
+  placeholder: {
+    shapes: [
+      {
+        kind: "rect",
+        x: (-spec.w * TILE_SIZE) / 2,
+        y: (-spec.h * TILE_SIZE) / 2,
+        w: spec.w * TILE_SIZE,
+        h: spec.h * TILE_SIZE,
+        color: spec.color,
+        radius: 6,
+        stroke: { width: 2, color: "#20242b" }
+      }
+    ]
+  }
+});
+
+export const FIXTURES: AssetSpec[] = [
+  fixture({
+    id: "fx_desk",
+    nameZh: "舰长办公桌",
+    descZh: "低矮而宽大的办公桌，深色桌面配木质包边，桌面嵌入可完全关闭的显示设备。",
+    descEn:
+      "Top-down view of a wide low starship captain's desk, dark composite top with natural wood edging, a closed flat display panel inset into the surface and a few paper documents lying on it, quiet restrained sci-fi furniture, flat 2D vector style, thick clean outlines, no perspective, no text",
+    w: 3,
+    h: 2,
+    color: "#3b3f48"
+  }),
+  fixture({
+    id: "fx_desk_chair",
+    nameZh: "办公椅",
+    descZh: "办公桌后的座椅，带地面固定装置。",
+    descEn:
+      "Top-down view of a single starship office chair, dark grey padded seat with a restrained high-tech frame and a floor fixing plate, flat 2D vector style, thick clean outlines, no perspective, no text",
+    w: 1,
+    h: 1,
+    color: "#4a505a"
+  }),
+  fixture({
+    id: "fx_starchart",
+    nameZh: "实体星图",
+    descZh: "办公桌后的星图：深色底板，星系坐标与航线用细小发光标记显示。不是全息影像。",
+    descEn:
+      "Top-down view of a large wall-mounted physical star chart aboard a starship, dark backing panel with tiny glowing points marking star coordinates and a thin plotted course line, deliberately plain and instrument-like rather than a hologram, flat 2D vector style, thick clean outlines, no perspective, no text",
+    w: 3,
+    h: 1,
+    color: "#252a33"
+  }),
+  fixture({
+    id: "fx_obswall",
+    nameZh: "星空观测墙",
+    descZh: "宽约 6 米的曲面显示墙。关闭时像一整面暗色玻璃墙，开启后呈现克制的真实星空。",
+    descEn:
+      "Top-down view of a wide curved observation display wall along one side of a starship room, dark glass surface showing a restrained view of deep space, overwhelmingly black with a few faint sharp stars and no lens flares or streaking, flat 2D vector style, thick clean outlines, no perspective, no text",
+    w: 6,
+    h: 1,
+    color: "#12151b"
+  }),
+  fixture({
+    id: "fx_meeting_table",
+    nameZh: "会客圆桌",
+    descZh: "会客区的低矮圆形会议桌。",
+    descEn:
+      "Top-down view of a low round meeting table in a starship reception area, dark wood top with a thin metal rim and a few small objects resting on it, flat 2D vector style, thick clean outlines, no perspective, no text",
+    w: 3,
+    h: 3,
+    color: WOOD_DARK
+  }),
+  fixture({
+    id: "fx_chair",
+    nameZh: "固定座椅",
+    descZh: "固定在地板上的座椅，防止失重时飘走。",
+    descEn:
+      "Top-down view of a single fixed starship guest chair, warm grey upholstery with a slim dark frame and a visible floor mounting plate, flat 2D vector style, thick clean outlines, no perspective, no text",
+    w: 1,
+    h: 1,
+    color: "#5b5f68"
+  }),
+  fixture({
+    id: "fx_plant",
+    nameZh: "绿植",
+    descZh: "真正的地球植物。在整艘船的工业环境里，这是少数活着的绿色。",
+    descEn:
+      "Top-down view of a potted Earth houseplant in a plain ceramic pot, a few broad healthy green leaves seen from above, flat 2D vector style, thick clean outlines, no perspective, no text",
+    w: 1,
+    h: 1,
+    color: "#4e7a44"
+  }),
+  fixture({
+    id: "fx_bed",
+    nameZh: "床铺",
+    descZh: "卧室的床，具备失重固定装置。",
+    descEn:
+      "Top-down view of a starship bunk, neatly made with muted grey-white bedding and slim restraint straps across it, dark frame with a small bedside panel, flat 2D vector style, thick clean outlines, no perspective, no text",
+    w: 2,
+    h: 3,
+    color: "#c9c4ba"
+  }),
+  fixture({
+    id: "fx_bookshelf",
+    nameZh: "实体书架",
+    descZh: "阅读区的书架，放的是真正的纸书。",
+    descEn:
+      "Top-down view of a low bookshelf seen from above, rows of book spines in muted varied colours along a pale wood carcass, flat 2D vector style, thick clean outlines, no perspective, no text",
+    w: 3,
+    h: 1,
+    color: WOOD
+  }),
+  fixture({
+    id: "fx_reading_chair",
+    nameZh: "阅读椅",
+    descZh: "一张舒适的阅读椅，是这个房间里最不像飞船设备的东西。",
+    descEn:
+      "Top-down view of a single comfortable upholstered reading armchair, warm dark brown fabric with visible armrests and a floor fixing plate, flat 2D vector style, thick clean outlines, no perspective, no text",
+    w: 1,
+    h: 1,
+    color: "#6f5340"
+  }),
+  fixture({
+    id: "fx_reading_lamp",
+    nameZh: "阅读灯",
+    descZh: "具有传统造型的阅读灯，暖光。",
+    descEn:
+      "Top-down view of a traditional-style reading lamp on a small base, a round shade with warm light spilling from beneath it, flat 2D vector style, thick clean outlines, no perspective, no text",
+    w: 1,
+    h: 1,
+    color: "#e8c37a"
+  }),
+  fixture({
+    id: "fx_terminal",
+    nameZh: "离线资料终端",
+    descZh: "阅读区的离线终端。不联网，也没人催你。",
+    descEn:
+      "Top-down view of a small offline data terminal on a slim stand, a single modest dark screen with a few lines of pale text and a physical keypad below it, flat 2D vector style, thick clean outlines, no perspective, no text",
+    w: 1,
+    h: 1,
+    color: SCREEN
+  }),
+  fixture({
+    id: "fx_screen_lit",
+    nameZh: "点亮的显示面板",
+    descZh: "舱壁上亮起的信息面板。",
+    descEn:
+      "Top-down game sprite of a lit wall-mounted information panel, dark bezel around a soft blue-grey screen showing simple block diagrams, flat 2D vector style, thick clean outlines, no perspective, no text",
+    w: 1,
+    h: 1,
+    color: SCREEN_LIT
+  }),
+  fixture({
+    id: "fx_photo",
+    nameZh: "地球摄影作品",
+    descZh: "墙上唯一重要的装饰：一幅真正的地球摄影作品。",
+    descEn:
+      "Top-down game sprite of a framed photograph hanging on a starship bulkhead, a plain dark frame around an image of Earth's blue oceans and white clouds seen from orbit, flat 2D vector style, thick clean outlines, no perspective, no text",
+    w: 2,
+    h: 1,
+    color: "#2f5f8a"
+  })
+];
+
+// --- character ---------------------------------------------------------------
+
+/** Shared look for every crew frame, so the poses line up pixel for pixel. */
+const CREW_LOOK =
+  "worn dark blue-grey work coveralls with rolled sleeves and a tool pocket, round face with two tiny dark eyes, short dark hair under a simple flat cap";
 
 /**
- * Build one direction-and-pose frame of the player character.
+ * One direction-and-pose frame of the player character.
  *
- * The palette and framing are shared so every frame lines up pixel-for-pixel;
- * only the head, eyes and leg positions change between poses.
+ * Only the right-facing frames are authored; the generator mirrors them for
+ * "left", which halves the art needed for four directions.
  *
- * `dir` is the direction the character faces. Only the right-facing frames are
- * drawn by hand: the generator mirrors them for "left", which halves the art
- * needed for four directions and is why the renderer supports `flipX`.
+ * `body` is raised or lowered slightly between walk frames so motion reads even
+ * as a flat placeholder.
  */
-function playerFrame(
-  dir: "right" | "down" | "up",
-  pose: "idle" | "walkA" | "walkB",
-  descEn: string
-): AssetSpec {
-  // Legs swing in opposition between the two walk frames, and the body bobs,
-  // so motion reads even as a flat placeholder.
+function crewFrame(dir: "right" | "down" | "up", pose: "idle" | "walkA" | "walkB", descEn: string): AssetSpec {
   const bob = pose === "idle" ? 0 : pose === "walkA" ? -1 : 0;
   const leftLeg = pose === "walkA" ? 2 : pose === "walkB" ? -2 : 0;
   const rightLeg = -leftLeg;
-  const isUp = dir === "up";
+  const facingAway = dir === "up";
 
   return {
-    id: `player_${dir}_${pose}`,
-    nameZh: `玩家·${dir}·${pose}`,
-    descZh: `${dir} 朝向的玩家角色，${pose} 姿势。`,
+    id: `crew_${dir}_${pose}`,
+    nameZh: `船员·${dir}·${pose}`,
+    descZh: `${dir} 朝向的船员，${pose} 姿势。`,
     descEn,
     size: { w: 32, h: 48 },
     anchor: "bottom-center",
@@ -150,28 +316,41 @@ function playerFrame(
           y: -48 + bob,
           w: 24,
           h: 22,
-          color: isUp ? "#6b4a2f" : "#f6d7b0",
+          color: facingAway ? "#3f4a5a" : "#e8c9a0",
           radius: 9,
-          stroke: { width: 2, color: "#2b3566" }
+          stroke: { width: 2, color: "#252a33" }
         },
         // Eyes are omitted when facing away from the camera.
-        ...(isUp
+        ...(facingAway
           ? []
           : [
-              { kind: "rect" as const, x: -8 + leftLeg / 4, y: -42 + bob, w: 4, h: 4, color: "#2b2b2b", radius: 2 },
-              { kind: "rect" as const, x: 4 + leftLeg / 4, y: -42 + bob, w: 4, h: 4, color: "#2b2b2b", radius: 2 }
+              { kind: "rect" as const, x: -8 + leftLeg / 4, y: -42 + bob, w: 4, h: 4, color: "#22262c", radius: 2 },
+              { kind: "rect" as const, x: 4 + leftLeg / 4, y: -42 + bob, w: 4, h: 4, color: "#22262c", radius: 2 }
             ]),
-        // Body.
+        // Cap.
+        {
+          kind: "rect",
+          x: -14,
+          y: -51 + bob,
+          w: 28,
+          h: 7,
+          color: "#3f4a5a",
+          radius: 3,
+          stroke: { width: 2, color: "#252a33" }
+        },
+        // Coveralls.
         {
           kind: "rect",
           x: -13,
           y: -30 + bob,
           w: 26,
           h: 26,
-          color: "#4a5fb0",
+          color: "#46536b",
           radius: 8,
-          stroke: { width: 2, color: "#2b3566" }
+          stroke: { width: 2, color: "#252a33" }
         },
+        // Tool pocket, which is what makes these work clothes rather than a uniform.
+        { kind: "rect", x: 5, y: -26 + bob, w: 6, h: 8, color: "#333d4d", radius: 2 },
         // Legs.
         {
           kind: "rect",
@@ -179,9 +358,9 @@ function playerFrame(
           y: -8,
           w: 8,
           h: 8,
-          color: "#3a4a8f",
+          color: "#333d4d",
           radius: 3,
-          stroke: { width: 2, color: "#2b3566" }
+          stroke: { width: 2, color: "#252a33" }
         },
         {
           kind: "rect",
@@ -189,400 +368,97 @@ function playerFrame(
           y: -8,
           w: 8,
           h: 8,
-          color: "#3a4a8f",
+          color: "#333d4d",
           radius: 3,
-          stroke: { width: 2, color: "#2b3566" }
+          stroke: { width: 2, color: "#252a33" }
         }
       ]
     }
   };
 }
 
-const PLAYER_LOOK = "indigo blue hoodie, round cream-coloured face, tiny black dot eyes";
-
-/**
- * A townsperson, built from shared shapes so the cast reads as one art style.
- *
- * `shirt` is what tells them apart at a glance -- the renderer has no tinting, so
- * each person needs their own sprite rather than one recoloured body.
- */
-function townsfolk(
-  id: string,
-  nameZh: string,
-  descZh: string,
-  descEn: string,
-  shirt: string,
-  trousers: string,
-  extra: AssetSpec["placeholder"]["shapes"] = []
-): AssetSpec {
-  return {
-    id,
-    nameZh,
-    descZh,
-    descEn,
-    size: { w: 32, h: 48 },
-    anchor: "bottom-center",
-    category: "character",
-    placeholder: {
-      shapes: [
-        { kind: "rect", x: -12, y: -48, w: 24, h: 22, color: "#f6d7b0", radius: 9, stroke: { width: 2, color: "#3a3226" } },
-        { kind: "rect", x: -8, y: -42, w: 4, h: 4, color: "#2b2b2b", radius: 2 },
-        { kind: "rect", x: 4, y: -42, w: 4, h: 4, color: "#2b2b2b", radius: 2 },
-        { kind: "rect", x: -13, y: -30, w: 26, h: 26, color: shirt, radius: 8, stroke: { width: 2, color: "#3a3226" } },
-        { kind: "rect", x: -10, y: -8, w: 8, h: 8, color: trousers, radius: 3, stroke: { width: 2, color: "#3a3226" } },
-        { kind: "rect", x: 2, y: -8, w: 8, h: 8, color: trousers, radius: 3, stroke: { width: 2, color: "#3a3226" } },
-        ...extra
-      ]
-    }
-  };
-}
-
 export const CHARACTERS: AssetSpec[] = [
-  playerFrame(
+  crewFrame(
     "down",
     "idle",
-    `Cute chibi cartoon villager game sprite facing the camera (south), seen from a top-down three-quarter view, ${PLAYER_LOOK}, arms at rest, both feet together, ${"flat 2D vector style"}, thick dark outlines, plain transparent background, single character centred, no text`
+    `Cute chibi cartoon spaceship crew member in ${CREW_LOOK}, facing the camera (south), seen from a top-down three-quarter view, standing still with both feet together, simple rounded shapes, thick dark outlines, flat 2D vector style, plain transparent background, single character centred, no text`
   ),
-  playerFrame(
+  crewFrame(
     "down",
     "walkA",
-    `Cute chibi cartoon villager game sprite facing the camera (south), seen from a top-down three-quarter view, mid-stride walk cycle frame 1, left leg forward and right leg back, body raised slightly, ${PLAYER_LOOK}, flat 2D vector style, thick dark outlines, plain transparent background, single character centred, no text`
+    `Cute chibi cartoon spaceship crew member in ${CREW_LOOK}, facing the camera (south), seen from a top-down three-quarter view, mid-stride walk cycle frame 1, left leg forward and right leg back, simple rounded shapes, thick dark outlines, flat 2D vector style, plain transparent background, single character centred, no text`
   ),
-  playerFrame(
+  crewFrame(
     "down",
     "walkB",
-    `Cute chibi cartoon villager game sprite facing the camera (south), seen from a top-down three-quarter view, mid-stride walk cycle frame 2, right leg forward and left leg back, body lowered slightly, ${PLAYER_LOOK}, flat 2D vector style, thick dark outlines, plain transparent background, single character centred, no text`
+    `Cute chibi cartoon spaceship crew member in ${CREW_LOOK}, facing the camera (south), seen from a top-down three-quarter view, mid-stride walk cycle frame 2, right leg forward and left leg back, simple rounded shapes, thick dark outlines, flat 2D vector style, plain transparent background, single character centred, no text`
   ),
-  playerFrame(
+  crewFrame(
     "right",
     "idle",
-    `Cute chibi cartoon villager game sprite facing right (east), seen from a top-down three-quarter view, ${PLAYER_LOOK}, arms at rest, both feet together, flat 2D vector style, thick dark outlines, plain transparent background, single character centred, no text`
+    `Cute chibi cartoon spaceship crew member in ${CREW_LOOK}, facing right (east), seen from a top-down three-quarter view, standing still, simple rounded shapes, thick dark outlines, flat 2D vector style, plain transparent background, single character centred, no text`
   ),
-  playerFrame(
+  crewFrame(
     "right",
     "walkA",
-    `Cute chibi cartoon villager game sprite facing right (east), seen from a top-down three-quarter view, mid-stride walk cycle frame 1, front leg forward, body raised slightly, ${PLAYER_LOOK}, flat 2D vector style, thick dark outlines, plain transparent background, single character centred, no text`
+    `Cute chibi cartoon spaceship crew member in ${CREW_LOOK}, facing right (east), seen from a top-down three-quarter view, mid-stride walk cycle frame 1, front leg forward, simple rounded shapes, thick dark outlines, flat 2D vector style, plain transparent background, single character centred, no text`
   ),
-  playerFrame(
+  crewFrame(
     "right",
     "walkB",
-    `Cute chibi cartoon villager game sprite facing right (east), seen from a top-down three-quarter view, mid-stride walk cycle frame 2, back leg forward, body lowered slightly, ${PLAYER_LOOK}, flat 2D vector style, thick dark outlines, plain transparent background, single character centred, no text`
+    `Cute chibi cartoon spaceship crew member in ${CREW_LOOK}, facing right (east), seen from a top-down three-quarter view, mid-stride walk cycle frame 2, back leg forward, simple rounded shapes, thick dark outlines, flat 2D vector style, plain transparent background, single character centred, no text`
   ),
-  playerFrame(
+  crewFrame(
     "up",
     "idle",
-    `Cute chibi cartoon villager game sprite seen from behind (facing away, north), top-down three-quarter view, indigo blue hoodie, back of a brown-haired head with no face visible, arms at rest, both feet together, flat 2D vector style, thick dark outlines, plain transparent background, single character centred, no text`
+    `Cute chibi cartoon spaceship crew member seen from behind (facing away, north), top-down three-quarter view, dark blue-grey work coveralls and a flat cap, back of the head with no face visible, standing still, simple rounded shapes, thick dark outlines, flat 2D vector style, plain transparent background, single character centred, no text`
   ),
-  playerFrame(
+  crewFrame(
     "up",
     "walkA",
-    `Cute chibi cartoon villager game sprite seen from behind (facing away, north), top-down three-quarter view, walking away, mid-stride walk cycle frame 1, body raised slightly, indigo blue hoodie, back of a brown-haired head with no face visible, flat 2D vector style, thick dark outlines, plain transparent background, single character centred, no text`
+    `Cute chibi cartoon spaceship crew member seen from behind (facing away, north), top-down three-quarter view, walking away mid-stride frame 1, dark blue-grey work coveralls and a flat cap, no face visible, simple rounded shapes, thick dark outlines, flat 2D vector style, plain transparent background, single character centred, no text`
   ),
-  playerFrame(
+  crewFrame(
     "up",
     "walkB",
-    `Cute chibi cartoon villager game sprite seen from behind (facing away, north), top-down three-quarter view, walking away, mid-stride walk cycle frame 2, body lowered slightly, indigo blue hoodie, back of a brown-haired head with no face visible, flat 2D vector style, thick dark outlines, plain transparent background, single character centred, no text`
+    `Cute chibi cartoon spaceship crew member seen from behind (facing away, north), top-down three-quarter view, walking away mid-stride frame 2, dark blue-grey work coveralls and a flat cap, no face visible, simple rounded shapes, thick dark outlines, flat 2D vector style, plain transparent background, single character centred, no text`
   ),
-  // Left-facing frames. These are NOT drawn by hand: `npm run art` mirrors the
-  // right-facing frame of the same pose, so the art requirement stays at three
-  // directions instead of four. See MIRRORED in animationSpec.ts.
-  {
-    ...playerFrame(
+
+  // Left-facing frames are NOT drawn by hand: `npm run art` mirrors the
+  // right-facing frame of the same pose, so four directions need only three sets
+  // of art. See MIRRORED in animationSpec.ts.
+  ...(["idle", "walkA", "walkB"] as const).map((pose): AssetSpec => {
+    const source = crewFrame(
       "right",
-      "idle",
-      "Cute chibi cartoon villager game sprite facing left (west), seen from a top-down three-quarter view, indigo blue hoodie, round cream-coloured face, tiny black dot eyes, arms at rest, flat 2D vector style, thick dark outlines, plain transparent background, single character centred, no text"
-    ),
-    id: "player_left_idle",
-    nameZh: "玩家·左·idle",
-    descZh: "由 player_right_idle 水平镜像得到，不需要单独出图。",
-    descEn:
-      "Cute chibi cartoon villager game sprite facing left (west), seen from a top-down three-quarter view, indigo blue hoodie, round cream-coloured face, tiny black dot eyes, arms at rest, flat 2D vector style, thick dark outlines, plain transparent background, single character centred, no text"
-  },
-  {
-    ...playerFrame(
-      "right",
-      "walkA",
-      "Cute chibi cartoon villager game sprite facing left (west), seen from a top-down three-quarter view, mid-stride walk cycle frame 1, body raised slightly, indigo blue hoodie, round cream-coloured face, tiny black dot eyes, flat 2D vector style, thick dark outlines, plain transparent background, single character centred, no text"
-    ),
-    id: "player_left_walkA",
-    nameZh: "玩家·左·walkA",
-    descZh: "由 player_right_walkA 水平镜像得到，不需要单独出图。",
-    descEn:
-      "Cute chibi cartoon villager game sprite facing left (west), seen from a top-down three-quarter view, mid-stride walk cycle frame 1, body raised slightly, indigo blue hoodie, round cream-coloured face, tiny black dot eyes, flat 2D vector style, thick dark outlines, plain transparent background, single character centred, no text"
-  },
-  {
-    ...playerFrame(
-      "right",
-      "walkB",
-      "Cute chibi cartoon villager game sprite facing left (west), seen from a top-down three-quarter view, mid-stride walk cycle frame 2, body lowered slightly, indigo blue hoodie, round cream-coloured face, tiny black dot eyes, flat 2D vector style, thick dark outlines, plain transparent background, single character centred, no text"
-    ),
-    id: "player_left_walkB",
-    nameZh: "玩家·左·walkB",
-    descZh: "由 player_right_walkB 水平镜像得到，不需要单独出图。",
-    descEn:
-      "Cute chibi cartoon villager game sprite facing left (west), seen from a top-down three-quarter view, mid-stride walk cycle frame 2, body lowered slightly, indigo blue hoodie, round cream-coloured face, tiny black dot eyes, flat 2D vector style, thick dark outlines, plain transparent background, single character centred, no text"
-  },
-  {
-    id: "npc_mayor",
-    nameZh: "镇长",
-    descZh: "发布工作与收下贡献的人。年纪偏大，戴帽子。",
-    descEn:
-      "Cute chibi cartoon village mayor sprite seen from a top-down three-quarter view, elderly friendly man, brown coat over a cream shirt, round tan face with tiny black dot eyes, grey hair and a wide-brimmed brown hat, simple rounded shapes, thick dark outlines, flat 2D vector style, plain transparent background, single character centred, no text",
-    size: { w: 32, h: 48 },
-    anchor: "bottom-center",
-    category: "character",
-    placeholder: {
-      shapes: [
-        { kind: "rect", x: -14, y: -30, w: 28, h: 26, color: "#8a6642", radius: 8, stroke: { width: 2, color: "#4a3524" } },
-        { kind: "rect", x: -12, y: -46, w: 24, h: 20, color: "#e8c69c", radius: 8, stroke: { width: 2, color: "#4a3524" } },
-        { kind: "rect", x: -8, y: -41, w: 4, h: 4, color: "#2b2b2b", radius: 2 },
-        { kind: "rect", x: 4, y: -41, w: 4, h: 4, color: "#2b2b2b", radius: 2 },
-        // Wide-brimmed hat, drawn last so it sits on top of the head.
-        { kind: "rect", x: -15, y: -50, w: 30, h: 6, color: "#6b4a2f", radius: 3, stroke: { width: 2, color: "#4a3524" } }
-      ]
-    }
-  },
-
-  // --- townsfolk -------------------------------------------------------------
-  // Each gets their own shirt colour so they are told apart at a glance. The
-  // real art pass can give them individual faces later.
-  townsfolk(
-    "npc_baker",
-    "面包师",
-    "面包房的师傅，围裙上总是沾着面粉。",
-    "Cute chibi cartoon village baker sprite seen from a top-down three-quarter view, warm brown apron over a cream shirt, round face with tiny black dot eyes, small white baker's hat, simple rounded shapes, thick dark outlines, flat 2D vector style, plain background, single character, no text",
-    "#e8d9b0",
-    "#8a6a48",
-    [{ kind: "rect", x: -13, y: -50, w: 26, h: 8, color: "#f4efe4", radius: 4, stroke: { width: 2, color: "#3a3226" } }]
-  ),
-  townsfolk(
-    "npc_farmer",
-    "农夫",
-    "在地里忙活的人，裤脚卷到膝盖。",
-    "Cute chibi cartoon village farmer sprite seen from a top-down three-quarter view, green work shirt with rolled sleeves, round face with tiny black dot eyes, straw hat, simple rounded shapes, thick dark outlines, flat 2D vector style, plain background, single character, no text",
-    "#7fa050",
-    "#6b5a3a",
-    [{ kind: "rect", x: -15, y: -50, w: 30, h: 7, color: "#d9c172", radius: 3, stroke: { width: 2, color: "#3a3226" } }]
-  ),
-  townsfolk(
-    "npc_carpenter",
-    "木匠",
-    "盖房子的人，肩上搭着一条毛巾。",
-    "Cute chibi cartoon village carpenter sprite seen from a top-down three-quarter view, blue-grey work shirt with a towel over one shoulder, round face with tiny black dot eyes, short dark hair, simple rounded shapes, thick dark outlines, flat 2D vector style, plain background, single character, no text",
-    "#6f8a9e",
-    "#4a5a66"
-  ),
-  townsfolk(
-    "npc_kid",
-    "小孩",
-    "镇上跑来跑去的小孩。",
-    "Cute chibi cartoon village child sprite seen from a top-down three-quarter view, bright orange shirt, round face with large black dot eyes, messy dark hair, small and round proportions, simple shapes, thick dark outlines, flat 2D vector style, plain background, single character, no text",
-    "#e08a4a",
-    "#5a6a8a"
-  )
-];
-
-// --- crops -------------------------------------------------------------------
-
-const cropStage = (stage: number, nameZh: string, descZh: string, descEn: string, color: string): AssetSpec => ({
-  id: `crop_wheat_stage${stage}`,
-  nameZh,
-  descZh,
-  descEn,
-  size: { w: TILE_SIZE, h: TILE_SIZE },
-  anchor: "center",
-  category: "crop",
-  placeholder: {
-    shapes: [{ kind: "rect", x: -TILE_SIZE / 2 + 6, y: -TILE_SIZE / 2 + 6, w: TILE_SIZE - 12, h: TILE_SIZE - 12, color, radius: 6 }]
-  }
-});
-
-export const CROPS: AssetSpec[] = [
-  cropStage(
-    1,
-    "小麦·刚播种",
-    "刚播下种子，土面几乎看不到东西，只有一点点嫩芽。",
-    "Top-down game sprite of wheat just planted, a single tiny pale green sprout barely poking out of brown soil, cartoon style, flat 2D vector art, thick clean outlines, no perspective, no text",
-    "#a8845c"
-  ),
-  cropStage(
-    2,
-    "小麦·幼苗",
-    "冒出一小丛绿色嫩苗。",
-    "Top-down game sprite of young wheat seedlings, a small cluster of short light green shoots on brown soil, cartoon style, flat 2D vector art, thick clean outlines, no perspective, no text",
-    "#8fc45a"
-  ),
-  cropStage(
-    3,
-    "小麦·成长中",
-    "长高但仍未成熟，绿色带一点黄。",
-    "Top-down game sprite of half-grown wheat, medium-height green-yellow stalks on brown soil, cartoon style, flat 2D vector art, thick clean outlines, no perspective, no text",
-    "#b5bd4a"
-  ),
-  cropStage(
-    4,
-    "小麦·成熟",
-    "金黄饱满，可以收割了。",
-    "Top-down game sprite of fully grown ripe wheat, tall golden yellow stalks heavy with grain on brown soil, cartoon style, flat 2D vector art, thick clean outlines, no perspective, no text",
-    "#e8c34a"
-  )
-];
-
-// --- buildings ---------------------------------------------------------------
-
-const building = (
-  id: string,
-  nameZh: string,
-  descZh: string,
-  descEn: string,
-  color: string
-): AssetSpec => ({
-  id,
-  nameZh,
-  descZh,
-  descEn,
-  size: { w: TILE_SIZE, h: TILE_SIZE },
-  anchor: "center",
-  category: "building",
-  placeholder: {
-    shapes: [
-      { kind: "rect", x: -TILE_SIZE / 2, y: -TILE_SIZE / 2, w: TILE_SIZE, h: TILE_SIZE, color, radius: 4 },
-      { kind: "rect", x: -TILE_SIZE / 2, y: TILE_SIZE / 2 - 10, w: TILE_SIZE, h: 10, color: STONE, radius: 3 }
-    ]
-  }
-});
-
-export const BUILDINGS: AssetSpec[] = [
-  building(
-    "bld_mill",
-    "磨坊",
-    "把小麦磨成面粉的地方，带一个风车。",
-    "Top-down cartoon watermill building with a large wooden windmill wheel, cream walls and terracotta roof, flat 2D vector style, thick clean outlines, no perspective, no text",
-    "#d8c9a8"
-  ),
-  building(
-    "bld_bakery",
-    "烤炉 / 面包房",
-    "烤面包的地方，屋顶有烟囱冒烟。",
-    "Top-down cartoon bakery building with a stone oven and a chimney, warm cream walls and terracotta roof, flat 2D vector style, thick clean outlines, no perspective, no text",
-    "#e6d3b3"
-  ),
-  building(
-    "bld_noticeboard",
-    "告示板",
-    "立在路边的木告示板，上面贴着招工的告示。",
-    "Top-down cartoon wooden notice board on two posts with a few parchment notices pinned to it, seen from a high three-quarter angle, flat 2D vector style, thick clean outlines, clear of any background, no readable text",
-    "#c9a06a"
-  ),
-  {
-    // The site marker and the finished market. Both cover the same 3x3
-    // footprint, so the building lands exactly where the scaffolding stood.
-    id: "bld_construction",
-    nameZh: "施工中的地基",
-    descZh: "一片围起来的工地：木料、石堆和脚手架，房子还没盖起来。",
-    descEn:
-      "Top-down cartoon construction site seen from directly above, cleared ground with stacked wooden planks, a small pile of stones and a few wooden scaffolding posts, flat 2D vector style, thick clean outlines, no perspective, no text",
-    size: { w: TILE_SIZE * 3, h: TILE_SIZE * 3 },
-    anchor: "center",
-    category: "building",
-    placeholder: {
-      shapes: [
-        { kind: "rect", x: -70, y: -70, w: 140, h: 140, color: "#a8865e", radius: 8 },
-        { kind: "rect", x: -58, y: -44, w: 44, h: 20, color: "#c9a06a", radius: 4, stroke: { width: 2, color: "#6b4a2f" } },
-        { kind: "rect", x: -58, y: -18, w: 44, h: 20, color: "#c9a06a", radius: 4, stroke: { width: 2, color: "#6b4a2f" } },
-        { kind: "rect", x: 6, y: -50, w: 34, h: 34, color: "#b9b3a8", radius: 10, stroke: { width: 2, color: "#6f6a61" } },
-        { kind: "rect", x: -56, y: 30, w: 12, h: 40, color: "#8a6642", radius: 3, stroke: { width: 2, color: "#4a3524" } },
-        { kind: "rect", x: 44, y: 30, w: 12, h: 40, color: "#8a6642", radius: 3, stroke: { width: 2, color: "#4a3524" } }
-      ]
-    }
-  },
-  {
-    id: "bld_market",
-    nameZh: "集市",
-    descZh: "盖好的集市：几个铺着条纹棚子的摊位。",
-    descEn:
-      "Top-down cartoon village market seen from directly above, four small stalls with striped red and white canvas awnings, flat 2D vector style, thick clean outlines, no perspective, no text",
-    size: { w: TILE_SIZE * 3, h: TILE_SIZE * 3 },
-    anchor: "center",
-    category: "building",
-    placeholder: {
-      shapes: [
-        { kind: "rect", x: -70, y: -70, w: 140, h: 140, color: "#d9c9a8", radius: 8, stroke: { width: 2, color: "#8a7355" } },
-        { kind: "rect", x: -58, y: -54, w: 52, h: 46, color: "#d9534f", radius: 6, stroke: { width: 2, color: "#7a2f2c" } },
-        { kind: "rect", x: 4, y: -54, w: 52, h: 46, color: "#f2ece0", radius: 6, stroke: { width: 2, color: "#7a2f2c" } },
-        { kind: "rect", x: -58, y: 2, w: 52, h: 46, color: "#f2ece0", radius: 6, stroke: { width: 2, color: "#7a2f2c" } },
-        { kind: "rect", x: 4, y: 2, w: 52, h: 46, color: "#d9534f", radius: 6, stroke: { width: 2, color: "#7a2f2c" } }
-      ]
-    }
-  }
-];
-
-// --- items -------------------------------------------------------------------
-// Item icons are shown in the DOM inventory UI, which is why their art is
-// specified here rather than left to CSS.
-
-export const ITEMS: AssetSpec[] = [
-  {
-    id: "item_wheat",
-    nameZh: "小麦",
-    descZh: "收割下来的麦穗，可以拿去磨坊。",
-    descEn:
-      "Game inventory icon of a small bundle of golden wheat sheaves tied in the middle, cartoon style, thick clean outlines, flat 2D vector art, centered on a plain transparent background, no text",
-    size: { w: 32, h: 32 },
-    anchor: "center",
-    category: "item",
-    placeholder: {
-      shapes: [
-        { kind: "rect", x: -7, y: -7, w: 14, h: 14, color: "#e8c34a", radius: 6, stroke: { width: 2, color: "#8a7020" } },
-        { kind: "rect", x: -2, y: -2, w: 4, h: 4, color: "#8a7020", radius: 2 }
-      ]
-    }
-  },
-  {
-    id: "item_flour",
-    nameZh: "面粉",
-    descZh: "磨好的面粉，装在小布袋里，可以拿去烤炉。",
-    descEn:
-      "Game inventory icon of a small tied cloth sack of flour with a few grains spilled beside it, cartoon style, thick clean outlines, flat 2D vector art, centered on a plain transparent background, no text",
-    size: { w: 32, h: 32 },
-    anchor: "center",
-    category: "item",
-    placeholder: {
-      shapes: [{ kind: "rect", x: -8, y: -8, w: 16, h: 16, color: "#f2ece0", radius: 5, stroke: { width: 2, color: "#a89c88" } }]
-    }
-  },
-  {
-    id: "item_bread",
-    nameZh: "面包",
-    descZh: "刚出炉的面包，是交给小镇的贡献品。",
-    descEn:
-      "Game inventory icon of a freshly baked round loaf of bread with a scored top, warm golden brown crust, cartoon style, thick clean outlines, flat 2D vector art, centered on a plain transparent background, no text",
-    size: { w: 32, h: 32 },
-    anchor: "center",
-    category: "item",
-    placeholder: {
-      shapes: [{ kind: "rect", x: -9, y: -6, w: 18, h: 13, color: "#c98a45", radius: 6, stroke: { width: 2, color: "#7a4f22" } }]
-    }
-  }
+      pose,
+      `Cute chibi cartoon spaceship crew member in ${CREW_LOOK}, facing left (west), seen from a top-down three-quarter view, simple rounded shapes, thick dark outlines, flat 2D vector style, plain transparent background, single character centred, no text`
+    );
+    return {
+      ...source,
+      id: `crew_left_${pose}`,
+      nameZh: `船员·left·${pose}`,
+      descZh: `由 crew_right_${pose} 水平镜像得到，不需要单独出图。`,
+      descEn: source.descEn.replace("facing left (west)", "facing left (west)")
+    };
+  })
 ];
 
 // --- ui ----------------------------------------------------------------------
-// World-space UI only. DOM UI (HUD, dialogue box) is styled with CSS.
 
 export const UI: AssetSpec[] = [
   {
     id: "ui_prompt_e",
     nameZh: "交互提示气泡",
-    descZh: "浮在可交互对象上方的小气泡，提示按 E。",
+    descZh: "浮在可交互物体上方的小气泡，提示按 E。",
     descEn:
-      "Small cartoon speech bubble game UI element containing a bold letter E, rounded white bubble with a thick dark outline and a little tail at the bottom, flat 2D vector style, plain transparent background",
+      "Small cartoon speech bubble game UI element containing a bold letter E, rounded pale bubble with a thick dark outline and a little tail at the bottom, flat 2D vector style, plain transparent background, no text other than the letter E",
     size: { w: 32, h: 32 },
     anchor: "bottom-center",
     category: "ui",
     placeholder: {
       shapes: [
-        { kind: "rect", x: -14, y: -30, w: 28, h: 24, color: "#ffffff", radius: 10, stroke: { width: 2, color: "#2b2b2b" } },
-        { kind: "rect", x: -4, y: -8, w: 8, h: 8, color: "#ffffff", radius: 2 }
+        { kind: "rect", x: -14, y: -30, w: 28, h: 24, color: "#f2efe8", radius: 10, stroke: { width: 2, color: "#252a33" } },
+        { kind: "rect", x: -4, y: -8, w: 8, h: 8, color: "#f2efe8", radius: 2 }
       ]
     }
   }
@@ -590,10 +466,8 @@ export const UI: AssetSpec[] = [
 
 export const ALL_ASSETS: AssetSpec[] = [
   ...TERRAIN,
+  ...FIXTURES,
   ...CHARACTERS,
-  ...CROPS,
-  ...BUILDINGS,
-  ...ITEMS,
   ...UI
 ];
 

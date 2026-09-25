@@ -1,75 +1,48 @@
-import type { TileMap } from "./map/TileMap";
 import { TILE_SIZE } from "./assets/manifest";
-import { Farm } from "./systems/Farm";
-import { GameTime } from "./systems/Time";
 
 /**
- * All tunable gameplay numbers in one place, so balance changes do not require
- * hunting through systems.
+ * Tunable numbers for the ship, in one place.
+ *
+ * This file is expected to grow a scene at a time as more of 远望号 becomes
+ * playable; it is not a general config system.
  */
 
-/** Pixels per tile. Mirrors the size declared in the asset manifest. */
-export const TILE = TILE_SIZE;
+/**
+ * On-screen size of one tile, in pixels.
+ *
+ * The room grid is authored at a comfortable scale and then rendered at 40px per
+ * tile, which makes the 24 x 16 captain's quarters 960 x 640 -- smaller than the
+ * viewport, so the whole room is visible at once and the camera simply sits
+ * still. See `captainRoomMap.ts` for the scale reasoning.
+ */
+export const TILE = 40;
 
-/** World is measured in tiles here; pixel size is derived. */
-export const MAP_COLUMNS = 40;
-export const MAP_ROWS = 30;
+/** Pixel size a tile's art is authored at, before scaling. */
+export const ART_TILE = TILE_SIZE;
 
-export const MAP_WIDTH = MAP_COLUMNS * TILE;
-export const MAP_HEIGHT = MAP_ROWS * TILE;
+/** Captain's quarters, in tiles. */
+export const ROOM_COLUMNS = 24;
+export const ROOM_ROWS = 16;
+
+export const ROOM_WIDTH = ROOM_COLUMNS * TILE;
+export const ROOM_HEIGHT = ROOM_ROWS * TILE;
 
 /** Player movement, in pixels per second. */
-export const PLAYER_SPEED = 170;
+export const PLAYER_SPEED = 150;
 
 /**
- * How far in front of the player's feet they can reach to interact, in pixels.
+ * How far in front of their feet the player can reach to interact, in pixels.
  *
- * Roughly one tile, so standing outside a building reaches its door while the
- * far side of the street does not.
+ * Roughly one tile, so you act on the thing you are standing in front of rather
+ * than on whatever happens to be across the room.
  */
-export const PLAYER_INTERACT_REACH = 44;
+export const PLAYER_INTERACT_REACH = 40;
 
 /**
- * How far the player can reach to work the field, in pixels. Larger than the
- * normal reach: you work the plot you are standing next to, not a single tile.
+ * Where the player starts: just inside the doorway in the south wall, walking in.
+ * Bottom-centre anchored, so this is the sprite's top-left.
  */
-export const FARM_WORK_REACH = TILE * 1.5;
-
-/** Real seconds per in-game minute. 1 means ten real minutes is one game day. */
-export const SECONDS_PER_GAME_MINUTE = 1;
-
-/**
- * Spawn point of a new resident, in pixels: the crossroads in the middle of
- * town, on the main street. Kept clear of buildings so the player never starts
- * inside a wall.
- */
-export const PLAYER_SPAWN = { x: 18 * TILE + TILE / 2, y: 12 * TILE + TILE / 2 };
-
-/** Sanity check used at startup and by tests: the map must fill the world. */
-export function assertMapMatchesConfig(map: TileMap): void {
-  if (map.width !== MAP_COLUMNS || map.height !== MAP_ROWS) {
-    throw new Error(
-      `Town map is ${map.width}x${map.height} tiles but config says ` +
-        `${MAP_COLUMNS}x${MAP_ROWS}. Update townMap.ts or config.ts so they agree.`
-    );
-  }
-}
-
-/**
- * Build the farmable field from the map: every farmland tile becomes a plot.
- *
- * Derived from the map rather than listed separately, so moving or resizing the
- * field in `townMap.ts` cannot leave the plots behind in the old place.
- */
-export function createFarm(map: TileMap): Farm {
-  const farm = new Farm();
-  for (const { tx, ty } of map.tilesOfType("farmland")) {
-    farm.addPlot(tx, ty);
-  }
-  return farm;
-}
-
-/** Build the game clock. */
-export function createGameTime(): GameTime {
-  return new GameTime(SECONDS_PER_GAME_MINUTE);
-}
+export const PLAYER_SPAWN = {
+  x: 11.5 * TILE,
+  y: ROOM_HEIGHT - TILE - 48
+};

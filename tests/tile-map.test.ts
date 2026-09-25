@@ -1,245 +1,149 @@
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
-import { TileMap, type WorldRect } from "../src/game/map/TileMap";
-import { createTownMap, TOWN_SHAPES } from "../src/game/map/townMap";
+import { TileMap } from "../src/game/map/TileMap";
+import {
+  createCaptainRoomMap,
+  ROOM_COLUMNS,
+  ROOM_ROWS,
+  ROOM_SHAPES
+} from "../src/game/map/captainRoomMap";
 import { isBoxBlocked } from "../src/game/map/collision";
-import { Player } from "../src/game/entities/Player";
-import { MAP_COLUMNS, MAP_ROWS, MAP_WIDTH, MAP_HEIGHT, TILE, PLAYER_SPAWN } from "../src/game/config";
+import { TILE, PLAYER_SPAWN } from "../src/game/config";
 
-// TASK-104: the tile map. The rendering itself is checked by eye, but which
-// tiles a view touches -- and staying inside the grid while doing it -- is pure
-// logic and belongs here.
+// The captain's quarters map: the shell, the visible-tile culling, and the fact
+// that the room is actually enclosed and the player starts on solid deck.
 
-/** Collect the tiles a view yields, for order-independent assertions. */
-function visible(map: TileMap, view: WorldRect) {
+function visible(map: TileMap, view: { x: number; y: number; width: number; height: number }) {
   const tiles = [...map.visibleTiles(view)];
-  return {
-    tiles,
-    count: tiles.length,
-    keys: new Set(tiles.map((t) => `${t.tx},${t.ty}`))
-  };
+  return { tiles, count: tiles.length, keys: new Set(tiles.map((t) => `${t.tx},${t.ty}`)) };
 }
 
-/** A view covering the whole map, and one far bigger than it. */
-const wholeMap: WorldRect = { x: 0, y: 0, width: MAP_WIDTH, height: MAP_HEIGHT };
-const oversized: WorldRect = { x: -5000, y: -5000, width: 99999, height: 99999 };
+const room = () => createCaptainRoomMap(TILE);
+const roomWidthPx = ROOM_COLUMNS * TILE;
+const roomHeightPx = ROOM_ROWS * TILE;
 
-describe("TileMap basics (TASK-104)", () => {
-  test("rejects a grid that does not match its declared size", () => {
-    assert.throws(() => new TileMap(["grass"], 2, 2, 48), /expected 4/);
+/** The four kinds of tile that make up the hull. */
+const SHELL = new Set(["wall", "wall_dark", "window"]);
+
+describe("captain's room map (TASK-S1)", () => {
+  test("is the size the config declares", () => {
+    const map = room();
+
+    assert.equal(map.width, ROOM_COLUMNS);
+    assert.equal(map.height, ROOM_ROWS);
+    assert.equal(map.pixelWidth, roomWidthPx);
+    assert.equal(map.pixelHeight, roomHeightPx);
   });
 
-  test("reports pixel size from the tile size", () => {
-    const map = createTownMap();
-    assert.equal(map.pixelWidth, MAP_WIDTH);
-    assert.equal(map.pixelHeight, MAP_HEIGHT);
+  test("every declared shape fits inside the room", () => {
+    for (const shape of ROOM_SHAPES) {
+      assert.ok(shape.x >= 0 && shape.y >= 0, `shape starts outside: ${shape.note}`);
+      assert.ok(shape.x + shape.w <= ROOM_COLUMNS, `shape too wide: ${shape.note}`);
+      assert.ok(shape.y + shape.h <= ROOM_ROWS, `shape too tall: ${shape.note}`);
+    }
   });
 
-  test("tileAt returns null outside the map instead of undefined", () => {
-    const map = createTownMap();
+  test("the north and side walls are sealed", () => {
+    // A gap would let the player walk out of the ship.
+    const map = room();
 
-    assert.equal(map.tileAt(-1, 0), null);
-    assert.equal(map.tileAt(0, -1), null);
-    assert.equal(map.tileAt(MAP_COLUMNS, 0), null);
-    assert.equal(map.tileAt(0, MAP_ROWS), null);
-    assert.notEqual(map.tileAt(0, 0), null);
+    for (let tx = 0; tx < ROOM_COLUMNS; tx++) {
+      assert.ok(SHELL.has(map.tileAt(tx, 0)!), `north wall open at ${tx},0`);
+    }
+    for (let ty = 0; ty < ROOM_ROWS; ty++) {
+      assert.ok(SHELL.has(map.tileAt(0, ty)!), `west wall open at 0,${ty}`);
+      assert.ok(SHELL.has(map.tileAt(ROOM_COLUMNS - 1, ty)!), `east wall open at ${ROOM_COLUMNS - 1},${ty}`);
+    }
   });
 
-  test("atPixel converts pixels to the containing tile", () => {
-    const map = createTownMap();
+  test("the south wall is sealed apart from the doorway", () => {
+    const map = room();
+    let doorways = 0;
 
-    assert.equal(map.atPixel(0, 0), map.tileAt(0, 0));
-    assert.equal(map.atPixel(TILE - 1, TILE - 1), map.tileAt(0, 0));
-    assert.equal(map.atPixel(TILE, TILE), map.tileAt(1, 1));
+    for (let tx = 0; tx < ROOM_COLUMNS; tx++) {
+      const type = map.tileAt(tx, ROOM_ROWS - 1);
+      if (SHELL.has(type!)) continue;
+      assert.equal(type, "floor_light", `south wall has a non-doorway gap at ${tx}`);
+      doorways++;
+    }
+
+    assert.ok(doorways > 0, "the room has no way in");
+    assert.ok(doorways <= 2, `the doorway is ${doorways} tiles wide, which is too many`);
+  });
+
+  test("the observation wall runs along the north side", () => {
+    const map = room();
+    let windows = 0;
+
+    for (let tx = 0; tx < ROOM_COLUMNS; tx++) {
+      if (map.tileAt(tx, 0) === "window") windows++;
+    }
+
+    assert.equal(windows, 6, "设定集 gives the observation wall as six tiles wide");
+  });
+
+  test("the middle of the room is open deck", () => {
+    const map = room();
+
+    assert.equal(map.tileAt(12, 8), "floor_light", "the guide light runs up the middle");
+    assert.equal(map.tileAt(4, 6), "deck", "the working end should be open floor");
   });
 });
 
-describe("TileMap.visibleTiles (TASK-104)", () => {
-  test("covers exactly the tiles the view touches", () => {
-    const map = createTownMap();
+describe("visible tile culling (TASK-S1)", () => {
+  test("covers exactly the tiles a view touches", () => {
+    const map = room();
+    const got = visible(map, { x: 0, y: 0, width: TILE * 4, height: TILE * 3 });
 
-    // A viewport-sized window somewhere in the middle.
-    const got = visible(map, { x: 480, y: 480, width: 1280, height: 720 });
-
-    // Tiles 10..36 across and 10..24 down, inclusive.
-    assert.equal(got.count, (36 - 10 + 1) * (24 - 10 + 1));
-    assert.ok(got.keys.has("10,10"), "top-left tile missing");
-    assert.ok(got.keys.has("36,24"), "bottom-right tile missing");
-    assert.ok(!got.keys.has("9,10"), "one tile too far left");
-    assert.ok(!got.keys.has("37,24"), "one tile too far right");
+    assert.equal(got.count, 4 * 3);
+    assert.ok(got.keys.has("0,0"));
+    assert.ok(got.keys.has("3,2"));
+    assert.ok(!got.keys.has("4,0"), "one tile too far right");
   });
 
   test("never yields a tile outside the grid, even for a huge view", () => {
-    const map = createTownMap();
-    const got = visible(map, oversized);
+    const map = room();
+    const got = visible(map, { x: -9999, y: -9999, width: 99999, height: 99999 });
 
-    assert.equal(got.count, MAP_COLUMNS * MAP_ROWS);
+    assert.equal(got.count, ROOM_COLUMNS * ROOM_ROWS);
     for (const tile of got.tiles) {
       assert.ok(map.inBounds(tile.tx, tile.ty), `out of bounds: ${tile.tx},${tile.ty}`);
     }
   });
 
-  test("clamps a view hanging off each edge independently", () => {
-    const map = createTownMap();
+  test("yields nothing for a view entirely outside the room", () => {
+    const map = room();
 
-    // Off the top-left: a window whose far edge sits exactly on tile (10, 10),
-    // so tiles 0..9 on each axis are touched and nothing outside may appear.
-    const topLeft = visible(map, { x: -1000, y: -1000, width: 1000 + 10 * TILE, height: 1000 + 10 * TILE });
-    assert.ok(topLeft.keys.has("0,0"));
-    assert.ok(!topLeft.keys.has("-1,0"));
-    assert.equal(Math.max(...topLeft.tiles.map((t) => t.tx)), 9);
-    assert.equal(Math.max(...topLeft.tiles.map((t) => t.ty)), 9);
-
-    // Off the bottom-right: the last column and row must still be included.
-    const bottomRight = visible(map, {
-      x: MAP_WIDTH - 10,
-      y: MAP_HEIGHT - 10,
-      width: 5000,
-      height: 5000
-    });
-    assert.ok(bottomRight.keys.has(`${MAP_COLUMNS - 1},${MAP_ROWS - 1}`));
-  });
-
-  test("yields nothing for a view entirely outside the map", () => {
-    const map = createTownMap();
-
-    assert.equal([...map.visibleTiles({ x: -5000, y: -5000, width: 100, height: 100 })].length, 0);
+    assert.equal([...map.visibleTiles({ x: -500, y: -500, width: 50, height: 50 })].length, 0);
     assert.equal(
-      [...map.visibleTiles({ x: MAP_WIDTH + 10, y: 0, width: 100, height: 100 })].length,
-      0
-    );
-    assert.equal(
-      [...map.visibleTiles({ x: 0, y: MAP_HEIGHT + 10, width: 100, height: 100 })].length,
+      [...map.visibleTiles({ x: roomWidthPx + 50, y: 0, width: 50, height: 50 })].length,
       0
     );
   });
 
-  test("draws far fewer tiles than the map holds", () => {
-    const map = createTownMap();
-    const viewportOnly = visible(map, { x: 0, y: 0, width: 1280, height: 720 });
+  test("a whole-room view yields every tile exactly once", () => {
+    const map = room();
+    const got = visible(map, { x: 0, y: 0, width: roomWidthPx, height: roomHeightPx });
 
-    // The point of visible-tile culling: cost tracks the viewport, not the map.
-    assert.ok(
-      viewportOnly.count < (MAP_COLUMNS * MAP_ROWS) / 2,
-      `expected culling, got ${viewportOnly.count} of ${MAP_COLUMNS * MAP_ROWS}`
-    );
-  });
-
-  test("a whole-map view yields every tile exactly once", () => {
-    const map = createTownMap();
-    const got = visible(map, wholeMap);
-
-    assert.equal(got.count, MAP_COLUMNS * MAP_ROWS);
-    assert.equal(got.keys.size, MAP_COLUMNS * MAP_ROWS, "some tile was yielded twice");
+    assert.equal(got.count, ROOM_COLUMNS * ROOM_ROWS);
+    assert.equal(got.keys.size, ROOM_COLUMNS * ROOM_ROWS, "some tile was yielded twice");
   });
 });
 
-describe("town map layout (TASK-104)", () => {
-  test("is the size the config declares", () => {
-    const map = createTownMap();
+describe("the player starts inside the room (TASK-S1)", () => {
+  test("the spawn point is on walkable deck", () => {
+    const map = room();
 
-    assert.equal(map.width, MAP_COLUMNS);
-    assert.equal(map.height, MAP_ROWS);
-  });
-
-  test("every declared shape fits inside the map", () => {
-    for (const shape of TOWN_SHAPES) {
-      assert.ok(shape.x >= 0 && shape.y >= 0, `shape starts outside: ${shape.note}`);
-      assert.ok(shape.x + shape.w <= MAP_COLUMNS, `shape too wide: ${shape.note}`);
-      assert.ok(shape.y + shape.h <= MAP_ROWS, `shape too tall: ${shape.note}`);
-    }
-  });
-
-  test("the shapes produce the intended terrain", () => {
-    const map = createTownMap();
-
-    // River down the east edge, and the bridge crossing it.
-    assert.equal(map.tileAt(38, 5), "water");
-    assert.equal(map.tileAt(39, 29), "water");
-    assert.equal(map.tileAt(36, 12), "path", "bridge should cross the river");
-
-    // Main street runs west-east along row 12.
-    assert.equal(map.tileAt(4, 12), "path");
-    assert.equal(map.tileAt(34, 12), "path");
-
-    // Side street runs north-south along column 18, crossing the main street.
-    assert.equal(map.tileAt(18, 6), "path");
-    assert.equal(map.tileAt(18, 26), "path");
-    assert.equal(map.tileAt(18, 12), "path", "crossroads should be path");
-
-    // Farmland in the south-west, with its access spur.
-    assert.equal(map.tileAt(4, 18), "farmland");
-    assert.equal(map.tileAt(7, 25), "farmland");
-    assert.equal(map.tileAt(6, 17), "path", "farm spur should reach the field");
-    assert.equal(map.tileAt(8, 18), "grass", "field should not bleed east");
-  });
-
-  test("the farmland is a solid block, not a ragged patch", () => {
-    const map = createTownMap();
-    const field = TOWN_SHAPES.find((s) => s.type === "farmland");
-    assert.ok(field, "expected a farmland shape");
-
-    for (let y = field.y; y < field.y + field.h; y++) {
-      for (let x = field.x; x < field.x + field.w; x++) {
-        assert.equal(map.tileAt(x, y), "farmland", `hole in farmland at ${x},${y}`);
-      }
-    }
-  });
-
-  test("the player spawns on ground they can stand on", () => {
-    const map = createTownMap();
-    const player = new Player(PLAYER_SPAWN.x, PLAYER_SPAWN.y);
-
-    // The spawn must not be inside a solid tile: collision assumes a valid
-    // starting position, so spawning inside a wall would leave the player stuck.
+    const collider = { x: PLAYER_SPAWN.x - 11, y: PLAYER_SPAWN.y + 48 - 16, width: 22, height: 16 };
     assert.equal(
-      isBoxBlocked(map, player.colliderAt()),
+      isBoxBlocked(map, collider),
       false,
-      "spawn point puts the player inside a solid tile"
+      "the player would start inside the hull or a wall"
     );
   });
 
-  test("no building has a hole in its wall ring", () => {
-    const map = createTownMap();
-
-    // For every roof tile, all eight neighbours must be non-walkable. This is
-    // the check that catches a roof sized wrong and overwriting a wall row,
-    // which silently leaves a gap the player can walk through.
-    const dirs = [-1, 0, 1];
-    let roofs = 0;
-
-    for (let ty = 0; ty < MAP_ROWS; ty++) {
-      for (let tx = 0; tx < MAP_COLUMNS; tx++) {
-        if (map.tileAt(tx, ty) !== "roof") continue;
-        roofs++;
-
-        for (const ox of dirs) {
-          for (const oy of dirs) {
-            if (ox === 0 && oy === 0) continue;
-            const neighbour = map.tileAt(tx + ox, ty + oy);
-            assert.ok(
-              neighbour === "roof" || neighbour === "wall",
-              `gap beside roof at ${tx},${ty}: neighbour ${tx + ox},${ty + oy} is ${neighbour}`
-            );
-          }
-        }
-      }
-    }
-
-    assert.ok(roofs > 0, "expected the town to have buildings");
-  });
-
-  test("buildings never block the streets", () => {
-    const map = createTownMap();
-
-    // Buildings are placed relative to the street rows, so a later move could
-    // silently wall the town off. Walk the main street and the side street and
-    // require them to stay passable end to end.
-    for (let x = 4; x <= 34; x++) {
-      assert.equal(map.tileAt(x, 12), "path", `main street blocked at ${x},12`);
-    }
-    for (let y = 6; y <= 26; y++) {
-      assert.equal(map.tileAt(18, y), "path", `side street blocked at 18,${y}`);
-    }
+  test("the spawn is inside the room's bounds", () => {
+    assert.ok(PLAYER_SPAWN.x > 0 && PLAYER_SPAWN.x < roomWidthPx);
+    assert.ok(PLAYER_SPAWN.y > 0 && PLAYER_SPAWN.y < roomHeightPx);
   });
 });

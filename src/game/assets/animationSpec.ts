@@ -35,14 +35,14 @@ export function resolveFacing(facing: Facing): { source: Facing; flipX: boolean 
 /** The asset id for a direction and pose. */
 export function frameFor(facing: Facing, pose: Pose): Frame {
   const { source, flipX } = resolveFacing(facing);
-  return { assetId: `player_${source}_${pose}`, flipX };
+  return { assetId: `crew_${source}_${pose}`, flipX };
 }
 
 /** How long each walk frame lasts, in seconds. */
 export const WALK_FRAME_SECONDS = 0.16;
 
-/** Every asset id the player's animation needs. */
-export function playerAnimationAssetIds(): string[] {
+/** Every asset id the crew sprite's animation needs. */
+export function crewAnimationAssetIds(): string[] {
   const ids: string[] = [];
   for (const facing of ["up", "down", "left", "right"] as const) {
     for (const pose of ["idle", "walkA", "walkB"] as const) {
@@ -58,12 +58,12 @@ export function playerAnimationAssetIds(): string[] {
  */
 export function assertAnimationAssetsExist(): void {
   const known = new Set(ALL_ASSETS.map((a) => a.id));
-  const missing = playerAnimationAssetIds().filter((id) => !known.has(id));
+  const missing = crewAnimationAssetIds().filter((id) => !known.has(id));
 
   if (missing.length > 0) {
     throw new Error(`Player animation references unknown assets: ${missing.join(", ")}`);
   }
 
   // Also confirm each is resolvable through the public lookup.
-  for (const id of playerAnimationAssetIds()) getAssetSpec(id);
+  for (const id of crewAnimationAssetIds()) getAssetSpec(id);
 }
