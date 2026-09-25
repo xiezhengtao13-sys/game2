@@ -424,6 +424,38 @@ export const CHARACTERS: AssetSpec[] = [
     `Cute chibi cartoon spaceship crew member seen from behind (facing away, north), top-down three-quarter view, walking away mid-stride frame 2, dark blue-grey work coveralls and a flat cap, no face visible, simple rounded shapes, thick dark outlines, flat 2D vector style, plain transparent background, single character centred, no text`
   ),
 
+  // --- the captain -----------------------------------------------------------
+  // Older, greyer and tidier than the crew: command blacks rather than work
+  // coveralls, no cap, and a ship's patch on the shoulder. The setting document
+  // does not describe him directly, so everything here is inferred from the room
+  // he keeps -- paper documents, a physical star chart, a photograph of Earth,
+  // and a chair that is "not a throne".
+  {
+    id: "npc_captain",
+    nameZh: "舰长",
+    descZh: "远望号舰长。深色制服，年纪偏大，神态克制——那间摆着纸和书的房间是他的。",
+    descEn:
+      "Cute chibi cartoon starship captain seen from a top-down three-quarter view, older man in a plain dark navy command uniform with a small ship patch on one shoulder and no medals, neat short grey hair, round weathered face with two tiny dark eyes, calm and unshowy, simple rounded shapes, thick dark outlines, flat 2D vector style, plain transparent background, single character centred, no text",
+    size: { w: 32, h: 48 },
+    anchor: "bottom-center",
+    category: "character",
+    placeholder: {
+      shapes: [
+        { kind: "rect", x: -12, y: -48, w: 24, h: 22, color: "#e0c39c", radius: 9, stroke: { width: 2, color: "#1d2129" } },
+        // Grey hair, drawn behind the eyes so the face stays readable.
+        { kind: "rect", x: -12, y: -48, w: 24, h: 7, color: "#c8c6c2", radius: 4, stroke: { width: 2, color: "#1d2129" } },
+        { kind: "rect", x: -8, y: -41, w: 4, h: 4, color: "#22262c", radius: 2 },
+        { kind: "rect", x: 4, y: -41, w: 4, h: 4, color: "#22262c", radius: 2 },
+        // Command uniform: darker and plainer than the crew's coveralls.
+        { kind: "rect", x: -13, y: -30, w: 26, h: 26, color: "#2b3244", radius: 8, stroke: { width: 2, color: "#1d2129" } },
+        // Ship patch.
+        { kind: "rect", x: -11, y: -27, w: 6, h: 6, color: "#7d8aa3", radius: 2 },
+        { kind: "rect", x: -10, y: -8, w: 8, h: 8, color: "#232838", radius: 3, stroke: { width: 2, color: "#1d2129" } },
+        { kind: "rect", x: 2, y: -8, w: 8, h: 8, color: "#232838", radius: 3, stroke: { width: 2, color: "#1d2129" } }
+      ]
+    }
+  },
+
   // Left-facing frames are NOT drawn by hand: `npm run art` mirrors the
   // right-facing frame of the same pose, so four directions need only three sets
   // of art. See MIRRORED in animationSpec.ts.

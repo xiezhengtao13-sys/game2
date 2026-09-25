@@ -2,6 +2,7 @@ import { describe, test } from "node:test";
 import assert from "node:assert/strict";
 import { CaptainRoom } from "../src/game/scenes/CaptainRoom";
 import { ROOM_PROPS } from "../src/game/scenes/captainRoomProps";
+import { ROOM_PEOPLE } from "../src/game/scenes/captainRoomPeople";
 import { createCaptainRoomMap } from "../src/game/map/captainRoomMap";
 import { isBoxBlocked } from "../src/game/map/collision";
 import { findInteractable, reachPoint } from "../src/game/systems/Interaction";
@@ -201,6 +202,160 @@ describe("every prop can actually be walked up to (TASK-S1)", () => {
       assert.ok(found, `no reachable tile prompts for ${prop.label}`);
     });
   }
+});
+
+describe("the captain (TASK-S1b)", () => {
+  const captain = ROOM_PEOPLE[0];
+
+  test("he is in the room, with a name and a sprite", () => {
+    assert.ok(ROOM_PEOPLE.length > 0, "nobody is in the room");
+    assert.ok(captain.name.length > 0);
+    assert.ok(captain.assetId.length > 0);
+    assert.ok(captain.lines.length > 0, "the captain has nothing to say");
+  });
+
+  test("he stands on walkable deck, inside the room", () => {
+    const map = createCaptainRoomMap(TILE);
+
+    assert.ok(captain.x > 0 && captain.x < ROOM_COLUMNS * TILE);
+    assert.ok(captain.y > 0 && captain.y < ROOM_ROWS * TILE);
+
+    const collider = { x: captain.x - 11, y: captain.y - 16, width: 22, height: 16 };
+    assert.equal(isBoxBlocked(map, collider), false, "the captain is standing inside a wall");
+  });
+
+  test("he is not standing on top of the furniture", () => {
+    // He leans at his desk, he does not stand in it.
+    for (const prop of ROOM_PROPS) {
+      const halfW = (prop.w * TILE) / 2;
+      const halfH = (prop.h * TILE) / 2;
+      const inside =
+        captain.x > prop.x - halfW &&
+        captain.x < prop.x + halfW &&
+        captain.y > prop.y - halfH &&
+        captain.y < prop.y + halfH;
+      assert.equal(inside, false, `the captain is standing inside ${prop.label}`);
+    }
+  });
+
+  test("every line has a speaker and non-empty text", () => {
+    for (const line of captain.lines) {
+      assert.equal(line.speaker, captain.name, "the captain should speak under his own name");
+      assert.ok(line.text.trim().length > 0, "a line is blank");
+    }
+  });
+
+  test("the captain is not also a prop, and no prop shares his position", () => {
+    for (const prop of ROOM_PROPS) {
+      const same = prop.x === captain.x && prop.y === captain.y;
+      assert.equal(same, false, `${prop.label} is on top of the captain`);
+    }
+  });
+
+  test("the captain can be walked up to and spoken to", () => {
+    // Try every reachable tile facing every direction, as with the props.
+    const world = room();
+    let found = false;
+
+    for (const key of standableTiles()) {
+      const [tx, ty] = key.split(",").map(Number);
+      const centerX = tx * TILE + TILE / 2;
+      const feetY = ty * TILE + TILE / 2;
+
+      for (const facing of ["up", "down", "left", "right"] as const) {
+        const reach = reachPoint(centerX, feetY, facing, PLAYER_INTERACT_REACH);
+        if (findInteractable(world.examinable, reach)?.label === `和${captain.name}说话`) {
+          found = true;
+          break;
+        }
+      }
+      if (found) break;
+    }
+
+    assert.ok(found, "the captain cannot be reached from anywhere the player can stand");
+  });
+
+  test("talking to him opens his dialogue and freezes the player", () => {
+    const world = room();
+    world.player.x = captain.x - world.player.width / 2;
+    world.player.y = captain.y + 48 - world.player.height;
+    world.player.animation.face("up");
+
+    world.update(0.016, fakeInput([], ["KeyE"]));
+
+    assert.equal(world.dialogue.isOpen, true, "the captain should have said something");
+    assert.equal(world.dialogue.current?.speaker, captain.name);
+
+    const before = { x: world.player.x, y: world.player.y };
+    for (let i = 0; i < 30; i++) world.update(0.016, fakeInput(["KeyD"]));
+    assert.equal(world.player.x, before.x, "the player should be frozen while talking");
+  });
+
+  test("his opening notices whether the player looked around first", () => {
+    // Look at nothing, then speak: no extra line.
+    const brief = room();
+    brief.player.x = captain.x - brief.player.width / 2;
+    brief.player.y = captain.y + 48 - brief.player.height;
+    brief.player.animation.face("up");
+    brief.update(0.016, fakeInput([], ["KeyE"]));
+    const briefTexts: string[] = [];
+    while (brief.dialogue.isOpen) {
+      briefTexts.push(brief.dialogue.current!.text);
+      brief.update(0.016, fakeInput([], ["Space"]));
+    }
+
+    assert.ok(
+      !briefTexts.some((t) => t.includes("看了一圈")),
+      "he should not comment when the player has looked at nothing"
+    );
+  });
+
+  test("looking around first earns a different opening, but only once", () => {
+    const world = room();
+
+    // Examine three props through the real interaction.
+    const toExamine = ["fx_desk", "fx_starchart", "fx_photo"];
+    for (const assetId of toExamine) {
+      const prop = ROOM_PROPS.find((p) => p.assetId === assetId)!;
+      world.player.x = prop.x - world.player.width / 2;
+      world.player.y = prop.y + TILE + 8 - world.player.height;
+      world.player.animation.face("up");
+      // Stand where the prop is actually in reach.
+      for (const facing of ["up", "down", "left", "right"] as const) {
+        world.player.animation.face(facing);
+        world.update(0.016, fakeInput([], []));
+        if (world.interactionLabel === prop.label) break;
+      }
+      // Move onto the prop's own line if we found it.
+      world.update(0.016, fakeInput([], ["KeyE"]));
+      while (world.dialogue.isOpen) world.update(0.016, fakeInput([], ["Space"]));
+    }
+
+    // Now speak to him.
+    world.player.x = captain.x - world.player.width / 2;
+    world.player.y = captain.y + 48 - world.player.height;
+    world.player.animation.face("up");
+    world.update(0.016, fakeInput([], ["KeyE"]));
+    const first: string[] = [];
+    while (world.dialogue.isOpen) {
+      first.push(world.dialogue.current!.text);
+      world.update(0.016, fakeInput([], ["Space"]));
+    }
+
+    // And again.
+    world.update(0.016, fakeInput([], ["KeyE"]));
+    const second: string[] = [];
+    while (world.dialogue.isOpen) {
+      second.push(world.dialogue.current!.text);
+      world.update(0.016, fakeInput([], ["Space"]));
+    }
+
+    assert.ok(
+      !second.some((t) => t.includes("看了一圈")),
+      "the remark should not repeat every time you speak to him"
+    );
+    void first;
+  });
 });
 
 describe("examining a prop (TASK-S1)", () => {

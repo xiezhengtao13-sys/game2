@@ -5,9 +5,10 @@ import type { TileMap } from "../map/TileMap";
 import { Player, facingFor } from "../entities/Player";
 import type { GameAssets } from "../assets";
 import { findInteractable, reachPoint, type Interactable } from "../systems/Interaction";
-import { Dialogue } from "../systems/Dialogue";
+import { Dialogue, type DialogueLine } from "../systems/Dialogue";
 import { PLAYER_INTERACT_REACH, PLAYER_SPAWN, ROOM_HEIGHT, ROOM_WIDTH } from "../config";
 import { ROOM_PROPS, type Prop } from "./captainRoomProps";
+import { ROOM_PEOPLE, type Person } from "./captainRoomPeople";
 
 /**
  * Colour used for a tile while its art is missing or still loading.
@@ -42,9 +43,15 @@ export class CaptainRoom implements GameWorld {
   private readonly map: TileMap;
   private readonly assets: GameAssets | null;
   private readonly props: readonly Prop[];
+  private readonly people: readonly Person[];
   private readonly interactables: readonly Interactable[];
   /** Interactable id -> the prop behind it. Avoids reverse-parsing ids. */
   private readonly propById = new Map<string, Prop>();
+  /** Interactable id -> the person behind it. */
+  private readonly personById = new Map<string, Person>();
+
+  /** Ids of props already examined, so the captain can react to them. */
+  private readonly seen = new Set<string>();
 
   /** What the player is being prompted about right now, or null. */
   private target: Interactable | null = null;
@@ -52,15 +59,22 @@ export class CaptainRoom implements GameWorld {
   /** Told whenever the open dialogue changes, so the DOM box can redraw. */
   onDialogueChange: ((dialogue: Dialogue | null) => void) | null = null;
 
-  constructor(map: TileMap, assets: GameAssets | null = null, props: readonly Prop[] = ROOM_PROPS) {
+  constructor(
+    map: TileMap,
+    assets: GameAssets | null = null,
+    props: readonly Prop[] = ROOM_PROPS,
+    people: readonly Person[] = ROOM_PEOPLE
+  ) {
     this.map = map;
     this.assets = assets;
     this.props = props;
+    this.people = people;
     this.player = new Player(PLAYER_SPAWN.x, PLAYER_SPAWN.y);
 
-    // Only props with something to say become interaction targets, so there is
-    // no way to press E on a chair and get nothing.
+    // Only props and people with something to say become interaction targets, so
+    // there is no way to press E on a chair and get nothing.
     const interactables: Interactable[] = [];
+
     props.forEach((prop, index) => {
       if (!prop.lines || prop.lines.length === 0) return;
 
@@ -76,6 +90,21 @@ export class CaptainRoom implements GameWorld {
         radius: Math.max(28, (Math.max(prop.w, prop.h) * this.map.tileSize) / 2)
       });
     });
+
+    for (const person of people) {
+      const id = `person-${person.id}`;
+      this.personById.set(id, person);
+      interactables.push({
+        id,
+        label: `和${person.name}说话`,
+        x: person.x,
+        // A person is reached by their feet, not their centre: you stand in
+        // front of someone, not on top of them.
+        y: person.y,
+        radius: 46
+      });
+    }
+
     this.interactables = interactables;
   }
 
@@ -91,6 +120,30 @@ export class CaptainRoom implements GameWorld {
   /** Everything in the room that can be examined, for tests and tooling. */
   get examinable(): readonly Interactable[] {
     return this.interactables;
+  }
+
+  /**
+   * Interact with whatever is in reach right now.
+   *
+   * A development aid: reaching a talking state from a URL parameter in a
+   * headless browser, where keystrokes cannot be sent. Routed through the same
+   * `examine` path the E key uses, so it exercises the real code rather than
+   * bypassing it.
+   */
+  interactInReach(): boolean {
+    if (this.dialogue.isOpen) return false;
+
+    const reach = reachPoint(
+      this.player.centerX,
+      this.player.y + this.player.height,
+      this.player.facing,
+      PLAYER_INTERACT_REACH
+    );
+    const found = findInteractable(this.interactables, reach);
+    if (!found) return false;
+
+    this.examine(found);
+    return this.dialogue.isOpen;
   }
 
   /** The label on the current prompt, for the HUD. */
@@ -121,19 +174,52 @@ export class CaptainRoom implements GameWorld {
     if (this.target && input.wasPressed("KeyE")) this.examine(this.target);
   }
 
-  /** Open the description for a prop, turning to face it first. */
+  /** Open the description for a prop or person, turning to face them first. */
   private examine(target: Interactable): void {
+    const person = this.personById.get(target.id);
     const prop = this.propById.get(target.id);
-    if (!prop?.lines) return;
+    const anchor = person ?? prop;
+    if (!anchor) return;
 
-    const dx = target.x - this.player.centerX;
-    const dy = target.y - (this.player.y + this.player.height);
+    const lines = person ? this.linesFor(person) : prop?.lines;
+    if (!lines || lines.length === 0) return;
+
+    const dx = anchor.x - this.player.centerX;
+    const dy = anchor.y - (this.player.y + this.player.height);
     if (dx !== 0 || dy !== 0) this.player.animation.face(facingFor(dx, dy));
 
+    if (prop) this.seen.add(prop.assetId);
+
     this.target = null;
-    this.dialogue.open(prop.lines);
+    this.dialogue.open(lines);
     this.onDialogueChange?.(this.dialogue);
   }
+
+  /**
+   * What a person says.
+   *
+   * The captain notices if the player has already looked around his room. It is
+   * a small thing, but it is the difference between a room full of props and a
+   * room someone actually lives in.
+   *
+   * Only his FIRST line varies, and only once: a captain who commented on your
+   * sightseeing every single time you spoke to him would be a gimmick.
+   */
+  private linesFor(person: Person): readonly DialogueLine[] {
+    if (person.id !== "captain" || this.captainGreeted) return person.lines;
+    this.captainGreeted = true;
+
+    if (this.seen.size < 3) return person.lines;
+
+    return [
+      ...person.lines.slice(0, 3),
+      { speaker: "舰长", text: "你已经把这儿看了一圈了？" },
+      ...person.lines.slice(3)
+    ];
+  }
+
+  /** True once the captain has been spoken to, so his opening varies only once. */
+  private captainGreeted = false;
 
   getCamera(): GameCamera {
     // The room is smaller than the viewport, so the camera's `clampTo` centres it
@@ -146,8 +232,23 @@ export class CaptainRoom implements GameWorld {
     this.renderBackdrop(renderer);
     this.renderDeck(renderer);
     this.renderProps(renderer);
+    this.renderPeople(renderer);
     this.renderPlayer(renderer);
     this.renderPrompt(renderer);
+  }
+
+  /** Everyone standing in the room, drawn with the player's anchor convention. */
+  private renderPeople(renderer: Renderer): void {
+    for (const person of this.people) {
+      const image = this.assets?.image(person.assetId) ?? null;
+      renderer.drawSprite(image, person.x, person.y, {
+        anchor: "bottom-center",
+        // Facing left reuses the right-facing art, mirrored.
+        flipX: person.facing === "left",
+        size: { w: 32, h: 48 },
+        fallbackColor: "#ff00ff"
+      });
+    }
   }
 
   /**

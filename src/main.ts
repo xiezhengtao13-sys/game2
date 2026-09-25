@@ -37,6 +37,32 @@ const IDLE_HUD = "远望号 · 舰长室";
 if (status) status.textContent = IDLE_HUD;
 
 const room = new CaptainRoom(map, assets);
+
+/**
+ * Development aids, driven from the URL so a headless browser can reach a
+ * specific state without being able to send keystrokes.
+ *
+ *   ?spawn=x,y          place the player (sprite top-left, world pixels)
+ *   &facing=up|down|left|right
+ *   &dialogue=1         interact with whatever is in reach on the first frame
+ *   &debug=1            draw magenta corner markers inside the canvas
+ */
+const params = new URLSearchParams(window.location.search);
+
+const spawnParam = params.get("spawn");
+if (spawnParam) {
+  const [x, y] = spawnParam.split(",").map(Number);
+  if (Number.isFinite(x) && Number.isFinite(y)) {
+    room.player.x = x;
+    room.player.y = y;
+  }
+}
+
+const facingParam = params.get("facing");
+if (facingParam === "up" || facingParam === "down" || facingParam === "left" || facingParam === "right") {
+  room.player.animation.face(facingParam);
+}
+
 const game = new Game(canvas, room);
 game.start();
 
@@ -46,6 +72,12 @@ const app = document.querySelector<HTMLElement>("#app");
 if (app) {
   const dialogueBox = new DialogueBox(app);
   room.onDialogueChange = (dialogue) => dialogueBox.render(dialogue);
+
+  // `&dialogue=1` interacts immediately, so a screenshot can show the box.
+  if (params.get("dialogue") === "1") {
+    room.interactInReach();
+    dialogueBox.render(room.dialogue.isOpen ? room.dialogue : null);
+  }
 }
 
 /** Live state, mirrored for automated checks in a headless browser. */
