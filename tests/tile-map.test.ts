@@ -3,30 +3,32 @@ import assert from "node:assert/strict";
 import { TileMap } from "../src/game/map/TileMap";
 import {
   createCaptainRoomMap,
+  CABIN_DOOR,
   ROOM_COLUMNS,
   ROOM_ROWS,
   ROOM_SHAPES
 } from "../src/game/map/captainRoomMap";
-import { isBoxBlocked } from "../src/game/map/collision";
-import { TILE, PLAYER_SPAWN } from "../src/game/config";
+import { TILE } from "../src/game/config";
 
-// The captain's quarters map: the shell, the visible-tile culling, and the fact
-// that the room is actually enclosed and the player starts on solid deck.
+// TileMap mechanics, plus the cabin's own shell: the room is one compartment of
+// the ship now, so its shell is worth checking on its own terms -- the deck's
+// join cuts into one wall of it, and that is exactly the sort of thing that can
+// hide a hole in the other three.
+
+const room = () => createCaptainRoomMap(TILE);
+const roomWidthPx = ROOM_COLUMNS * TILE;
+const roomHeightPx = ROOM_ROWS * TILE;
 
 function visible(map: TileMap, view: { x: number; y: number; width: number; height: number }) {
   const tiles = [...map.visibleTiles(view)];
   return { tiles, count: tiles.length, keys: new Set(tiles.map((t) => `${t.tx},${t.ty}`)) };
 }
 
-const room = () => createCaptainRoomMap(TILE);
-const roomWidthPx = ROOM_COLUMNS * TILE;
-const roomHeightPx = ROOM_ROWS * TILE;
-
-/** The four kinds of tile that make up the hull. */
+/** The four kinds of tile that make up the shell. */
 const SHELL = new Set(["wall", "wall_dark", "window"]);
 
 describe("captain's room map (TASK-S1)", () => {
-  test("is the size the config declares", () => {
+  test("is the size the room declares", () => {
     const map = room();
 
     assert.equal(map.width, ROOM_COLUMNS);
@@ -43,12 +45,12 @@ describe("captain's room map (TASK-S1)", () => {
     }
   });
 
-  test("the north and side walls are sealed", () => {
+  test("the side walls and the aft wall are sealed", () => {
     // A gap would let the player walk out of the ship.
     const map = room();
 
     for (let tx = 0; tx < ROOM_COLUMNS; tx++) {
-      assert.ok(SHELL.has(map.tileAt(tx, 0)!), `north wall open at ${tx},0`);
+      assert.ok(SHELL.has(map.tileAt(tx, ROOM_ROWS - 1)!), `aft wall open at ${tx}`);
     }
     for (let ty = 0; ty < ROOM_ROWS; ty++) {
       assert.ok(SHELL.has(map.tileAt(0, ty)!), `west wall open at 0,${ty}`);
@@ -56,22 +58,24 @@ describe("captain's room map (TASK-S1)", () => {
     }
   });
 
-  test("the south wall is sealed apart from the doorway", () => {
+  test("the forward wall is sealed apart from the doorway", () => {
     const map = room();
-    let doorways = 0;
+    const open: number[] = [];
 
     for (let tx = 0; tx < ROOM_COLUMNS; tx++) {
-      const type = map.tileAt(tx, ROOM_ROWS - 1);
-      if (SHELL.has(type!)) continue;
-      assert.equal(type, "floor_light", `south wall has a non-doorway gap at ${tx}`);
-      doorways++;
+      if (SHELL.has(map.tileAt(tx, 0)!)) continue;
+      assert.equal(map.tileAt(tx, 0), "floor_light", `forward wall has a gap at ${tx}`);
+      open.push(tx);
     }
 
-    assert.ok(doorways > 0, "the room has no way in");
-    assert.ok(doorways <= 2, `the doorway is ${doorways} tiles wide, which is too many`);
+    assert.deepEqual(
+      open,
+      [CABIN_DOOR.x, CABIN_DOOR.x + 1, CABIN_DOOR.x + 2],
+      "the doorway is not where CABIN_DOOR says it is"
+    );
   });
 
-  test("the observation wall runs along the north side", () => {
+  test("the observation wall runs along the forward side", () => {
     const map = room();
     let windows = 0;
 
@@ -127,23 +131,5 @@ describe("visible tile culling (TASK-S1)", () => {
 
     assert.equal(got.count, ROOM_COLUMNS * ROOM_ROWS);
     assert.equal(got.keys.size, ROOM_COLUMNS * ROOM_ROWS, "some tile was yielded twice");
-  });
-});
-
-describe("the player starts inside the room (TASK-S1)", () => {
-  test("the spawn point is on walkable deck", () => {
-    const map = room();
-
-    const collider = { x: PLAYER_SPAWN.x - 11, y: PLAYER_SPAWN.y + 48 - 16, width: 22, height: 16 };
-    assert.equal(
-      isBoxBlocked(map, collider),
-      false,
-      "the player would start inside the hull or a wall"
-    );
-  });
-
-  test("the spawn is inside the room's bounds", () => {
-    assert.ok(PLAYER_SPAWN.x > 0 && PLAYER_SPAWN.x < roomWidthPx);
-    assert.ok(PLAYER_SPAWN.y > 0 && PLAYER_SPAWN.y < roomHeightPx);
   });
 });

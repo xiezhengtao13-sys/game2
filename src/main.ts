@@ -1,7 +1,7 @@
 import { Game } from "./engine/core/Game";
-import { Bridge } from "./game/scenes/Bridge";
-import { createBridgeMap } from "./game/map/bridgeMap";
-import { BRIDGE_COLUMNS, BRIDGE_ROWS, BRIDGE_TILE } from "./game/config";
+import { ShipWorld } from "./game/scenes/ShipWorld";
+import { createShipMap, SHIP_COLUMNS, SHIP_ROWS } from "./game/map/shipMap";
+import { TILE } from "./game/config";
 import { loadGameAssets } from "./game/assets";
 import { assertAnimationAssetsExist } from "./game/assets/animationSpec";
 import { DialogueBox } from "./ui/DialogueBox";
@@ -14,12 +14,12 @@ if (!found) {
 // Re-bound so the non-null type survives into the closures below.
 const canvas: HTMLCanvasElement = found;
 
-const map = createBridgeMap(BRIDGE_TILE);
+const map = createShipMap(TILE);
 
-if (map.width !== BRIDGE_COLUMNS || map.height !== BRIDGE_ROWS) {
+if (map.width !== SHIP_COLUMNS || map.height !== SHIP_ROWS) {
   throw new Error(
-    `Bridge is ${map.width}x${map.height} tiles but config says ` +
-      `${BRIDGE_COLUMNS}x${BRIDGE_ROWS}. Update bridgeMap.ts or config.ts so they agree.`
+    `The ship is ${map.width}x${map.height} tiles but shipMap.ts says ` +
+      `${SHIP_COLUMNS}x${SHIP_ROWS}. Update shipMap.ts so they agree.`
   );
 }
 
@@ -33,10 +33,8 @@ assertAnimationAssetsExist();
 const assets = await loadGameAssets();
 
 const status = document.querySelector<HTMLSpanElement>("#status");
-const IDLE_HUD = "远望号 · 舰桥";
-if (status) status.textContent = IDLE_HUD;
 
-const room = new Bridge(map, assets);
+const ship = new ShipWorld(map, assets);
 
 /**
  * Development aids, driven from the URL so a headless browser can reach a
@@ -53,40 +51,41 @@ const spawnParam = params.get("spawn");
 if (spawnParam) {
   const [x, y] = spawnParam.split(",").map(Number);
   if (Number.isFinite(x) && Number.isFinite(y)) {
-    room.player.x = x;
-    room.player.y = y;
+    ship.player.x = x;
+    ship.player.y = y;
   }
 }
 
 const facingParam = params.get("facing");
 if (facingParam === "up" || facingParam === "down" || facingParam === "left" || facingParam === "right") {
-  room.player.animation.face(facingParam);
+  ship.player.animation.face(facingParam);
 }
 
-const game = new Game(canvas, room);
+const game = new Game(canvas, ship);
 game.start();
 
-// The dialogue box is DOM, so the scene pushes its dialogue state out to it
+// The dialogue box is DOM, so the world pushes its dialogue state out to it
 // rather than reaching for the document itself.
 const app = document.querySelector<HTMLElement>("#app");
 if (app) {
   const dialogueBox = new DialogueBox(app);
-  room.onDialogueChange = (dialogue) => dialogueBox.render(dialogue);
+  ship.onDialogueChange = (dialogue) => dialogueBox.render(dialogue);
 
   // `&dialogue=1` interacts immediately, so a screenshot can show the box.
   if (params.get("dialogue") === "1") {
-    room.interactInReach();
-    dialogueBox.render(room.dialogue.isOpen ? room.dialogue : null);
+    ship.interactInReach();
+    dialogueBox.render(ship.dialogue.isOpen ? ship.dialogue : null);
   }
 }
 
 /** Live state, mirrored for automated checks in a headless browser. */
 interface Probe {
   tile: number;
-  roomColumns: number;
-  roomRows: number;
-  roomPixelWidth: number;
-  roomPixelHeight: number;
+  place: string;
+  mapColumns: number;
+  mapRows: number;
+  mapPixelWidth: number;
+  mapPixelHeight: number;
   canvasWidth: number;
   canvasHeight: number;
   cameraX: number;
@@ -110,25 +109,26 @@ function readProbe(): Probe {
   const { camera } = game;
 
   return {
-    tile: BRIDGE_TILE,
-    roomColumns: map.width,
-    roomRows: map.height,
-    roomPixelWidth: map.pixelWidth,
-    roomPixelHeight: map.pixelHeight,
+    tile: TILE,
+    place: ship.placeLabel,
+    mapColumns: map.width,
+    mapRows: map.height,
+    mapPixelWidth: map.pixelWidth,
+    mapPixelHeight: map.pixelHeight,
     canvasWidth: canvas.width,
     canvasHeight: canvas.height,
     cameraX: camera.worldX,
     cameraY: camera.worldY,
-    playerX: room.player.x,
-    playerY: room.player.y,
-    spriteLeft: room.player.x - camera.worldX,
-    spriteTop: room.player.y - camera.worldY,
-    target: room.interactionTarget?.id ?? null,
-    targetLabel: room.interactionLabel,
-    dialogueOpen: room.dialogue.isOpen ? 1 : 0,
-    dialogueLine: room.dialogue.isOpen ? room.dialogue.lineNumber : 0,
-    dialogueTotal: room.dialogue.lineCount,
-    dialogueText: room.dialogue.current?.text ?? null,
+    playerX: ship.player.x,
+    playerY: ship.player.y,
+    spriteLeft: ship.player.x - camera.worldX,
+    spriteTop: ship.player.y - camera.worldY,
+    target: ship.interactionTarget?.id ?? null,
+    targetLabel: ship.interactionLabel,
+    dialogueOpen: ship.dialogue.isOpen ? 1 : 0,
+    dialogueLine: ship.dialogue.isOpen ? ship.dialogue.lineNumber : 0,
+    dialogueTotal: ship.dialogue.lineCount,
+    dialogueText: ship.dialogue.current?.text ?? null,
     artMissingCount: assets.missing().length,
     artFailureCount: assets.failures().length
   };
@@ -154,9 +154,12 @@ game.onAfterFrame(() => {
   const snapshot = readProbe();
   probeElement.textContent = JSON.stringify(snapshot);
 
-  // The HUD doubles as a prompt readout while walking around.
+  // The HUD doubles as a prompt readout while walking around, and otherwise says
+  // which part of the ship you are standing in.
   if (status) {
-    status.textContent = snapshot.targetLabel ? `${snapshot.targetLabel} · 按 E` : IDLE_HUD;
+    status.textContent = snapshot.targetLabel
+      ? `${snapshot.targetLabel} · 按 E`
+      : snapshot.place;
   }
 
   if (!debugMarker) return;

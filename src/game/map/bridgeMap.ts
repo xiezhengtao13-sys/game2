@@ -8,10 +8,11 @@ import { TileMap, type TileType } from "./TileMap";
  * hand-drawn, because a hand-counted curve of this size cannot be verified by
  * eye.
  *
- * Scale differs from the captain's quarters on purpose. The cabin renders at 40
- * px per tile; the bridge uses a larger tile size, so the same walk covers more
- * ground and the hall genuinely feels bigger. The setting document asks for
- * exactly this: scale differences between parts of the ship should be obvious.
+ * The hall is bigger than the captain's quarters the honest way: more tiles, at
+ * the same tile size as everything else on the ship. An earlier version rendered
+ * the bridge at a larger scale than the cabin, which read as the ship changing
+ * size when you walked through the door -- and which stopped being possible at
+ * all once both compartments shared one map.
  *
  * Forward (toward the bow) is NORTH, matching how the player reads the screen:
  * the wrap-around display and the captain's chair face up.
@@ -88,9 +89,17 @@ function anyNeighbour(x: number, y: number, test: (x: number, y: number) => bool
 /** One ring outside the hall: the bulkhead band. */
 const isWall = (x: number, y: number) => !isHall(x, y) && anyNeighbour(x, y, isHall);
 
-/** One ring outside that: deck plating, purely so the edges look right. */
+/**
+ * One ring outside that: deck plating, purely so the edges look right.
+ *
+ * Aft of the hall's forward line, and not forward of it. Forward of the bridge is
+ * the ship's bow -- 深空防护结构, in the setting document -- and plating laid there
+ * was floor the player could see and never reach, because the only way onto the
+ * ring is behind the hall. Anything the player can see and not walk to reads as a
+ * bug, so the bow side is left as solid structure.
+ */
 const isAftDeck = (x: number, y: number) =>
-  !isHall(x, y) && !isWall(x, y) && anyNeighbour(x, y, isWall);
+  !isHall(x, y) && !isWall(x, y) && anyNeighbour(x, y, isWall) && y > HALL.y0;
 
 /**
  * Build the sealed shell.
@@ -119,6 +128,15 @@ function buildGrid(): TileType[][] {
   return grid;
 }
 
+/**
+ * The entrance, and where it is.
+ *
+ * In the aft bulkhead, at the hall's centre line. Exported because the ship map
+ * has to meet this doorway with a passage from the captain's quarters, and it
+ * checks the alignment rather than assuming it.
+ */
+export const BRIDGE_DOOR = { x: 19, y: 16, w: 3, h: 2 };
+
 interface Shape {
   x: number;
   y: number;
@@ -141,8 +159,10 @@ const SHAPES: Shape[] = [
   // reads as a broken screen.
   { x: 3, y: 5, w: 34, h: 1, type: "screen", note: "前方大型弧形显示系统" },
 
-  // The entrance, cut through the aft bulkhead into the aisle beyond.
-  { x: 19, y: 16, w: 2, h: 2, type: "floor_light", note: "舰桥舱门" },
+  // The entrance, cut through the aft bulkhead into the aisle beyond. Aft
+  // because that is the way onto a bridge: you come up behind it, from inside the
+  // ship, and the ship's own command floor extends forward of you.
+  { x: BRIDGE_DOOR.x, y: BRIDGE_DOOR.y, w: BRIDGE_DOOR.w, h: BRIDGE_DOOR.h, type: "floor_light", note: "舰桥舱门" },
 
   // Soft linear lighting: the document's "柔和的线性照明". Along the working
   // ring rather than up the middle, so it lights the stations on either side.
@@ -191,10 +211,39 @@ function sealOutside(grid: TileType[][]): void {
   for (const { x, y } of hullNextToFloor) grid[y][x] = "wall";
 }
 
-export function createBridgeMap(tileSize: number): TileMap {
+/**
+ * The hall, as a grid: shell, then detail, then sealed.
+ *
+ * Exported because the ship is built by joining its compartments rather than by
+ * redrawing them -- this is the same grid the standalone bridge used.
+ */
+export function bridgeGrid(): TileType[][] {
   const grid = applyShapes(buildGrid());
   sealOutside(grid);
-  return new TileMap(grid.flat(), BRIDGE_COLUMNS, BRIDGE_ROWS, tileSize);
+  assertDoorway(grid);
+  return grid;
+}
+
+/**
+ * The doorway must still be an opening.
+ *
+ * `applyShapes` refuses to punch through hull, and the seal pass runs afterwards,
+ * so a doorway authored in the wrong place would be silently walled off. The ship
+ * map joins the corridor here; failing at build time says why.
+ */
+function assertDoorway(grid: TileType[][]): void {
+  for (let y = BRIDGE_DOOR.y; y < BRIDGE_DOOR.y + BRIDGE_DOOR.h; y++) {
+    for (let x = BRIDGE_DOOR.x; x < BRIDGE_DOOR.x + BRIDGE_DOOR.w; x++) {
+      if (grid[y][x] !== "floor_light") {
+        throw new Error(`The bridge doorway at ${x},${y} is ${grid[y][x]}, not an opening`);
+      }
+    }
+  }
+}
+
+/** The bridge on its own, as a map. The game uses the whole ship instead. */
+export function createBridgeMap(tileSize: number): TileMap {
+  return new TileMap(bridgeGrid().flat(), BRIDGE_COLUMNS, BRIDGE_ROWS, tileSize);
 }
 
 /** Exposed so tests and tooling can reason about the authored layout. */

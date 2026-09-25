@@ -106,6 +106,36 @@ msedge --headless=new --disable-gpu --virtual-time-budget=6000 `
 
 输出里搜 `id="debug-probe"` 即可拿到 JSON（相机、玩家坐标、精灵帧的屏幕位置等）。
 
+### 无头浏览器：一次命令只跑一次
+
+**别在一条命令里连续跑多次 Edge。** 实测：同一条 PowerShell 命令里跑第二、第三次
+`--screenshot` / `--dump-dom` 时，会**静默返回空**（没有报错、没有产物、probe 读不到），
+有时直接挂到超时。原因看起来是上一轮的进程没退干净、profile 被占用。
+
+可靠的做法：
+
+```powershell
+# 1. 先清掉自己上一轮留下的进程（按启动时间筛，别动用户自己的浏览器）
+Get-Process msedge -ErrorAction SilentlyContinue |
+  Where-Object { $_.StartTime -ge [datetime]"<本次开工时间>" } |
+  Stop-Process -Force
+
+# 2. 一次调用，用全新的 profile 目录
+$prof = "$env:TEMP\shot-$([guid]::NewGuid().ToString('N').Substring(0,8))"
+msedge --headless=new --disable-gpu --disable-breakpad --disable-crash-reporter `
+  --hide-scrollbars --no-first-run --no-default-browser-check `
+  --window-size=1280,800 --virtual-time-budget=6000 `
+  --user-data-dir="$prof" --screenshot="<out.png>" "<url>"
+
+# 3. 用完再清一次
+```
+
+另外 `--screenshot` 和 `--dump-dom` **不能同时用**：两个都写的结果是一个都没有，
+分两次调用。
+
+注意 `<本次开工时间>` 这个筛子只能粗略区分——用户自己的 Edge 可能在这之后才打开。
+宁可少杀（多跑一次命令）也不要误杀。
+
 ### 用像素验证渲染位置时的坑
 
 **不要拿两次不同页面加载的数据互相比较。** 曾经因此误判了整整一轮：

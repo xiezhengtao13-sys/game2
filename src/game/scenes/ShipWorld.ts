@@ -7,76 +7,30 @@ import type { GameAssets } from "../assets";
 import { findInteractable, reachPoint, type Interactable } from "../systems/Interaction";
 import { Dialogue, type DialogueLine } from "../systems/Dialogue";
 import { PLAYER_INTERACT_REACH } from "../config";
+import { placeAt, shipSpawn } from "../map/shipMap";
+import { PLACE_LABELS, SHIP_PEOPLE, SHIP_PROPS, type ScenePerson, type SceneProp } from "./shipProps";
 
 /**
- * Something that stands in a scene and can be looked at.
+ * The ship, as one continuous world.
  *
- * `x`/`y` are the object's CENTRE in world pixels. `w`/`h` are in tiles, so a
- * scene can describe furniture without knowing the pixel size of a tile.
+ * The cabin, the corridor and the bridge are one map, so moving between them is
+ * walking: there is no transition, no load screen, no moment where the game
+ * stops being a place. That is why this is a single world rather than two scenes
+ * with a door between them.
+ *
+ * The camera follows the player, which on a map this size is the whole point --
+ * the cabin is smaller than the viewport and the bridge is larger, so the change
+ * from "I can see the whole room" to "I can see part of a much bigger room" is
+ * felt rather than described.
  */
-export interface SceneProp {
-  assetId: string;
-  x: number;
-  y: number;
-  w: number;
-  h: number;
-  /** What the prompt calls it. */
-  label: string;
-  /** Shown on E. Null means scenery: it can be walked past but not examined. */
-  lines: DialogueLine[] | null;
-}
-
-/**
- * Someone standing in a scene.
- *
- * `x`/`y` are their FEET, matching how the player is positioned, so the same
- * anchor convention draws both.
- */
-export interface ScenePerson {
-  id: string;
-  name: string;
-  assetId: string;
-  x: number;
-  y: number;
-  facing: "up" | "down" | "left" | "right";
-  /** What the prompt calls them, e.g. "和舰长说话". */
-  promptLabel: string;
-  lines: readonly DialogueLine[];
-}
-
-/** How a scene draws itself: a backdrop colour plus draw order. */
-export interface SceneOptions {
-  /** Pixel size of one tile on screen. Differs per scene to convey scale. */
-  tileSize: number;
-  /** Fill colour for anything showing outside the map. */
-  backdropColor: string;
-  /** Tile asset used to continue the floor outward, or null for flat colour. */
-  backdropTile: string | null;
-  /** Bubble height above an interactable, in pixels. */
-  promptHeight?: number;
-}
-
-/**
- * Shared behaviour for a room aboard the ship.
- *
- * Everything that is the same in every scene lives here: the player, walking,
- * the nearest-target interaction, dialogue, and the draw order. Subclasses
- * supply the map, the props and the people, and may override how a person's
- * lines are chosen (the captain's change depending on where you find him).
- *
- * Extracted only now that there is a second scene to justify it. Before that it
- * would have been a guess.
- */
-export abstract class Scene implements GameWorld {
+export class ShipWorld implements GameWorld {
   readonly player: Player;
   readonly dialogue = new Dialogue();
   readonly map: TileMap;
 
-  protected readonly assets: GameAssets | null;
-  protected readonly props: readonly SceneProp[];
-  protected readonly people: readonly ScenePerson[];
-  protected readonly options: SceneOptions;
-
+  private readonly assets: GameAssets | null;
+  private readonly props: readonly SceneProp[];
+  private readonly people: readonly ScenePerson[];
   private readonly interactables: readonly Interactable[];
   private readonly propById = new Map<string, SceneProp>();
   private readonly personById = new Map<string, ScenePerson>();
@@ -84,26 +38,30 @@ export abstract class Scene implements GameWorld {
   /** What the player is being prompted about right now, or null. */
   private target: Interactable | null = null;
 
+  /** Ids of props already examined, so a person can react to what you have seen. */
+  private readonly seen = new Set<string>();
+
+  /** True once the captain has spoken, so his remark about your looking occurs once. */
+  private captainGreeted = false;
+
   /** Told whenever the open dialogue changes, so the DOM box can redraw. */
   onDialogueChange: ((dialogue: Dialogue | null) => void) | null = null;
 
   constructor(
     map: TileMap,
-    assets: GameAssets | null,
-    spawn: { x: number; y: number },
-    props: readonly SceneProp[],
-    people: readonly ScenePerson[],
-    options: SceneOptions
+    assets: GameAssets | null = null,
+    props: readonly SceneProp[] = SHIP_PROPS,
+    people: readonly ScenePerson[] = SHIP_PEOPLE
   ) {
     this.map = map;
     this.assets = assets;
     this.props = props;
     this.people = people;
-    this.options = options;
+    // Derived from the map's own doorway rather than a constant: the player
+    // arrives where the ship says its door is, and the two cannot drift apart.
+    const spawn = shipSpawn(map.tileSize);
     this.player = new Player(spawn.x, spawn.y);
 
-    // Only props and people with something to say become targets, so pressing E
-    // on scenery can never produce an empty box.
     const interactables: Interactable[] = [];
 
     props.forEach((prop, index) => {
@@ -115,9 +73,6 @@ export abstract class Scene implements GameWorld {
         label: prop.label,
         x: prop.x,
         y: prop.y,
-        // Big furniture is reachable from further out; small objects need you
-        // standing right at them.
-        //
         // The floor is 32, not something smaller: the reach point sits 40 px in
         // front of the player's feet, and on a tile grid the nearest it ever gets
         // to a tile-centre prop is about 28.8 px. A smaller radius would make
@@ -133,6 +88,8 @@ export abstract class Scene implements GameWorld {
         id,
         label: person.promptLabel,
         x: person.x,
+        // People are reached by their feet, not their centre: you stand in front
+        // of someone, not on top of them.
         y: person.y,
         radius: 46
       });
@@ -153,13 +110,25 @@ export abstract class Scene implements GameWorld {
     return this.target?.label ?? null;
   }
 
-  /** Everything that can be examined here, for tests and tooling. */
+  /** Everything that can be examined, for tests and tooling. */
   get examinable(): readonly Interactable[] {
     return this.interactables;
   }
 
-  get townspeople(): readonly ScenePerson[] {
-    return this.people;
+  /**
+   * What the HUD should call wherever the player is standing.
+   *
+   * The ship is one continuous place, which means the game cannot say where you
+   * are by showing you a different loading screen -- so it says it in words
+   * instead. Reads the tile under the player's feet, not their head: you are where
+   * you are standing.
+   */
+  get placeLabel(): string {
+    const size = this.map.tileSize;
+    const tx = Math.floor(this.player.centerX / size);
+    const ty = Math.floor((this.player.y + this.player.height - this.player.colliderHeight / 2) / size);
+
+    return PLACE_LABELS[placeAt(tx, ty)];
   }
 
   update(dt: number, input: Input): void {
@@ -181,27 +150,11 @@ export abstract class Scene implements GameWorld {
     );
     this.target = findInteractable(this.interactables, reach);
 
-    // A scene may claim the E press for itself before it becomes "examine".
-    if (this.target && input.wasPressed("KeyE")) {
-      if (!this.onInteract(this.target)) this.examine(this.target);
-    }
+    if (this.target && input.wasPressed("KeyE")) this.examine(this.target);
   }
 
-  /**
-   * Give a subclass first refusal on an interaction. Return true to say it was
-   * handled. Scenes that are only scenery never need to override this.
-   */
-  protected onInteract(_target: Interactable): boolean {
-    return false;
-  }
-
-  /**
-   * Look at something, turning to face it first.
-   *
-   * Protected rather than private so a subclass can trigger it from its own
-   * interaction handling.
-   */
-  protected examine(target: Interactable): void {
+  /** Look at something, turning to face it first. */
+  private examine(target: Interactable): void {
     const person = this.personById.get(target.id);
     const prop = this.propById.get(target.id);
     const anchor = person ?? prop;
@@ -214,19 +167,32 @@ export abstract class Scene implements GameWorld {
     const dy = anchor.y - (this.player.y + this.player.height);
     if (dx !== 0 || dy !== 0) this.player.animation.face(facingFor(dx, dy));
 
-    if (prop) this.onExamined(prop);
+    if (prop) this.seen.add(prop.assetId);
 
     this.target = null;
     this.dialogue.open(lines);
     this.onDialogueChange?.(this.dialogue);
   }
 
-  /** Told when a prop has been examined, so a scene can track what you have seen. */
-  protected onExamined(_prop: SceneProp): void {}
+  /**
+   * What a person says.
+   *
+   * The captain notices if the player has already looked around before finding
+   * him. A small thing, but it is the difference between a ship full of props and
+   * a ship someone actually lives on. Only once, on the first conversation: a
+   * captain who remarked on your sightseeing every time would be a gimmick.
+   */
+  private linesFor(person: ScenePerson): readonly DialogueLine[] {
+    if (person.id !== "captain" || this.captainGreeted) return person.lines;
+    this.captainGreeted = true;
 
-  /** What a person says. Overridable, so lines can depend on the scene's state. */
-  protected linesFor(person: ScenePerson): readonly DialogueLine[] {
-    return person.lines;
+    if (this.seen.size < 4) return person.lines;
+
+    return [
+      ...person.lines.slice(0, 3),
+      { speaker: "舰长", text: "你已经把船上转了一圈了？" },
+      ...person.lines.slice(3)
+    ];
   }
 
   /**
@@ -248,7 +214,7 @@ export abstract class Scene implements GameWorld {
     const found = findInteractable(this.interactables, reach);
     if (!found) return false;
 
-    if (!this.onInteract(found)) this.examine(found);
+    this.examine(found);
     return this.dialogue.isOpen;
   }
 
@@ -271,37 +237,17 @@ export abstract class Scene implements GameWorld {
   }
 
   /**
-   * Fill anything outside the map before the deck is drawn.
+   * Fill anything showing outside the map.
    *
-   * A scene smaller than the viewport shows this around its edges; a scene
-   * larger than the viewport never does, because the camera stays inside it.
+   * The ship is solid structure all the way to its edges, so this only shows at
+   * the very corners of the world; it is here so there is never a black gap.
    */
-  protected renderBackdrop(renderer: Renderer): void {
-    const image = this.options.backdropTile
-      ? this.assets?.image(this.options.backdropTile) ?? null
-      : null;
-    const size = this.options.tileSize;
-
-    if (!image) {
-      renderer.drawRect(0, 0, renderer.width, renderer.height, {
-        color: this.options.backdropColor
-      });
-      return;
-    }
-
-    for (let y = 0; y < renderer.height; y += size) {
-      for (let x = 0; x < renderer.width; x += size) {
-        renderer.drawSprite(image, x + size / 2, y + size / 2, {
-          anchor: "center",
-          size: { w: size, h: size },
-          fallbackColor: this.options.backdropColor
-        });
-      }
-    }
+  private renderBackdrop(renderer: Renderer): void {
+    renderer.drawRect(0, 0, renderer.width, renderer.height, { color: "#5c636d" });
   }
 
   /** Only the tiles the camera can see, so this stays correct at any size. */
-  protected renderDeck(renderer: Renderer): void {
+  private renderDeck(renderer: Renderer): void {
     const { camera } = renderer;
     const size = this.map.tileSize;
     const view = {
@@ -322,7 +268,7 @@ export abstract class Scene implements GameWorld {
     }
   }
 
-  protected renderProps(renderer: Renderer): void {
+  private renderProps(renderer: Renderer): void {
     const size = this.map.tileSize;
     for (const prop of this.props) {
       const image = this.assets?.image(prop.assetId) ?? null;
@@ -334,7 +280,7 @@ export abstract class Scene implements GameWorld {
     }
   }
 
-  protected renderPeople(renderer: Renderer): void {
+  private renderPeople(renderer: Renderer): void {
     for (const person of this.people) {
       const image = this.assets?.image(person.assetId) ?? null;
       renderer.drawSprite(image, person.x, person.y, {
@@ -347,7 +293,7 @@ export abstract class Scene implements GameWorld {
     }
   }
 
-  protected renderPlayer(renderer: Renderer): void {
+  private renderPlayer(renderer: Renderer): void {
     const frame = this.player.animation.frame;
     const image = this.assets?.image(frame.assetId) ?? null;
     const { width, height } = this.player;
@@ -360,12 +306,11 @@ export abstract class Scene implements GameWorld {
     });
   }
 
-  protected renderPrompt(renderer: Renderer): void {
+  private renderPrompt(renderer: Renderer): void {
     if (!this.target) return;
 
     const image = this.assets?.image("ui_prompt_e") ?? null;
-    const height = this.options.promptHeight ?? 30;
-    renderer.drawSprite(image, this.target.x, this.target.y - height, {
+    renderer.drawSprite(image, this.target.x, this.target.y - 32, {
       anchor: "bottom-center",
       size: { w: 32, h: 32 },
       fallbackColor: "#f2efe8"
