@@ -420,14 +420,40 @@ describe("examining a prop (TASK-S1)", () => {
     assert.notEqual(world.player.y === before, true, "the player should be able to move");
   });
 
-  test("the camera holds still, so the whole room stays on screen", () => {
+  test("the whole room fits on one screen, so the camera never scrolls", async () => {
+    // The cabin is smaller than the viewport, so `clampTo` centres it rather than
+    // panning: whatever the player's position, the framed view is identical --
+    // which is exactly what "the whole room is on screen" means.
+    const { SimpleCamera } = await import("../src/engine/graphics/Camera");
     const world = room();
-    const camera = world.getCamera();
+    const map = world.tileMap;
 
-    assert.equal(camera.x, 0);
-    assert.equal(camera.y, 0);
-    assert.equal(camera.mapWidth, ROOM_COLUMNS * TILE);
-    assert.equal(camera.mapHeight, ROOM_ROWS * TILE);
+    assert.equal(map.pixelWidth, ROOM_COLUMNS * TILE);
+    assert.equal(map.pixelHeight, ROOM_ROWS * TILE);
+    assert.ok(map.pixelWidth <= 1280, `the cabin is ${map.pixelWidth}px wide`);
+    assert.ok(map.pixelHeight <= 720, `the cabin is ${map.pixelHeight}px tall`);
+
+    const framed = () => {
+      const camera = new SimpleCamera(1280, 720);
+      const target = world.getCamera();
+      camera.centerOn(target.x, target.y);
+      camera.clampTo(target.mapWidth, target.mapHeight);
+      return { x: camera.worldX, y: camera.worldY };
+    };
+
+    world.player.x = 0;
+    world.player.y = 0;
+    const atTopLeft = framed();
+
+    world.player.x = map.pixelWidth - 32;
+    world.player.y = map.pixelHeight - 48;
+    const atBottomRight = framed();
+
+    assert.deepEqual(atTopLeft, atBottomRight, "the view moved, so the room does not fit");
+
+    // Centred, not pinned to a corner: the leftover space is split evenly.
+    assert.equal(atTopLeft.x, -(1280 - map.pixelWidth) / 2);
+    assert.equal(atTopLeft.y, -(720 - map.pixelHeight) / 2);
   });
 
   test("the UI is told when the box opens and when it closes", () => {

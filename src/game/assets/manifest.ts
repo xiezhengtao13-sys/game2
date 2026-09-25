@@ -94,6 +94,30 @@ export const TERRAIN: AssetSpec[] = [
     "嵌在地板里的线性指示光带。",
     "Seamless top-down game tile of a recessed linear floor light strip set into a dark spacecraft deck, soft warm white glow along the centre with a thin metal surround, flat 2D vector style, thick clean outlines, no perspective, no text",
     WARM_WHITE
+  ),
+  tile(
+    "tile_deck_dark",
+    "指挥区地板",
+    "舰桥地面的低反光深色材料——与舰长室的舱室地板刻意不同，让人一眼看出自己在船的另一处。",
+    "Seamless top-down game tile of a starship command centre floor, very dark low-reflection composite with a faint hexagonal micro-pattern and thin inset panel lines, cooler and more uniform than a crew deck, flat 2D vector style, thick clean outlines, no perspective, no text",
+    "#23272f",
+    { speckles: { count: 4, color: "#2b303a", sizeMin: 8, sizeMax: 18 } }
+  ),
+  tile(
+    "tile_screen",
+    "弧形显示系统",
+    "舰桥前方的大型弧形显示屏。日常显示前方星空与航行信息。",
+    "Top-down game tile of a large wall-mounted wraparound display screen in a starship command centre, dark bezel around a wide panel showing a restrained starfield with a few crisp navigation marks and a thin course line, overwhelmingly black with no lens flares, flat 2D vector style, thick clean outlines, no perspective, no readable text",
+    "#0d1016",
+    { speckles: { count: 6, color: "#cfe3f5", sizeMin: 2, sizeMax: 3 } }
+  ),
+  tile(
+    "tile_hull",
+    "舰体结构",
+    "可居住区之外的结构：桁架、加强环和设备支架。",
+    "Seamless top-down game tile of exposed spacecraft structural framing seen from above, grey composite trusses, a reinforcing ring and equipment brackets, functional and unadorned, flat 2D vector style, thick clean outlines, no perspective, no text",
+    "#5c636d",
+    { speckles: { count: 8, color: "#4a505a", sizeMin: 4, sizeMax: 12 } }
   )
 ];
 
@@ -275,6 +299,74 @@ export const FIXTURES: AssetSpec[] = [
     w: 2,
     h: 1,
     color: "#2f5f8a"
+  }),
+
+  // --- bridge furniture --------------------------------------------------------
+  // The setting document is emphatic that the bridge is restrained and
+  // professional rather than flashy: pale grey-white metal, dark equipment
+  // panels, and physical switches rather than floating holograms. That is the
+  // character of the room, so it is spelled out in every prompt below.
+
+  fixture({
+    id: "fx_command_chair",
+    nameZh: "舰长指挥席",
+    descZh: "略高于周围工作席的独立工作站。设定集强调它不是王座，而是一套拥有完整信息访问权限的席位。",
+    descEn:
+      "Top-down view of a starship captain's command seat, a plain high-backed chair on a low raised platform with its own small console and two armrest control pads, deliberately not ornate and not throne-like, professional and functional, flat 2D vector style, thick clean outlines, no perspective, no text",
+    w: 2,
+    h: 3,
+    color: "#3a4150"
+  }),
+  fixture({
+    id: "fx_console",
+    nameZh: "操作席",
+    descZh: "部门工作席。设定集：需要长时间稳定工作的操作席保留实体按钮、固定显示屏和机械应急开关。",
+    descEn:
+      "Top-down view of a starship bridge workstation, a curved desk with several fixed inset displays and rows of physical buttons and toggle switches along the front edge, clearly hardware rather than floating holograms, flat 2D vector style, thick clean outlines, no perspective, no readable text",
+    w: 2,
+    h: 1,
+    color: "#2f3540"
+  }),
+  fixture({
+    id: "fx_console_side",
+    nameZh: "侧向操作席",
+    descZh: "朝内的侧舷工作席，同样以实体按键为主。",
+    descEn:
+      "Top-down view of a starship bridge workstation rotated to face sideways, a narrow desk with fixed displays and a bank of physical switches, hardware controls rather than holograms, flat 2D vector style, thick clean outlines, no perspective, no readable text",
+    w: 1,
+    h: 2,
+    color: "#2f3540"
+  }),
+  fixture({
+    id: "fx_switch_panel",
+    nameZh: "机械应急开关面板",
+    descZh: "一整排实体开关，标着用途。设定集特意强调这种设计选择：不依赖华丽的交互界面。",
+    descEn:
+      "Top-down view of a wall-mounted bank of physical manual switches and guarded emergency toggles, small labelled plates beside each one, deliberately old-fashioned hardware on a spacecraft, flat 2D vector style, thick clean outlines, no perspective, no readable text",
+    w: 2,
+    h: 1,
+    color: "#4a4f58"
+  }),
+  fixture({
+    id: "fx_paper_log",
+    nameZh: "纸质值班记录",
+    descZh: "夹在板上的纸质值班表。船上有纸，是因为有人信不过屏幕。",
+    descEn:
+      "Top-down view of a clipboard with a printed paper duty roster lying on a starship console, a simple grid of handwritten entries and a pen clipped to it, flat 2D vector style, thick clean outlines, no perspective, no readable text",
+    w: 1,
+    h: 1,
+    color: "#e8e2d4"
+  }),
+
+  fixture({
+    id: "fx_holo_table",
+    nameZh: "星图工作台",
+    descZh: "舰桥上的实体星图台。设定集反复强调：主舰桥不靠悬浮全息投影撑场面。",
+    descEn:
+      "Top-down view of a starship navigation plotting table, a flat rectangular table with a recessed dark glass top showing a simple plotted course and two physical dials at one edge, instrument-like rather than holographic, flat 2D vector style, thick clean outlines, no perspective, no readable text",
+    w: 3,
+    h: 2,
+    color: "#2a3038"
   })
 ];
 

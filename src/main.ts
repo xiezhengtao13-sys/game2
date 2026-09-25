@@ -1,7 +1,7 @@
 import { Game } from "./engine/core/Game";
-import { CaptainRoom } from "./game/scenes/CaptainRoom";
-import { createCaptainRoomMap } from "./game/map/captainRoomMap";
-import { ROOM_COLUMNS, ROOM_ROWS, TILE } from "./game/config";
+import { Bridge } from "./game/scenes/Bridge";
+import { createBridgeMap } from "./game/map/bridgeMap";
+import { BRIDGE_COLUMNS, BRIDGE_ROWS, BRIDGE_TILE } from "./game/config";
 import { loadGameAssets } from "./game/assets";
 import { assertAnimationAssetsExist } from "./game/assets/animationSpec";
 import { DialogueBox } from "./ui/DialogueBox";
@@ -14,12 +14,12 @@ if (!found) {
 // Re-bound so the non-null type survives into the closures below.
 const canvas: HTMLCanvasElement = found;
 
-const map = createCaptainRoomMap(TILE);
+const map = createBridgeMap(BRIDGE_TILE);
 
-if (map.width !== ROOM_COLUMNS || map.height !== ROOM_ROWS) {
+if (map.width !== BRIDGE_COLUMNS || map.height !== BRIDGE_ROWS) {
   throw new Error(
-    `Captain's room is ${map.width}x${map.height} tiles but config says ` +
-      `${ROOM_COLUMNS}x${ROOM_ROWS}. Update captainRoomMap.ts or config.ts so they agree.`
+    `Bridge is ${map.width}x${map.height} tiles but config says ` +
+      `${BRIDGE_COLUMNS}x${BRIDGE_ROWS}. Update bridgeMap.ts or config.ts so they agree.`
   );
 }
 
@@ -33,10 +33,10 @@ assertAnimationAssetsExist();
 const assets = await loadGameAssets();
 
 const status = document.querySelector<HTMLSpanElement>("#status");
-const IDLE_HUD = "远望号 · 舰长室";
+const IDLE_HUD = "远望号 · 舰桥";
 if (status) status.textContent = IDLE_HUD;
 
-const room = new CaptainRoom(map, assets);
+const room = new Bridge(map, assets);
 
 /**
  * Development aids, driven from the URL so a headless browser can reach a
@@ -110,7 +110,7 @@ function readProbe(): Probe {
   const { camera } = game;
 
   return {
-    tile: TILE,
+    tile: BRIDGE_TILE,
     roomColumns: map.width,
     roomRows: map.height,
     roomPixelWidth: map.pixelWidth,

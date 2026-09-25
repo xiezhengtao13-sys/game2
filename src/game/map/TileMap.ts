@@ -6,19 +6,29 @@
  */
 export type TileType =
   | "deck"
+  | "deck_dark"
   | "deck_rug"
   | "wall"
   | "wall_dark"
   | "window"
-  | "floor_light";
+  | "screen"
+  | "floor_light"
+  | "hull";
 
 /**
  * Tile kinds the player cannot walk through.
  *
  * Windows count as solid: you look through a porthole, you do not walk out of
- * one. Rugs and floor lights are flat, so they stay walkable.
+ * one. `hull` is the structure outside the habitable volume, and `screen` is a
+ * wall-sized display standing on the deck. Rugs and floor lights are flat.
  */
-const SOLID_TILES: ReadonlySet<TileType> = new Set<TileType>(["wall", "wall_dark", "window"]);
+const SOLID_TILES: ReadonlySet<TileType> = new Set<TileType>([
+  "wall",
+  "wall_dark",
+  "window",
+  "screen",
+  "hull"
+]);
 
 /** True when the player is blocked by this tile kind. */
 export function isSolidTile(type: TileType): boolean {
