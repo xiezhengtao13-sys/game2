@@ -89,10 +89,11 @@ describe("the cabin is laid out to the setting document (TASK-S1)", () => {
 
   test("the doorway is in the forward wall, opening onto the passage to the bridge", () => {
     const doorTx = CABIN_BOUNDS.tx + CABIN_DOOR.x;
+    const shoulder = (PASSAGE_BOUNDS.width - CABIN_DOOR.w) / 2;
 
     assert.equal(CABIN_DOOR.y, 0, "the cabin is entered from forward");
     assert.ok(doorTx >= CABIN_BOUNDS.tx && doorTx + CABIN_DOOR.w <= CABIN_BOUNDS.tx + CABIN_BOUNDS.columns);
-    assert.equal(doorTx, PASSAGE_BOUNDS.x0, "the doorway does not line up with the passage");
+    assert.equal(doorTx - shoulder, PASSAGE_BOUNDS.x0, "the doorway is not centred in the passage");
 
     for (let x = doorTx; x < doorTx + CABIN_DOOR.w; x++) {
       assert.equal(map.tileAt(x, CABIN_BOUNDS.ty), "floor_light", `the doorway is shut at ${x}`);

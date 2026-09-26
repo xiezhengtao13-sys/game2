@@ -12,7 +12,7 @@ import {
 } from "../src/game/map/bridgeMap";
 import { isBoxBlocked } from "../src/game/map/collision";
 import { findInteractable, reachPoint } from "../src/game/systems/Interaction";
-import { PLAYER_INTERACT_REACH, TILE } from "../src/game/config";
+import { PLAYER_INTERACT_REACH, METRES_PER_TILE, TILE } from "../src/game/config";
 import { fakeInput, isFloor, ship, standableTiles } from "./shipWorld";
 
 // The bridge: an elliptical command hall, laid out to the setting document's
@@ -79,11 +79,13 @@ describe("the bridge hall (TASK-S2)", () => {
     assert.equal(map.pixelHeight, BRIDGE_ROWS * TILE);
   });
 
-  test("the hall is the 700 square metres the setting document describes", () => {
-    // At the ship's 1.5 m per tile, the hall's footprint should come out near the
-    // 700 m2 the document gives for the command floor -- the one place a stated
-    // measurement can be checked against the map. The walkable floor is a little
-    // smaller, because the elliptical shape is made by trimming the corners.
+  test("the command floor is at least the area the setting document promises", () => {
+    // The document says about 35 x 25 m, roughly 700 m2. At one tile per person
+    // that stated footprint is a 19 x 14 tile room -- smaller than the captain's
+    // cabin, and far too small for six stations and a command chair the player
+    // can walk between. So the hall is drawn at a walkable scale, the same trade
+    // the cabin makes, and this test states both numbers rather than pretending
+    // they agree. docs/尺度.md has the full accounting.
     const map = bridgeMap();
     let floor = 0;
 
@@ -93,14 +95,21 @@ describe("the bridge hall (TASK-S2)", () => {
       }
     }
 
+    const squareMetres = (tiles: number) => tiles * METRES_PER_TILE * METRES_PER_TILE;
     const nominalTiles =
       (BRIDGE_HALL.x1 - BRIDGE_HALL.x0 + 1) * (BRIDGE_HALL.y1 - BRIDGE_HALL.y0 + 1);
-    const nominal = nominalTiles * 1.5 * 1.5;
-    const walkable = floor * 1.5 * 1.5;
+    const promisedTiles = 700 / (METRES_PER_TILE * METRES_PER_TILE);
 
-    assert.ok(Math.abs(nominal - 700) < 120, `the hall's footprint is ${Math.round(nominal)} m2`);
+    assert.ok(
+      nominalTiles > promisedTiles,
+      `the hall's footprint is ${Math.round(squareMetres(nominalTiles))} m2 against the ` +
+        `document's 700; drawing it that small would make the bridge a cupboard`
+    );
+    assert.ok(
+      squareMetres(floor) >= 700,
+      `the walkable command floor is only ${Math.round(squareMetres(floor))} m2`
+    );
     assert.ok(floor < nominalTiles, "the trimmed floor should be smaller than the footprint");
-    assert.ok(walkable > 550, `the command floor is only ${Math.round(walkable)} m2`);
   });
 
   test("the command floor out-spans the whole cabin, as one open room", () => {

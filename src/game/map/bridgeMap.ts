@@ -8,6 +8,12 @@ import { TileMap, type TileType } from "./TileMap";
  * hand-drawn, because a hand-counted curve of this size cannot be verified by
  * eye.
  *
+ * The command floor comes out at 30 x 11 tiles, which at the ship's person-derived
+ * 1.8 m per tile (`config.ts`) is 54 x 20 m -- larger than the document's stated
+ * footprint, and longer relative to its depth. Same trade as the cabin: at a
+ * sprite size where one tile is one person, a 35 x 25 m room is a room you cross
+ * in a few seconds and cannot fit stations into. Docs/尺度.md records it.
+ *
  * The hall is bigger than the captain's quarters the honest way: more tiles, at
  * the same tile size as everything else on the ship. An earlier version rendered
  * the bridge at a larger scale than the cabin, which read as the ship changing
@@ -131,11 +137,13 @@ function buildGrid(): TileType[][] {
 /**
  * The entrance, and where it is.
  *
- * In the aft bulkhead, at the hall's centre line. Exported because the ship map
- * has to meet this doorway with a passage from the captain's quarters, and it
- * checks the alignment rather than assuming it.
+ * In the aft bulkhead, at the hall's centre line, two tiles wide (3.6 m). Narrower
+ * than the passage it opens onto, so the aft bulkhead reads as a bulkhead with a
+ * door in it rather than the corridor simply running out. Exported because the
+ * ship map has to meet this doorway with a passage from the captain's quarters,
+ * and it checks the alignment rather than assuming it.
  */
-export const BRIDGE_DOOR = { x: 19, y: 16, w: 3, h: 2 };
+export const BRIDGE_DOOR = { x: 20, y: 16, w: 2, h: 2 };
 
 interface Shape {
   x: number;

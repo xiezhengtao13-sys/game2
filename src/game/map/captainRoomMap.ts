@@ -5,21 +5,20 @@ import { TileMap, type TileType } from "./TileMap";
  *
  * Laid out to the room description in docs/设定集.md:
  *
- *   - 约 120 平方米, and the room is 24 x 16 tiles
- *   - **1 格 = 1.5 米**, so 24 tiles = 36 m wide and 16 tiles = 24 m deep, which
- *     is exactly 864 m²... see the note below on why the numbers are softened
- *   - 办公区 along the north wall, with the observation wall to one side
+ *   - the room is 24 x 16 tiles
+ *   - **1 格 = 一个人高 = 1.8 米** (see `config.ts`), so the room is 43 x 29 m
+ *   - 办公区 along the forward wall, with the observation wall to one side
  *   - 会客区 in the middle, a round table with six fixed chairs
  *   - 私人卧室 in the south-west, with a small simulated porthole
  *   - 阅读区 in the south-east: bookshelf, offline terminal, reading chair
  *   - 舱门 in the forward wall, opening onto the passage to the bridge
  *
  * Scale note: the document says ~120 m², which is a believable captain's cabin
- * but far too small to walk around in at a legible sprite size. Rather than
- * shrink the furniture until it reads as a doll's house, the room is drawn at a
- * comfortable play scale and the stated area is treated as approximate. This is
- * a deliberate gameplay-over-blueprint call, recorded here so it is not mistaken
- * for a measurement error later.
+ * but far too small to walk around in at a legible sprite size -- 120 m² is a
+ * 6 x 6 tile room, smaller than the table drawn in it. Rather than shrink the
+ * furniture until it reads as a doll's house, the room is drawn at a walkable
+ * scale and the stated area is treated as approximate. Docs/尺度.md has the
+ * numbers; this note is here so the difference is not mistaken for an error.
  *
  * Authoring note: like the town before it, this is built from rectangles rather
  * than a hand-drawn ASCII picture, so a miscounted row cannot silently shift the
@@ -35,10 +34,14 @@ export const ROOM_ROWS = 16;
  * Forward, not aft. The cabin sits aft of the bridge and is entered from it, so
  * the way in is the wall the two compartments share -- which is also what lets
  * `shipMap.ts` join them with a single straight passage instead of a corridor
- * that has to turn a corner. Exported so the ship map can assert the two
- * doorways line up rather than discovering they do not by walking into a wall.
+ * that has to turn a corner.
+ *
+ * Two tiles (3.6 m): room for two people abreast, and narrower than the passage
+ * it opens onto, so the bulkhead either side of it reads as a door frame rather
+ * than the corridor simply stopping. Exported so the ship map can assert the two
+ * doorways line up instead of finding out by walking into a wall.
  */
-export const CABIN_DOOR = { x: 11, y: 0, w: 3, h: 1 };
+export const CABIN_DOOR = { x: 12, y: 0, w: 2, h: 1 };
 
 interface Shape {
   x: number;

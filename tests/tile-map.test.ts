@@ -68,11 +68,10 @@ describe("captain's room map (TASK-S1)", () => {
       open.push(tx);
     }
 
-    assert.deepEqual(
-      open,
-      [CABIN_DOOR.x, CABIN_DOOR.x + 1, CABIN_DOOR.x + 2],
-      "the doorway is not where CABIN_DOOR says it is"
-    );
+    const doorway: number[] = [];
+    for (let tx = CABIN_DOOR.x; tx < CABIN_DOOR.x + CABIN_DOOR.w; tx++) doorway.push(tx);
+
+    assert.deepEqual(open, doorway, "the doorway is not where CABIN_DOOR says it is");
   });
 
   test("the observation wall runs along the forward side", () => {

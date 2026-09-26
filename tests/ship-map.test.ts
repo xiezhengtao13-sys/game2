@@ -52,18 +52,42 @@ describe("the deck is one map (TASK-S3)", () => {
 
     assert.equal(cabin, bridge, "the doorways are not aligned");
     assert.equal(CABIN_DOOR.w, BRIDGE_DOOR.w, "the doorways are different widths");
-    assert.deepEqual(passageColumns, [cabin, cabin + 1, cabin + 2]);
+
+    // The passage is the doorway plus an equal shoulder of bulkhead on each
+    // side, which is what makes the doorway read as a door rather than as the
+    // corridor stopping.
+    const shoulder = (PASSAGE_BOUNDS.width - CABIN_DOOR.w) / 2;
+    assert.ok(shoulder >= 1, "the passage is no wider than its doorways");
+
+    const expected: number[] = [];
+    for (let x = cabin - shoulder; x <= cabin + CABIN_DOOR.w - 1 + shoulder; x++) expected.push(x);
+
+    assert.deepEqual(passageColumns, expected, "the doorways are not centred in the passage");
   });
 
   test("both doorways are openings rather than walls", () => {
-    for (const x of passageColumns) {
+    for (let x = CABIN_BOUNDS.tx + CABIN_DOOR.x; x < CABIN_BOUNDS.tx + CABIN_DOOR.x + CABIN_DOOR.w; x++) {
       assert.equal(grid[CABIN_BOUNDS.ty][x], "floor_light", `the cabin's doorway is shut at ${x}`);
       assert.equal(grid[BRIDGE_BOUNDS.ty + BRIDGE_DOOR.y][x], "floor_light", `the bridge doorway is shut at ${x}`);
     }
   });
 
-  test("the passage runs wall-to-wall between them, and is walkable throughout", () => {
-    for (let y = PASSAGE_BOUNDS.top; y <= PASSAGE_BOUNDS.bottom; y++) {
+  test("the bulkheads either side of each doorway are still solid", () => {
+    // The cabin's forward bulkhead is the passage's last row: the only opening in
+    // it is the doorway, so the shoulders beside it must stay solid. Without this
+    // the join would quietly widen both doorways to the full passage width.
+    const shoulders = [passageColumns[0], passageColumns[passageColumns.length - 1]];
+
+    for (const x of shoulders) {
+      assert.ok(
+        !isFloor(grid[CABIN_BOUNDS.ty][x]),
+        `the cabin's forward bulkhead is open at ${x} (${grid[CABIN_BOUNDS.ty][x]})`
+      );
+    }
+  });
+
+  test("the passage is walkable from end to end", () => {
+    for (let y = PASSAGE_BOUNDS.top; y < PASSAGE_BOUNDS.bottom; y++) {
       for (const x of passageColumns) {
         assert.ok(isFloor(grid[y][x]), `the passage is blocked at ${x},${y} by ${grid[y][x]}`);
       }
@@ -72,14 +96,18 @@ describe("the deck is one map (TASK-S3)", () => {
 
   test("the passage is bulkhead along both sides, not open structure", () => {
     // Rows inside a compartment are exempt: there the passage passes through the
-    // compartment's own aft structure, which is already built.
+    // compartment's own aft structure, which is already built. Equipment bays are
+    // allowed -- they are solid, they are just not plain bulkhead.
     const inBridge = (y: number) => y >= BRIDGE_BOUNDS.ty && y < BRIDGE_BOUNDS.ty + BRIDGE_ROWS;
     const inCabin = (y: number) => y >= CABIN_BOUNDS.ty && y < CABIN_BOUNDS.ty + CABIN_BOUNDS.rows;
 
     for (let y = PASSAGE_BOUNDS.top; y <= PASSAGE_BOUNDS.bottom; y++) {
       if (inBridge(y) || inCabin(y)) continue;
       for (const x of [passageColumns[0] - 1, passageColumns[passageColumns.length - 1] + 1]) {
-        assert.equal(grid[y][x], "wall", `the passage is open to the structure at ${x},${y}`);
+        assert.ok(
+          grid[y][x] === "wall" || grid[y][x] === "wall_dark",
+          `the passage is open to the structure at ${x},${y} (${grid[y][x]})`
+        );
       }
     }
   });
@@ -129,8 +157,8 @@ describe("the deck is one map (TASK-S3)", () => {
           assert.equal(after, before, `the join paved over floor at ${x},${y}`);
         } else {
           assert.ok(
-            isFloor(after) || after === "wall",
-            `the join left ${after} at ${x},${y}, which is neither floor nor bulkhead`
+            isFloor(after) || after === "wall" || after === "wall_dark",
+            `the join left ${after} at ${x},${y}, which is neither floor nor solid`
           );
         }
       }

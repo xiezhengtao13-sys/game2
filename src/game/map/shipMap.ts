@@ -30,11 +30,25 @@ import { bridgeGrid, BRIDGE_DOOR, BRIDGE_COLUMNS, BRIDGE_ROWS } from "./bridgeMa
  * because the bridge has to keep its display forward. It is centred under the
  * bridge so that the passage between them is one straight run down the middle
  * rather than a corridor that turns a corner.
+ *
+ * The passage is four tiles wide -- 7.2 m, four person-heights, and twice the
+ * width of the doorways at either end of it. That is a deliberate playtest
+ * correction: the first version was three tiles of floor in a 40 px grid, which
+ * read as a tube rather than a passage (the whole scale derivation is in
+ * `config.ts` and docs/尺度.md).
  */
 
 /** Where each compartment sits on the deck. */
 export const BRIDGE_ORIGIN = { tx: 0, ty: 0 };
 export const CABIN_ORIGIN = { tx: 8, ty: 24 };
+
+/**
+ * How wide the passage is, in tiles.
+ *
+ * Wider than the doorways it joins, by at least a tile on each side, so the
+ * doorways read as openings in a bulkhead instead of the end of a tube.
+ */
+export const PASSAGE_WIDTH = 4;
 
 export const SHIP_COLUMNS = BRIDGE_COLUMNS;
 export const SHIP_ROWS = CABIN_ORIGIN.ty + ROOM_ROWS;
@@ -45,13 +59,14 @@ function doorOnDeck(origin: { tx: number; ty: number }, door: { x: number; y: nu
 }
 
 /**
- * Check that the two doorways line up, tile for tile.
+ * Check that the two doorways line up, and lay the passage out around them.
  *
  * The one thing this file cannot get wrong: a misalignment is a wall across the
  * route, or a passage cutting through the middle of a room, and neither shows up
- * until somebody walks it. The origins above were chosen to produce this, so the
- * check turns any later drift into a startup error -- it runs on import, before
- * anything can be played.
+ * until somebody walks it. So the passage is not written down as columns -- it is
+ * derived from the doorways, with an equal shoulder of bulkhead on either side,
+ * and any drift in an origin or a door becomes a startup error. It runs on
+ * import, before anything can be played.
  */
 function measurePassage(): { x0: number; x1: number; top: number; bottom: number } {
   const cabin = doorOnDeck(CABIN_ORIGIN, CABIN_DOOR);
@@ -64,7 +79,27 @@ function measurePassage(): { x0: number; x1: number; top: number; bottom: number
     );
   }
 
-  return { x0: cabin.x0, x1: cabin.x1, top: bridge.y, bottom: cabin.y };
+  if (CABIN_DOOR.w !== BRIDGE_DOOR.w) {
+    throw new Error(
+      `The doorways are different widths (${CABIN_DOOR.w} and ${BRIDGE_DOOR.w}), so no ` +
+        `passage can be centred on both.`
+    );
+  }
+
+  const shoulder = (PASSAGE_WIDTH - CABIN_DOOR.w) / 2;
+  if (!Number.isInteger(shoulder) || shoulder < 1) {
+    throw new Error(
+      `A ${PASSAGE_WIDTH}-tile passage cannot be centred on a ${CABIN_DOOR.w}-tile ` +
+        `doorway with bulkhead on both sides.`
+    );
+  }
+
+  return {
+    x0: cabin.x0 - shoulder,
+    x1: cabin.x1 + shoulder,
+    top: bridge.y,
+    bottom: cabin.y
+  };
 }
 
 const PASSAGE = measurePassage();
@@ -107,11 +142,14 @@ function blit(grid: TileType[][], rows: TileType[][], origin: { tx: number; ty: 
  *
  * Runs straight from the bridge's aft doorway to the cabin's forward one, through
  * the structure between them. What it must NOT do is open the compartments up:
- * the passage is exactly as wide as the doorways, and the tiles along its sides
- * become bulkhead rather than floor.
+ * the passage is wider than the doorways, and the tiles along its sides become
+ * bulkhead rather than floor.
  *
  * Tiles that are already floor are left alone, so each doorway keeps its own
- * guide lighting instead of being repainted by the join.
+ * guide lighting instead of being repainted by the join. And the cabin's forward
+ * bulkhead -- the passage's last row -- is left alone entirely: only the doorway
+ * in it is an opening, and the rest of that wall is what makes the doorway read
+ * as a door rather than as the corridor just ending.
  */
 function carvePassage(grid: TileType[][]): void {
   const { x0, x1, top, bottom } = PASSAGE;
@@ -123,7 +161,7 @@ function carvePassage(grid: TileType[][]): void {
       }
 
       if (x >= x0 && x <= x1) {
-        if (!isFloor(grid[y][x])) grid[y][x] = "deck";
+        if (y < bottom && !isFloor(grid[y][x])) grid[y][x] = "deck";
         continue;
       }
 
@@ -133,10 +171,41 @@ function carvePassage(grid: TileType[][]): void {
     }
   }
 
-  // Guide lighting down the middle of the passage, as the rest of the ship has.
-  const middle = Math.floor((x0 + x1) / 2);
+  carvePassageDetail(grid, x0, x1, top, bottom);
+}
+
+/**
+ * Give the passage something to walk past.
+ *
+ * A lit strip down the middle, and a pair of equipment bays in the structure
+ * between the two compartments. Purely cosmetic -- both are floor and wall
+ * tiles respectively -- but a bare tube is what made the first version of this
+ * corridor feel narrow, and a 16 m walk with nothing in it reads as longer than
+ * it is.
+ */
+function carvePassageDetail(
+  grid: TileType[][],
+  x0: number,
+  x1: number,
+  top: number,
+  bottom: number
+): void {
+  const mid = (x0 + x1) / 2;
+  const spine: number[] = [];
+  for (let x = Math.floor(mid); x <= Math.ceil(mid); x++) spine.push(x);
+
   for (let y = top + 2; y < bottom - 1; y += 2) {
-    grid[y][middle] = "floor_light";
+    for (const x of spine) grid[y][x] = "floor_light";
+  }
+
+  // The rows between the compartments, where the passage is cut through solid
+  // ship rather than running through one of them.
+  const gapTop = BRIDGE_ORIGIN.ty + BRIDGE_ROWS;
+  const gapBottom = CABIN_ORIGIN.ty - 1;
+  const bayTop = Math.floor((gapTop + gapBottom) / 2);
+
+  for (const y of [bayTop, bayTop + 1]) {
+    for (const x of [x0 - 1, x1 + 1]) grid[y][x] = "wall_dark";
   }
 }
 
@@ -190,4 +259,4 @@ function inCompartment(
 /** Compartment extents and the join between them, for tests and tooling. */
 export const CABIN_BOUNDS = { ...CABIN_ORIGIN, columns: ROOM_COLUMNS, rows: ROOM_ROWS };
 export const BRIDGE_BOUNDS = { ...BRIDGE_ORIGIN, columns: BRIDGE_COLUMNS, rows: BRIDGE_ROWS };
-export const PASSAGE_BOUNDS = { ...PASSAGE };
+export const PASSAGE_BOUNDS = { ...PASSAGE, width: PASSAGE_WIDTH };
