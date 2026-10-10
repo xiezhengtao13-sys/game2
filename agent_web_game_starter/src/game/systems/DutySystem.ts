@@ -37,9 +37,9 @@ export class DutySystem {
     },
     {
       id: "report",
-      title: "向舰长出示巡检单结签",
-      targetLabel: "舰长",
-      desc: "三项日常巡检完成后，向舰长汇报值班记录单",
+      title: "向二班班长老周出示巡检单",
+      targetLabel: "轮机检修员",
+      desc: "三项日常巡检完成后，向生活区的二班班长老周汇报值班记录单",
       completed: false
     }
   ];

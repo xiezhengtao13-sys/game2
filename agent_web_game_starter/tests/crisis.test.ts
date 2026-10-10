@@ -17,7 +17,7 @@ describe("Chapter 1 CrisisSystem state machine (TASK-G3)", () => {
     assert.equal(crisis.stage, "anomaly");
     assert.equal(crisis.isAlarmActive, true);
     assert.equal(crisis.isResolved, false);
-    assert.equal(crisis.currentObjective?.id, "report_captain");
+    assert.equal(crisis.currentObjective?.id, "report_supervisor");
 
     // Advance to EVA gear prep
     assert.ok(crisis.advanceToEva());
@@ -64,13 +64,13 @@ describe("Chapter 1 Crisis end-to-end integration with ShipWorld (TASK-G3)", () 
     world.duty.complete("plant");
     assert.ok(world.duty.isInspectionDone());
 
-    // 2. Report to Captain triggers crisis
-    const captainTarget = world.examinable.find((t) => t.id === "person-captain");
-    assert.ok(captainTarget, "captain interactable found");
+    // 2. Report to Shift Supervisor Lao Zhou triggers crisis
+    const engineerTarget = world.examinable.find((t) => t.id === "person-engineer");
+    assert.ok(engineerTarget, "engineer interactable found");
 
-    // Trigger examine captain
+    // Trigger examine Lao Zhou
     // @ts-expect-error accessing private examine for deterministic test
-    world.examine(captainTarget);
+    world.examine(engineerTarget);
 
     assert.ok(world.dialogue.isOpen);
     assert.ok(world.duty.tasks.find((t) => t.id === "report")?.completed);
@@ -79,8 +79,6 @@ describe("Chapter 1 Crisis end-to-end integration with ShipWorld (TASK-G3)", () 
     world.dialogue.close();
 
     // 3. Crew members provide urgent crisis directives during alarm
-    const engineerTarget = world.examinable.find((t) => t.id === "person-engineer");
-    assert.ok(engineerTarget);
     // @ts-expect-error accessing private examine
     world.examine(engineerTarget);
     assert.ok(world.dialogue.current?.text.includes("主回路气压快把高压管顶爆了"));
@@ -115,13 +113,22 @@ describe("Chapter 1 Crisis end-to-end integration with ShipWorld (TASK-G3)", () 
     assert.ok(world.dialogue.current?.text.includes("副散热翼应急展开"));
     world.dialogue.close();
 
-    // 7. Post-crisis debriefing with Captain concludes Chapter 1
+    // 7. Post-crisis grounded debriefing with Lao Zhou concludes Chapter 1
+    // @ts-expect-error accessing private examine
+    world.examine(engineerTarget);
+    assert.ok(world.dialogue.current?.text.includes("老周坐在翻倒的工具箱上"));
+    world.dialogue.advance();
+    assert.ok(world.dialogue.current?.text.includes("小子，手脚挺利索啊"));
+    world.dialogue.close();
+
+    // 8. Fleet Captain maintains realistic command distance from low-level crew
+    const captainTarget = world.examinable.find((t) => t.id === "person-captain");
+    assert.ok(captainTarget);
     // @ts-expect-error accessing private examine
     world.examine(captainTarget);
-    assert.ok(world.dialogue.current?.text.includes("干得漂亮"));
+    assert.ok(world.dialogue.current?.text.includes("解算新的深空轨道"));
     world.dialogue.advance();
-    world.dialogue.advance();
-    assert.ok(world.dialogue.current?.text.includes("准备迎接属于全人类的星际探索纪元吧"));
+    assert.ok(world.dialogue.current?.text.includes("推进阵列保持微推巡航"));
     world.dialogue.close();
   });
 });

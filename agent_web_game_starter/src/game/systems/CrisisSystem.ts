@@ -42,9 +42,9 @@ export class CrisisSystem {
     switch (this._stage) {
       case "anomaly":
         return {
-          id: "report_captain",
-          title: "返回舰桥听取应急调度指令",
-          hint: "舰桥领航员正在广播特级管损警报，前往舰桥了解险情",
+          id: "report_supervisor",
+          title: "听取全舰管损广播与老周安排",
+          hint: "全舰广播回荡着特级管损呼号，老周正在生活区组织抢险",
           done: false
         };
       case "eva_gear":
@@ -71,8 +71,8 @@ export class CrisisSystem {
       case "resolved":
         return {
           id: "all_clear",
-          title: "危机已排除 · 第一章完成",
-          hint: "副散热翼已强制展开，前往舰桥弧形大屏查看新星系星图",
+          title: "本工段排险完成 · 第一章完成",
+          hint: "副回路过热蒸汽已排出，返回生活区找老周结班",
           done: true
         };
       default:

@@ -249,31 +249,9 @@ export class ShipWorld implements GameWorld {
    * thermal runaway is underway, or the Chapter 1 crisis has been resolved.
    */
   private linesFor(person: ScenePerson): readonly DialogueLine[] {
-    // 1. Navigator
-    if (person.id === "navigator") {
-      if (this.crisis.isAlarmActive) {
-        return [
-          { speaker: "领航员", text: "「右舷散热翼卡在 42° 展开角了！机控室的电控总线完全锁死！」" },
-          { speaker: "领航员", text: "「快按舰长指令去南端机库穿防热服，下到动力排险泵房手动操作！」" }
-        ];
-      }
-      if (this.crisis.isResolved) {
-        return [
-          { speaker: "领航员", text: "「看！副散热翼全开后，散热效率甚至比平时还高了 3%。」" },
-          { speaker: "领航员", text: "「新航线坐标已经解算出来了……我们要准备迎接新星系了。」" }
-        ];
-      }
-      if (!this.duty.isInspectionDone()) {
-        return [
-          { speaker: "领航员", text: "「二班的巡检员，来得正好。今天的巡检任务还没结签呢。」" },
-          { speaker: "领航员", text: "「去查一下动力席的散热翼、右舷应急开关锁闭销、还有人员席角落那盆快干枯的绿植。」" },
-          ...person.lines
-        ];
-      }
-    }
-
-    // 2. Captain
-    if (person.id === "captain") {
+    // 1. Engineer Lao Zhou (二班班长兼轮机工 - 底层工勤主线对接人)
+    if (person.id === "engineer") {
+      // (a) Routine inspection completion -> Crisis爆发
       if (this.duty.isInspectionDone() && !this.duty.tasks.find((t) => t.id === "report")?.completed) {
         this.duty.complete("report");
         this.onDutyChange?.(this.duty);
@@ -281,27 +259,60 @@ export class ShipWorld implements GameWorld {
         this.crisis.advanceToEva();
         this.onCrisisChange?.(this.crisis);
         return [
-          { speaker: "舰长", text: "「动力席读数、应急开关……还给人员席那盆绿植浇了水？」舰长接过你的巡检单，认真签下了名字。" },
-          { speaker: "舰长", text: "「这艘船能平稳飞三十年，靠的就是你们每天按部就班的检查。二班当班合格，辛苦了——」" },
-          { speaker: null, text: "【突然间，整艘飞船剧烈震颤！舰内应急蜂鸣器尖锐长鸣，深红色的警报光柱刺破通道！】" },
-          { speaker: "警报广播", text: "【特级管损警报：微碎片擦伤！右舷主散热翼在 42° 液压锁死！反应堆废热无法排放！】" },
-          { speaker: "舰长", text: "「所有岗位就位！微碎片击伤锁死了主散热翼液压伺服，机控室的远程指令失效了！」" },
-          { speaker: "舰长", text: "「二班巡检员！你熟悉管线物理走向！立刻去穿梭机机库穿戴重型防热工装，然后深入最南端动力排险泵房，手动释放旁路气压并扳动副散热翼展开杠杆！」" }
+          { speaker: "老周", text: "「动力席读数、应急开关……还给人员席那盆绿植浇了水？行，小徐，没偷懒。」老周在你的手抄巡检单上重重盖下当班红印。" },
+          { speaker: "老周", text: "「咱们远望号飞了三十年，两千八百米长的舰体，全靠各个底层系统按部就班。二班合格，准备交——」" },
+          { speaker: null, text: "【突然间，整艘飞船剧烈震颤！金属管线发出可怖的呻吟！暗红色的警报光柱瞬间划破廊道，全舰蜂鸣器尖锐长鸣！】" },
+          { speaker: "全舰广播", text: "【特级管损警报：微碎片擦伤！右舷主散热翼在 42° 展开角液压锁死！两座聚变反应堆废热无法排入真空！】" },
+          { speaker: "广播杂音", text: "【对讲机呼号：……机控中心尝试电控旁通……指令无响应！电控线路烧断！各工段损管队执行手动应急规程！……】" },
+          { speaker: "老周", text: "老周猛然抓住管线扶手，脸色骤变：“操！主散热翼卡死了！机控中心那帮坐办公室的根本不知道这底下老旧管线的受热极限！”" },
+          { speaker: "老周", text: "“小徐！别愣着！机控室高层顾不上咱们这头，生活区和休眠舱的备用冷却泵马上就会被反冲蒸汽烧毁！”" },
+          { speaker: "老周", text: "“快去机库工程柜套上重型防热服！然后下到最南端的动力排险泵房，帮我把那个死沉的红色泄压手轮转开！快，慢一秒这截管子都得炸！”" }
+        ];
+      }
+
+      // (b) Crisis actively underway
+      if (this.crisis.isAlarmActive) {
+        return [
+          { speaker: "老周", text: "「咳咳……小徐！主回路气压快把高压管顶爆了，我在这守着主循环！」" },
+          { speaker: "老周", text: "「快按刚才说的，去机库拿重型防热服，下到泵房转泄压转轮，再拉开副散热翼的击发栓！」" }
+        ];
+      }
+
+      // (c) Crisis resolved: Grounded blue-collar relief
+      if (this.crisis.isResolved) {
+        return [
+          { speaker: "老周", text: "老周坐在翻倒的工具箱上，正用棉纱擦拭扳手上的黑油，长长舒了一口气。" },
+          { speaker: "老周", text: "「呼……听见排气声停了，压力表指针掉下来了。小子，手脚挺利索啊，没慌。」" },
+          { speaker: "老周", text: "「机控室那些坐大位子的高层，大概永远不会知道是咱们在最底层把手轮拧开的。但无所谓，咱们自己活着，这一万两千号休眠者也活着，这就够了。」" },
+          { speaker: "老周", text: "「喝口温水，把终端上的当班交接刷了。今晚生活区加餐，有压缩脱水羊肉，赶紧去打一份。」" }
+        ];
+      }
+
+      // (d) Routine in-progress reminder
+      if (!this.duty.isInspectionDone()) {
+        return [
+          { speaker: "老周", text: "「哟，小徐，来得正好。今天的二班巡检任务还没结签呢。」" },
+          { speaker: "老周", text: "「去查一下动力席的散热翼、右舷应急开关锁闭销、还有人员席角落那盆快干枯的绿植。」" },
+          { speaker: "老周", text: "「咱们底层的工勤任务得按部就班，机控室不管咱们琐事，但咱们自己得把底层的底子摸清。」" }
+        ];
+      }
+    }
+
+    // 2. Captain (舰队指挥核心圈层 - 与底层船员保持客观层级距离)
+    if (person.id === "captain") {
+      if (this.crisis.isAlarmActive) {
+        return [
+          { speaker: "舰长", text: "舰长正戴着通讯耳机死死盯住前方主控大屏，甚至无暇回头看你一眼。" },
+          { speaker: "舰长", text: "「通信席，接通第三殖民模块！损管二组，汇报姿态修正喷口压差！……」" },
+          { speaker: "副官警卫", text: "「工勤巡检员请立刻退回生活区！舰桥正在执行特级应急姿态指挥，无关人员不得靠近！」" }
         ];
       }
 
       if (this.crisis.isResolved) {
         return [
-          { speaker: "舰长", text: "「二班巡检员，干得漂亮！你拯救了整艘远望号和一万两千四百零八名同胞的未来。」" },
-          { speaker: "舰长", text: "「副散热翼已经锁定，聚变反应堆热平衡已恢复。刚才的传感器阵列已探测到前方星域的新航道……」" },
-          { speaker: "舰长", text: "「三十年的深空巡航即将告一段落。我们即将抵达第一个目标星系。准备迎接属于全人类的星际探索纪元吧！」" }
-        ];
-      }
-
-      if (this.crisis.isAlarmActive) {
-        return [
-          { speaker: "舰长", text: "「时间不多了！一万两千四百名休眠者的维生电力依赖反应堆正常散热！」" },
-          { speaker: "舰长", text: "「快去机库更衣架穿防热服，然后去最南端的动力排险泵房排险！」" }
+          { speaker: "舰长", text: "舰桥前方弧形大屏正在解算新的深空轨道，参谋军官们快速低语记录数据。" },
+          { speaker: "舰长", text: "「……全舰警报降为三级，推进阵列保持微推巡航。记录航行日志。」" },
+          { speaker: null, text: "（舰长专注于宏观态势调度，并未注意到站在后方入口的基层工勤人员。）" }
         ];
       }
 
@@ -317,48 +328,50 @@ export class ShipWorld implements GameWorld {
       ];
     }
 
-    // 3. Engineer (Lao Zhou)
-    if (person.id === "engineer") {
+    // 3. Navigator (舰桥领航员)
+    if (person.id === "navigator") {
       if (this.crisis.isAlarmActive) {
         return [
-          { speaker: "老周", text: "「咳咳……小伙子！主回路气压快把高压管顶爆了，我在这守着主循环！」" },
-          { speaker: "老周", text: "「你穿上重型防热服，下到泵房去转泄压转轮，再拉开副散热翼的击发栓！」" }
+          { speaker: "领航员", text: "「特级管损！整条中枢星图都在红闪！机控室的指令总线全烧了……」" },
+          { speaker: "领航员", text: "「别在这挡着，快去救你们底层的回路！」" }
         ];
       }
       if (this.crisis.isResolved) {
         return [
-          { speaker: "老周", text: "「哈哈！老头子我听见机械锁扣弹开的声音了！压力表全绿了！」" },
-          { speaker: "老周", text: "「你这小子真有两把刷子！等下班了一定得来生活区喝一杯！」" }
+          { speaker: "领航员", text: "「呼……副散热翼强制展开了，总算没偏航。去吧，回你们底层休息去。」" }
         ];
       }
+      return [
+        { speaker: "领航员", text: "「哎，别踩进来，前方是主星图投影区。三十年了，这条线基本没怎么弯过。你们巡检员没事别往核心区跑，去生活区找老周吧。」" }
+      ];
     }
 
-    // 4. Medic (Dr. Chen)
+    // 4. Medic Dr. Chen (中央医疗与休眠监护员)
     if (person.id === "medic") {
       if (this.crisis.isAlarmActive) {
         return [
-          { speaker: "陈医生", text: "「休眠舱的冷凝循环温度正在攀升！必须在 15 分钟内排险，否则不可逆脑损伤就会发生！」" },
-          { speaker: "陈医生", text: "「全船人的性命都在你们工程巡检员手里了，千万小心！」" }
+          { speaker: "陈医生", text: "「【警报急促蜂鸣】休眠母线电压在剧烈跌落！循环温度超标 4.2 度了！」" },
+          { speaker: "陈医生", text: "「小徐，求求你们快保住底层管路，休眠者经不起高温脑损伤！」" }
         ];
       }
       if (this.crisis.isResolved) {
         return [
-          { speaker: "陈医生", text: "「一万两千四百零八个生命体征信号灯全都恢复平稳绿光了……」" },
-          { speaker: "陈医生", text: "「大家都会平安抵达新家园的。谢谢你，小伙子。」" }
+          { speaker: "陈医生", text: "「一万两千四百零八个生命体征信号灯全都恢复平稳绿光了……老天保佑。」" },
+          { speaker: "陈医生", text: "「小徐，你们底层机修工今天救了所有人一命，辛苦了。」" }
         ];
       }
     }
 
-    // 5. Transit Guard (Xiao Liu)
+    // 5. Transit Guard Xiao Liu (中央交通站调度员)
     if (person.id === "transit_guard") {
       if (this.crisis.isAlarmActive) {
         return [
-          { speaker: "调度员小刘", text: "「中央穿梭轨道已切换至特级抢险模式！南向通道全线绿灯，快通过！」" }
+          { speaker: "调度员小刘", text: "「【对讲机杂音】『呼叫站台！中央穿梭轨道已切入特级损管优先！南向通道全线锁闭！』小徐，快走人行梯去机库！」" }
         ];
       }
       if (this.crisis.isResolved) {
         return [
-          { speaker: "调度员小刘", text: "「全舰轨道警报解除！各区段气压与电压恢复额定水平！」" }
+          { speaker: "调度员小刘", text: "「全线轨道警报解除！机控室那帮大佬刚才把我们信号全抢了……好在没事了。」" }
         ];
       }
     }
