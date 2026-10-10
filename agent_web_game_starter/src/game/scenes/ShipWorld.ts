@@ -8,7 +8,7 @@ import { findInteractable, reachPoint, type Interactable } from "../systems/Inte
 import { Dialogue, type DialogueLine } from "../systems/Dialogue";
 import { PLAYER_INTERACT_REACH } from "../config";
 import { placeAt, shipSpawn } from "../map/shipMap";
-import { PLACE_LABELS, SHIP_PEOPLE, SHIP_PROPS, type ScenePerson, type SceneProp } from "./shipProps";
+import { PLACE_LABELS, ALL_SHIP_PEOPLE, SHIP_PROPS, type ScenePerson, type SceneProp } from "./shipProps";
 import { DutySystem } from "../systems/DutySystem";
 
 /**
@@ -56,7 +56,7 @@ export class ShipWorld implements GameWorld {
     map: TileMap,
     assets: GameAssets | null = null,
     props: readonly SceneProp[] = SHIP_PROPS,
-    people: readonly ScenePerson[] = SHIP_PEOPLE
+    people: readonly ScenePerson[] = ALL_SHIP_PEOPLE
   ) {
     this.map = map;
     this.assets = assets;

@@ -1,6 +1,13 @@
 import type { DialogueLine } from "../systems/Dialogue";
 import { TILE } from "../config";
-import { BRIDGE_ORIGIN, CABIN_ORIGIN, type Place } from "../map/shipMap";
+import {
+  BRIDGE_ORIGIN,
+  CABIN_ORIGIN,
+  TRANSIT_ORIGIN,
+  HABITAT_ORIGIN,
+  MEDICAL_ORIGIN,
+  type Place
+} from "../map/shipMap";
 
 /**
  * Everything standing on the ship, and who is aboard.
@@ -224,15 +231,143 @@ export const BRIDGE_PROPS: readonly SceneProp[] = [
   ])
 ];
 
-export const SHIP_PROPS: readonly SceneProp[] = [...CABIN_PROPS, ...BRIDGE_PROPS];
+// --- central transit hub ----------------------------------------------------
+
+const transit = (
+  assetId: string,
+  tx: number,
+  ty: number,
+  w: number,
+  h: number,
+  label: string,
+  lines: DialogueLine[] | null
+) => propIn(TRANSIT_ORIGIN, assetId, tx, ty, w, h, label, lines);
+
+export const TRANSIT_PROPS: readonly SceneProp[] = [
+  transit("fx_terminal", 23, 4.5, 1, 1, "交通调度终端", [
+    { speaker: null, text: "远望号前部中央交通枢纽调度终端。屏幕滚动着穿梭轨道班次。" },
+    { speaker: null, text: "「下一班空载巡检车：04分后进站」「L-1农业模块气压：正常」「R-1生活环联络道：正常」" }
+  ]),
+  transit("fx_screen_lit", 25, 2.5, 1, 1, "全舰拓扑图大屏", [
+    { speaker: null, text: "大屏幕上常亮着远望号全长 2800 米的纵向结构拓扑图。" },
+    { speaker: null, text: "从前向消融防护盾、指挥区，到两个旋转生活环、六大殖民模块，一直延伸到尾部庞大的聚变推进阵列与机械羽翼般的散热翼。" },
+    { speaker: null, text: "你现在位于 300-950 米标段的中央交通换乘节点。" }
+  ]),
+  transit("fx_chair", 7, 4.5, 1, 1, "候车长椅", [
+    { speaker: null, text: "固定在站台甲板上的金属长椅，扶手经过防静电包覆处理。" }
+  ]),
+  transit("fx_chair", 9, 4.5, 1, 1, "候车长椅", null),
+  transit("fx_switch_panel", 2, 9.5, 2, 1, "L-1农业模块气闸手柄", [
+    { speaker: null, text: "通往 L-1 生态农业模块的连接廊桥气闸控制箱。指示灯处于绿色巡航密封状态。" },
+    { speaker: null, text: "隔着厚重的多层密封门，能隐约感受到循环泵低沉的振动。" }
+  ]),
+  transit("fx_switch_panel", 31, 9.5, 2, 1, "R-1生活环气闸手柄", [
+    { speaker: null, text: "通往 R-1 生活与社会模块以及 440 米双旋转生活环的交通气闸。" },
+    { speaker: null, text: "标牌上写着：『生活环旋转速度 1.35 rpm，外缘模拟重力 0.45g。请抓好安全扶手』。" }
+  ]),
+  transit("fx_switch_panel", 8, 17.5, 2, 1, "站台检修开关箱", [
+    { speaker: null, text: "中央站台的接触网高压与动力断路器箱，挂着黄色安全锁定牌。" }
+  ]),
+  transit("fx_paper_log", 24, 17.5, 1, 1, "轨道排班手抄表", [
+    { speaker: null, text: "夹在防风夹板上的手抄班次表。上面用红笔圈出了今日例行巡检的轨道区间。" }
+  ])
+];
+
+// --- crew habitat & mess hall -----------------------------------------------
+
+const habitat = (
+  assetId: string,
+  tx: number,
+  ty: number,
+  w: number,
+  h: number,
+  label: string,
+  lines: DialogueLine[] | null
+) => propIn(HABITAT_ORIGIN, assetId, tx, ty, w, h, label, lines);
+
+export const HABITAT_PROPS: readonly SceneProp[] = [
+  habitat("fx_bed", 4, 4.5, 2, 3, "船员起居铺位", [
+    { speaker: null, text: "标准双层船员铺位。配有防失重约束带和独立可调阅读射灯。" },
+    { speaker: null, text: "床头挡板上刻着微小的划痕，记着这名船员当班执勤的天数。" }
+  ]),
+  habitat("fx_bed", 4, 14.5, 2, 3, "备用轮值铺位", [
+    { speaker: null, text: "整洁的轮值床铺，被子按照工控内务条例卷起固定。" }
+  ]),
+  habitat("fx_meeting_table", 24, 5.5, 3, 3, "公共餐桌", [
+    { speaker: null, text: "生活区公共餐桌。台面是浅木纹复合阻燃材料，带有防溢凹槽。" },
+    { speaker: null, text: "中间的金属保温杯里还装着半杯温热的水。" }
+  ]),
+  habitat("fx_chair", 22.5, 5.5, 1, 1, "固定餐椅", null),
+  habitat("fx_chair", 25.5, 5.5, 1, 1, "固定餐椅", null),
+  habitat("fx_plant", 21, 14.5, 1, 1, "水培生机展示槽", [
+    { speaker: null, text: "生活区公共植物柜中旺盛生长的小型地球常春藤。" },
+    { speaker: null, text: "在无垠的冷寂星空里，一抹生机勃勃的翠绿是全船船员最好的心理锚点。" }
+  ]),
+  habitat("fx_paper_log", 26, 14.5, 1, 1, "船员便签留言板", [
+    { speaker: null, text: "软木板上钉满了手写便签条：" },
+    { speaker: null, text: "「老周，你的三号管路扳手落在站台了，给你放值班台了。」「周末休闲舱放《地球最后的夏日》，记得带自制爆米花。」" }
+  ]),
+  habitat("fx_terminal", 29, 5.5, 1, 1, "营养配餐终端", [
+    { speaker: null, text: "自动化合成食品补给站。提供压缩合成蛋白质、高纤维饼干和恒温饮用水。" }
+  ]),
+  habitat("fx_terminal", 29, 15.5, 1, 1, "水循环监测阀台", [
+    { speaker: null, text: "生活区二级水净化处理终端，仪表显示水质纯净度达到 99.98%。" }
+  ])
+];
+
+// --- central medical & cryo-stasis bay --------------------------------------
+
+const medical = (
+  assetId: string,
+  tx: number,
+  ty: number,
+  w: number,
+  h: number,
+  label: string,
+  lines: DialogueLine[] | null
+) => propIn(MEDICAL_ORIGIN, assetId, tx, ty, w, h, label, lines);
+
+export const MEDICAL_PROPS: readonly SceneProp[] = [
+  medical("fx_holo_table", 15, 10.5, 3, 2, "生理全景诊断台", [
+    { speaker: null, text: "中央医疗中心的生理多参数全景诊断台。配备失重负压吸附与深层组织扫描阵列。" },
+    { speaker: null, text: "台面洁净平整，旁边的离线脑波监视仪处于待机状态。" }
+  ]),
+  medical("fx_bed", 15, 14.5, 2, 3, "医疗监护病床", [
+    { speaker: null, text: "浅灰白色的医用可调软垫病床，配有独立的输液挂钩与生命体征遥测腕带。" }
+  ]),
+  medical("fx_terminal", 13, 7.5, 1, 1, "休眠生理监测终端", [
+    { speaker: null, text: "直连休眠舱阵列的中央巡检终端。屏幕显示着实时冷凝回路状态：" },
+    { speaker: null, text: "「休眠总人数：12,408 / 12,408」「生理代谢抑制率：99.7%」「低温维生母线：双路正常」" }
+  ]),
+  medical("fx_bed", 5, 4.5, 2, 3, "休眠舱框架·第1组", [
+    { speaker: null, text: "多层复合材料框架中紧凑排列的冷冻休眠舱单元。" },
+    { speaker: null, text: "观察窗内结着一层薄薄的白霜，蓝绿色的生命监测微光在暗处安静地跳动。" }
+  ]),
+  medical("fx_bed", 5, 14.5, 2, 3, "休眠舱框架·第2组", [
+    { speaker: null, text: "第二组休眠舱框架。维护机器人的专用轨道沿着框架顶部笔直向前延伸。" }
+  ]),
+  medical("fx_bed", 23, 4.5, 2, 3, "休眠舱框架·第3组", [
+    { speaker: null, text: "第三组休眠舱框架。冷凝循环管道表面微微发凉，维生流体以极其缓慢的流速循环。" }
+  ]),
+  medical("fx_bed", 23, 14.5, 2, 3, "休眠舱框架·第4组", [
+    { speaker: null, text: "第四组休眠舱框架。这里沉睡着远望号未来的首批地面拓荒工程师们。" }
+  ]),
+  medical("fx_switch_panel", 15, 20.5, 2, 1, "后部工业区安全隔离轮", [
+    { speaker: null, text: "厚重的重工业隔离水密闸门。门上刷着鲜艳的黄色安全斜纹。" },
+    { speaker: null, text: "标牌注明：『前方为 1800-2800 米后部工业模块与主聚变动力区。需工程主管机械密钥开启』。" }
+  ])
+];
+
+export const SHIP_PROPS: readonly SceneProp[] = [
+  ...CABIN_PROPS,
+  ...BRIDGE_PROPS,
+  ...TRANSIT_PROPS,
+  ...HABITAT_PROPS,
+  ...MEDICAL_PROPS
+];
 
 /**
  * Who is aboard.
- *
- * The captain is in ONE place. He used to appear in both rooms, which the
- * separate-scene arrangement hid; on a single map it would be plainly absurd. His
- * single conversation now covers the bridge he stands on and the cabin he sleeps
- * in -- which is also what makes walking there mean something.
  */
 export const SHIP_PEOPLE: readonly ScenePerson[] = [
   {
@@ -269,10 +404,65 @@ export const SHIP_PEOPLE: readonly ScenePerson[] = [
   }
 ];
 
+export const OTHER_CREW: readonly ScenePerson[] = [
+  {
+    id: "transit_guard",
+    name: "交通调度员",
+    assetId: "crew_down_idle",
+    x: (TRANSIT_ORIGIN.tx + 21) * TILE,
+    y: (TRANSIT_ORIGIN.ty + 4.5) * TILE,
+    facing: "down",
+    promptLabel: "和交通调度员说话",
+    lines: [
+      { speaker: "调度员小刘", text: "中央交通站第二班调度一切正常。" },
+      { speaker: "调度员小刘", text: "穿梭轨道保持每 15 分钟一次空载自动巡线，路轨气压压差在允许范围内。" },
+      { speaker: "调度员小刘", text: "西侧去 L-1 农业区，东侧去 R-1 和旋转生活环。现在非轮休日，廊桥保持巡航隔离状态。" },
+      { speaker: "调度员小刘", text: "巡检完了顺着南面走，去生活区和医疗区转转吧，老周他们在那边值守。" }
+    ]
+  },
+  {
+    id: "engineer",
+    name: "轮机检修员",
+    assetId: "crew_down_idle",
+    x: (HABITAT_ORIGIN.tx + 27) * TILE,
+    y: (HABITAT_ORIGIN.ty + 15.5) * TILE,
+    facing: "left",
+    promptLabel: "和轮机检修员说话",
+    lines: [
+      { speaker: "老周", text: "哟，巡勤员小伙子，刚从舰桥巡检下来？" },
+      { speaker: "老周", text: "咱们远望号飞了三十年，两千八百米长的舰体，全靠各个系统按部就班。" },
+      { speaker: "老周", text: "水循环阀门我刚调校过，水质好得很。累了就去接杯温水喝。" },
+      { speaker: "老周", text: "再往前是医疗休眠区，陈医生在值守，进门记得轻点。" }
+    ]
+  },
+  {
+    id: "medic",
+    name: "休眠监护员",
+    assetId: "crew_down_idle",
+    x: (MEDICAL_ORIGIN.tx + 17) * TILE,
+    y: (MEDICAL_ORIGIN.ty + 10.5) * TILE,
+    facing: "left",
+    promptLabel: "和休眠监护员说话",
+    lines: [
+      { speaker: "陈医生", text: "嘘……请放轻脚步。" },
+      { speaker: "陈医生", text: "一万两千四百零八名拓荒者在这片冷凝光晕里沉睡，生理代谢降到了千分之三。" },
+      { speaker: "陈医生", text: "我们在深空里醒着，就是为了守住他们抵达新世界的希望。" },
+      { speaker: "陈医生", text: "今天的各项巡检都合格了吧？认真负责，辛苦了。" }
+    ]
+  }
+];
+
+export const ALL_SHIP_PEOPLE: readonly ScenePerson[] = [...SHIP_PEOPLE, ...OTHER_CREW];
+
 /** What the HUD calls each part of the ship. */
 export const PLACE_LABELS: Record<Place, string> = {
   bridge: "远望号 · 舰桥",
   passage: "远望号 · 通道",
   cabin: "远望号 · 舰长室",
+  transit_corridor: "远望号 · 主交通干线",
+  transit_hub: "远望号 · 中央交通站",
+  crew_habitat: "远望号 · 船员生活区",
+  medical_bay: "远望号 · 医疗与休眠舱",
   structure: "远望号 · 结构区"
 };
+

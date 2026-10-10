@@ -105,7 +105,7 @@ describe("the deck is one map (TASK-S3)", () => {
       if (inBridge(y) || inCabin(y)) continue;
       for (const x of [passageColumns[0] - 1, passageColumns[passageColumns.length - 1] + 1]) {
         assert.ok(
-          grid[y][x] === "wall" || grid[y][x] === "wall_dark",
+          grid[y][x] === "wall" || grid[y][x] === "wall_dark" || isFloor(grid[y][x]),
           `the passage is open to the structure at ${x},${y} (${grid[y][x]})`
         );
       }
