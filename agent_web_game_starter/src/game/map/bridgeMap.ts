@@ -177,7 +177,11 @@ const SHAPES: Shape[] = [
   { x: 7, y: 8, w: 1, h: 1, type: "floor_light", note: "柔和线性照明" },
   { x: 7, y: 13, w: 1, h: 1, type: "floor_light", note: "柔和线性照明" },
   { x: 32, y: 8, w: 1, h: 1, type: "floor_light", note: "柔和线性照明" },
-  { x: 32, y: 13, w: 1, h: 1, type: "floor_light", note: "柔和线性照明" }
+  { x: 32, y: 13, w: 1, h: 1, type: "floor_light", note: "柔和线性照明" },
+
+  // Central runway guide lights leading from aft doorway toward command station.
+  { x: 20, y: 14, w: 2, h: 1, type: "floor_light", note: "中轴步道导引灯" },
+  { x: 20, y: 12, w: 2, h: 1, type: "floor_light", note: "中轴步道导引灯" }
 ];
 
 function applyShapes(grid: TileType[][]): TileType[][] {

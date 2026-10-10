@@ -71,6 +71,35 @@ if (app) {
   const dialogueBox = new DialogueBox(app);
   ship.onDialogueChange = (dialogue) => dialogueBox.render(dialogue);
 
+  // Duty Tracker HUD
+  const tracker = document.createElement("div");
+  tracker.id = "duty-tracker";
+  app.appendChild(tracker);
+
+  const renderDuty = () => {
+    const duty = ship.duty;
+    const items = duty.tasks
+      .map(
+        (t) => `
+        <div class="duty-item ${t.completed ? "done" : ""}">
+          <span class="duty-box">${t.completed ? "✓" : ""}</span>
+          <span>${t.title}</span>
+        </div>`
+      )
+      .join("");
+
+    tracker.innerHTML = `
+      <div class="duty-header">
+        <span>二班例行巡检日志</span>
+        <span>${duty.completedCount}/${duty.totalCount}</span>
+      </div>
+      ${items}
+    `;
+  };
+
+  renderDuty();
+  ship.onDutyChange = () => renderDuty();
+
   // `&dialogue=1` interacts immediately, so a screenshot can show the box.
   if (params.get("dialogue") === "1") {
     ship.interactInReach();

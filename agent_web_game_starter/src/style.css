@@ -85,3 +85,67 @@ html, body {
   font-size: 13px;
   color: #8a8f9e;
 }
+
+/* Duty Checklist overlay: top-left corner */
+#duty-tracker {
+  position: fixed;
+  top: 50px;
+  left: 16px;
+  width: 250px;
+  background: rgba(18, 22, 33, 0.88);
+  border: 1px solid #364463;
+  border-radius: 8px;
+  padding: 10px 14px;
+  box-sizing: border-box;
+  color: #cfd6e6;
+  font-size: 13px;
+  line-height: 1.5;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  pointer-events: none;
+  backdrop-filter: blur(4px);
+  z-index: 10;
+}
+
+.duty-header {
+  font-weight: 700;
+  color: #6bb3f2;
+  margin-bottom: 6px;
+  display: flex;
+  justify-content: space-between;
+  border-bottom: 1px solid rgba(107, 179, 242, 0.2);
+  padding-bottom: 4px;
+  letter-spacing: 0.5px;
+}
+
+.duty-item {
+  display: flex;
+  align-items: center;
+  margin: 4px 0;
+  transition: all 0.2s ease;
+}
+
+.duty-item.done {
+  color: #6edb8f;
+  text-decoration: line-through;
+  opacity: 0.75;
+}
+
+.duty-box {
+  display: inline-block;
+  width: 13px;
+  height: 13px;
+  margin-right: 8px;
+  border: 1px solid #6bb3f2;
+  border-radius: 2px;
+  text-align: center;
+  line-height: 11px;
+  font-size: 10px;
+}
+
+.duty-item.done .duty-box {
+  background: #238636;
+  border-color: #3fb950;
+  color: white;
+  text-decoration: none;
+}
+

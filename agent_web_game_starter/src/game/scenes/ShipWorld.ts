@@ -9,6 +9,7 @@ import { Dialogue, type DialogueLine } from "../systems/Dialogue";
 import { PLAYER_INTERACT_REACH } from "../config";
 import { placeAt, shipSpawn } from "../map/shipMap";
 import { PLACE_LABELS, SHIP_PEOPLE, SHIP_PROPS, type ScenePerson, type SceneProp } from "./shipProps";
+import { DutySystem } from "../systems/DutySystem";
 
 /**
  * The ship, as one continuous world.
@@ -27,6 +28,7 @@ export class ShipWorld implements GameWorld {
   readonly player: Player;
   readonly dialogue = new Dialogue();
   readonly map: TileMap;
+  readonly duty = new DutySystem();
 
   private readonly assets: GameAssets | null;
   private readonly props: readonly SceneProp[];
@@ -46,6 +48,9 @@ export class ShipWorld implements GameWorld {
 
   /** Told whenever the open dialogue changes, so the DOM box can redraw. */
   onDialogueChange: ((dialogue: Dialogue | null) => void) | null = null;
+
+  /** Told whenever the duty task progress updates. */
+  onDutyChange: ((duty: DutySystem) => void) | null = null;
 
   constructor(
     map: TileMap,
@@ -160,8 +165,32 @@ export class ShipWorld implements GameWorld {
     const anchor = person ?? prop;
     if (!anchor) return;
 
-    const lines = person ? this.linesFor(person) : prop?.lines;
+    let dutyNote: DialogueLine | null = null;
+    if (prop) {
+      if (prop.label === "动力席") {
+        if (this.duty.complete("power")) {
+          dutyNote = { speaker: null, text: "【二班值班记录已更新】散热翼当前展开角度为 42°，第一回路状态恒定。已记入当班巡检日志。" };
+          this.onDutyChange?.(this.duty);
+        }
+      } else if (prop.label === "机械应急开关" && prop.x > 20 * this.map.tileSize) {
+        if (this.duty.complete("switch")) {
+          dutyNote = { speaker: null, text: "【二班值班记录已更新】右舷机械应急开关的手动保护罩已确认处于锁定安全位。已记入当班巡检日志。" };
+          this.onDutyChange?.(this.duty);
+        }
+      } else if (prop.label === "绿植" && prop.y < 20 * this.map.tileSize) {
+        if (this.duty.complete("plant")) {
+          dutyNote = { speaker: null, text: "【二班值班记录已更新】你从随身水壶倒了点水给这盆绿植。干涸的土壤吸收了水分，叶片显得精神了些。" };
+          this.onDutyChange?.(this.duty);
+        }
+      }
+    }
+
+    let lines = person ? this.linesFor(person) : prop?.lines;
     if (!lines || lines.length === 0) return;
+
+    if (dutyNote) {
+      lines = [...lines, dutyNote];
+    }
 
     const dx = anchor.x - this.player.centerX;
     const dy = anchor.y - (this.player.y + this.player.height);
@@ -183,7 +212,29 @@ export class ShipWorld implements GameWorld {
    * captain who remarked on your sightseeing every time would be a gimmick.
    */
   private linesFor(person: ScenePerson): readonly DialogueLine[] {
-    if (person.id !== "captain" || this.captainGreeted) return person.lines;
+    if (person.id === "navigator") {
+      if (!this.duty.isInspectionDone()) {
+        return [
+          { speaker: "领航员", text: "「二班的巡检员，来得正好。今天的巡检任务还没结签呢。」" },
+          { speaker: "领航员", text: "「去查一下动力席的散热翼、右舷应急开关锁闭销、还有人员席角落那盆快干枯的绿植。」" },
+          ...person.lines
+        ];
+      }
+    }
+
+    if (person.id !== "captain") return person.lines;
+
+    if (this.duty.isInspectionDone() && !this.duty.tasks.find((t) => t.id === "report")?.completed) {
+      this.duty.complete("report");
+      this.onDutyChange?.(this.duty);
+      return [
+        { speaker: "舰长", text: "「动力席读数、应急开关……还给人员席那盆绿植浇了水？」舰长接过你的巡检单，认真签下了名字。" },
+        { speaker: "舰长", text: "「这艘船能平稳飞三十年，靠的就是你们每天按部就班的检查。二班当班合格，辛苦了。」" },
+        ...person.lines
+      ];
+    }
+
+    if (this.captainGreeted) return person.lines;
     this.captainGreeted = true;
 
     if (this.seen.size < 4) return person.lines;
