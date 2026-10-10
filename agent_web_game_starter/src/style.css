@@ -149,3 +149,64 @@ html, body {
   text-decoration: none;
 }
 
+/* Chapter 1 Crisis Tracker HUD overlay: top-right corner */
+#crisis-tracker {
+  position: fixed;
+  top: 50px;
+  right: 16px;
+  width: 310px;
+  background: rgba(36, 10, 10, 0.92);
+  border: 1px solid #ff4433;
+  border-radius: 8px;
+  padding: 10px 14px;
+  box-sizing: border-box;
+  color: #ffcccc;
+  font-size: 13px;
+  line-height: 1.5;
+  box-shadow: 0 4px 20px rgba(255, 50, 30, 0.35);
+  pointer-events: none;
+  backdrop-filter: blur(4px);
+  z-index: 10;
+  animation: crisis-pulse 2s infinite ease-in-out;
+}
+
+#crisis-tracker.resolved {
+  background: rgba(12, 35, 20, 0.92);
+  border-color: #3fb950;
+  box-shadow: 0 4px 16px rgba(50, 200, 80, 0.25);
+  animation: none;
+  color: #c9f0d0;
+}
+
+.crisis-badge {
+  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: 0.5px;
+  margin-bottom: 4px;
+}
+
+#crisis-tracker.alert .crisis-badge {
+  color: #ff6655;
+}
+
+#crisis-tracker.resolved .crisis-badge {
+  color: #6edb8f;
+}
+
+.crisis-title {
+  font-weight: 700;
+  font-size: 14px;
+  color: #ffffff;
+  margin-bottom: 4px;
+}
+
+.crisis-hint {
+  font-size: 12px;
+  opacity: 0.85;
+}
+
+@keyframes crisis-pulse {
+  0%, 100% { border-color: #ff4433; box-shadow: 0 0 10px rgba(255, 50, 30, 0.3); }
+  50% { border-color: #ff8866; box-shadow: 0 0 22px rgba(255, 80, 40, 0.6); }
+}
+

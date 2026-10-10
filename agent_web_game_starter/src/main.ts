@@ -100,6 +100,30 @@ if (app) {
   renderDuty();
   ship.onDutyChange = () => renderDuty();
 
+  // Crisis Tracker HUD (Chapter 1)
+  const crisisTracker = document.createElement("div");
+  crisisTracker.id = "crisis-tracker";
+  app.appendChild(crisisTracker);
+
+  const renderCrisis = () => {
+    const crisis = ship.crisis;
+    const obj = crisis.currentObjective;
+    if (!obj) {
+      crisisTracker.style.display = "none";
+      return;
+    }
+    crisisTracker.style.display = "block";
+    crisisTracker.className = crisis.isResolved ? "resolved" : "alert";
+    crisisTracker.innerHTML = `
+      <div class="crisis-badge">${crisis.isResolved ? "【危机解除 · 第一章完成】" : "【特级管损警报 · 紧要】"}</div>
+      <div class="crisis-title">${obj.title}</div>
+      <div class="crisis-hint">${obj.hint}</div>
+    `;
+  };
+
+  renderCrisis();
+  ship.onCrisisChange = () => renderCrisis();
+
   // `&dialogue=1` interacts immediately, so a screenshot can show the box.
   if (params.get("dialogue") === "1") {
     ship.interactInReach();
@@ -129,6 +153,9 @@ interface Probe {
   dialogueLine: number;
   dialogueTotal: number;
   dialogueText: string | null;
+  crisisStage: string;
+  crisisAlarm: number;
+  crisisResolved: number;
   /** Art-load state, so "no art" can be told apart from "art failed to load". */
   artMissingCount: number;
   artFailureCount: number;
@@ -158,6 +185,9 @@ function readProbe(): Probe {
     dialogueLine: ship.dialogue.isOpen ? ship.dialogue.lineNumber : 0,
     dialogueTotal: ship.dialogue.lineCount,
     dialogueText: ship.dialogue.current?.text ?? null,
+    crisisStage: ship.crisis.stage,
+    crisisAlarm: ship.crisis.isAlarmActive ? 1 : 0,
+    crisisResolved: ship.crisis.isResolved ? 1 : 0,
     artMissingCount: assets.missing().length,
     artFailureCount: assets.failures().length
   };

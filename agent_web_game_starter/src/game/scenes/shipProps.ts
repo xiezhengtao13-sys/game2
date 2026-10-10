@@ -4,8 +4,10 @@ import {
   BRIDGE_ORIGIN,
   CABIN_ORIGIN,
   TRANSIT_ORIGIN,
+  HANGAR_ORIGIN,
   HABITAT_ORIGIN,
   MEDICAL_ORIGIN,
+  REACTOR_ORIGIN,
   type Place
 } from "../map/shipMap";
 
@@ -358,12 +360,76 @@ export const MEDICAL_PROPS: readonly SceneProp[] = [
   ])
 ];
 
+// --- eva airlock & shuttle hangar bay --------------------------------------
+
+const hangar = (
+  assetId: string,
+  tx: number,
+  ty: number,
+  w: number,
+  h: number,
+  label: string,
+  lines: DialogueLine[] | null
+) => propIn(HANGAR_ORIGIN, assetId, tx, ty, w, h, label, lines);
+
+export const HANGAR_PROPS: readonly SceneProp[] = [
+  hangar("fx_terminal", 6, 5.5, 1, 1, "穿梭机登机舷梯控制台", [
+    { speaker: null, text: "短途地表穿梭机「拓荒者一号」的停泊登艇梯。" },
+    { speaker: null, text: "机身表面覆盖着耐磨防烧蚀绝热瓦。未来抵达目标恒星系后，你将驾驶它降落勘测未知的行星表面。" }
+  ]),
+  hangar("fx_bed", 5, 9.5, 2, 3, "穿梭机磁吸主泊位", [
+    { speaker: null, text: "穿梭机重型磁吸液压停泊基座。仪表显示电磁锁止状态正常。" }
+  ]),
+  hangar("fx_screen_lit", 24, 2.5, 1, 1, "机库气压监测屏", [
+    { speaker: null, text: "机库主气闸舱内外气压监测大屏：内部 101.3 kPa，外部为深空真空。" }
+  ]),
+  hangar("fx_switch_panel", 27, 4.5, 2, 1, "重型防热工程服备勤架", [
+    { speaker: null, text: "悬挂在加压锁柜上的三套重型耐高温工程作业服。" },
+    { speaker: null, text: "胸口配有加厚隔热陶瓷胸甲与独立高压闭路呼吸背包，专门用于高温机舱抢险。" }
+  ]),
+  hangar("fx_terminal", 27, 10.5, 1, 1, "便携高压氧气充气柱", [
+    { speaker: null, text: "工程作业服呼吸气瓶快速充气站，压力表指针稳定在 30 MPa 满格绿区。" }
+  ])
+];
+
+// --- reactor auxiliary heat-sink station -----------------------------------
+
+const reactor = (
+  assetId: string,
+  tx: number,
+  ty: number,
+  w: number,
+  h: number,
+  label: string,
+  lines: DialogueLine[] | null
+) => propIn(REACTOR_ORIGIN, assetId, tx, ty, w, h, label, lines);
+
+export const REACTOR_PROPS: readonly SceneProp[] = [
+  reactor("fx_holo_table", 15, 6.5, 3, 2, "聚变反应堆状态监测台", [
+    { speaker: null, text: "后部主聚变反应堆热负荷遥测工作台。" },
+    { speaker: null, text: "显示第一回路与第二回路的实时热平衡曲面。此刻散热翼伺服处于异常受阻状态。" }
+  ]),
+  reactor("fx_switch_panel", 6, 8.5, 2, 1, "应急旁路泄压转轮", [
+    { speaker: null, text: "带有厚重机械齿轮啮合的巨型红色泄压手轮。" },
+    { speaker: null, text: "逆时针用力旋转可以手动切断过载的高压冷却回路，释放受困气压。" }
+  ]),
+  reactor("fx_switch_panel", 24, 8.5, 2, 1, "副散热翼机械强制展开栓", [
+    { speaker: null, text: "被黄色防误触护罩罩住的重型液压释放杠杆。" },
+    { speaker: null, text: "拔出机械击发插销并全力扳下手柄，可利用应急火工品强制弹开副散热翼！" }
+  ]),
+  reactor("fx_terminal", 15, 13.5, 1, 1, "散热循环压力双针表", [
+    { speaker: null, text: "第一回路与副回路压力双联机械指针表。红区刻度触目惊心。" }
+  ])
+];
+
 export const SHIP_PROPS: readonly SceneProp[] = [
   ...CABIN_PROPS,
   ...BRIDGE_PROPS,
   ...TRANSIT_PROPS,
+  ...HANGAR_PROPS,
   ...HABITAT_PROPS,
-  ...MEDICAL_PROPS
+  ...MEDICAL_PROPS,
+  ...REACTOR_PROPS
 ];
 
 /**
@@ -416,8 +482,7 @@ export const OTHER_CREW: readonly ScenePerson[] = [
     lines: [
       { speaker: "调度员小刘", text: "中央交通站第二班调度一切正常。" },
       { speaker: "调度员小刘", text: "穿梭轨道保持每 15 分钟一次空载自动巡线，路轨气压压差在允许范围内。" },
-      { speaker: "调度员小刘", text: "西侧去 L-1 农业区，东侧去 R-1 和旋转生活环。现在非轮休日，廊桥保持巡航隔离状态。" },
-      { speaker: "调度员小刘", text: "巡检完了顺着南面走，去生活区和医疗区转转吧，老周他们在那边值守。" }
+      { speaker: "调度员小刘", text: "南侧是穿梭机机库，停着咱们未来的行星登陆艇；更南边是生活区和医疗区。" }
     ]
   },
   {
@@ -432,7 +497,7 @@ export const OTHER_CREW: readonly ScenePerson[] = [
       { speaker: "老周", text: "哟，巡勤员小伙子，刚从舰桥巡检下来？" },
       { speaker: "老周", text: "咱们远望号飞了三十年，两千八百米长的舰体，全靠各个系统按部就班。" },
       { speaker: "老周", text: "水循环阀门我刚调校过，水质好得很。累了就去接杯温水喝。" },
-      { speaker: "老周", text: "再往前是医疗休眠区，陈医生在值守，进门记得轻点。" }
+      { speaker: "老周", text: "再往前是医疗休眠区和最底层的动力散热泵房，大家都在各司其职。" }
     ]
   },
   {
@@ -461,8 +526,11 @@ export const PLACE_LABELS: Record<Place, string> = {
   cabin: "远望号 · 舰长室",
   transit_corridor: "远望号 · 主交通干线",
   transit_hub: "远望号 · 中央交通站",
+  hangar_bay: "远望号 · 穿梭机机库",
   crew_habitat: "远望号 · 船员生活区",
   medical_bay: "远望号 · 医疗与休眠舱",
+  reactor_bay: "远望号 · 动力排险泵房",
   structure: "远望号 · 结构区"
 };
+
 

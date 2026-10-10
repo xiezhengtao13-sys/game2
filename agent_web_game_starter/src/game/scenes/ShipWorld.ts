@@ -10,6 +10,7 @@ import { PLAYER_INTERACT_REACH } from "../config";
 import { placeAt, shipSpawn } from "../map/shipMap";
 import { PLACE_LABELS, ALL_SHIP_PEOPLE, SHIP_PROPS, type ScenePerson, type SceneProp } from "./shipProps";
 import { DutySystem } from "../systems/DutySystem";
+import { CrisisSystem } from "../systems/CrisisSystem";
 
 /**
  * The ship, as one continuous world.
@@ -29,7 +30,9 @@ export class ShipWorld implements GameWorld {
   readonly dialogue = new Dialogue();
   readonly map: TileMap;
   readonly duty = new DutySystem();
+  readonly crisis = new CrisisSystem();
 
+  private elapsedTime = 0;
   private readonly assets: GameAssets | null;
   private readonly props: readonly SceneProp[];
   private readonly people: readonly ScenePerson[];
@@ -51,6 +54,9 @@ export class ShipWorld implements GameWorld {
 
   /** Told whenever the duty task progress updates. */
   onDutyChange: ((duty: DutySystem) => void) | null = null;
+
+  /** Told whenever the chapter 1 crisis progress updates. */
+  onCrisisChange: ((crisis: CrisisSystem) => void) | null = null;
 
   constructor(
     map: TileMap,
@@ -137,6 +143,8 @@ export class ShipWorld implements GameWorld {
   }
 
   update(dt: number, input: Input): void {
+    this.elapsedTime += dt;
+
     if (this.dialogue.isOpen) {
       if (input.wasPressed("KeyE") || input.wasPressed("Space")) {
         this.dialogue.advance();
@@ -166,6 +174,7 @@ export class ShipWorld implements GameWorld {
     if (!anchor) return;
 
     let dutyNote: DialogueLine | null = null;
+    let dutyNoteFirst = false;
     if (prop) {
       if (prop.label === "动力席") {
         if (this.duty.complete("power")) {
@@ -182,6 +191,36 @@ export class ShipWorld implements GameWorld {
           dutyNote = { speaker: null, text: "【二班值班记录已更新】你从随身水壶倒了点水给这盆绿植。干涸的土壤吸收了水分，叶片显得精神了些。" };
           this.onDutyChange?.(this.duty);
         }
+      } else if (prop.label === "重型防热工程服备勤架") {
+        if (this.crisis.stage === "eva_gear") {
+          this.crisis.equipEvaSuit();
+          dutyNote = {
+            speaker: null,
+            text: "【应急装备穿戴完毕】你迅速换上重型防热工程服。加厚陶瓷胸甲密闭锁死，独立加压呼吸循环启动！现在可以耐受高温机舱！"
+          };
+          dutyNoteFirst = true;
+          this.onCrisisChange?.(this.crisis);
+        }
+      } else if (prop.label === "应急旁路泄压转轮") {
+        if (this.crisis.stage === "valve_vent") {
+          this.crisis.ventCoolantValve();
+          dutyNote = {
+            speaker: null,
+            text: "【旁路泄压成功】你咬紧牙关逆时针连转三圈重型转轮！高压旁路阀门轰然弹开，过热蒸汽喷入吸收池，第一回路压力骤降到安全警戒线！"
+          };
+          dutyNoteFirst = true;
+          this.onCrisisChange?.(this.crisis);
+        }
+      } else if (prop.label === "副散热翼机械强制展开栓") {
+        if (this.crisis.stage === "eject_lever") {
+          this.crisis.pullEjectionLever();
+          dutyNote = {
+            speaker: null,
+            text: "【副散热翼应急展开】你拔下黄色安全插销，用全身力气将应急手柄拉到底！深空外爆鸣传导，副散热翼完全弹开！聚变反应堆热平衡恢复基线！"
+          };
+          dutyNoteFirst = true;
+          this.onCrisisChange?.(this.crisis);
+        }
       }
     }
 
@@ -189,7 +228,7 @@ export class ShipWorld implements GameWorld {
     if (!lines || lines.length === 0) return;
 
     if (dutyNote) {
-      lines = [...lines, dutyNote];
+      lines = dutyNoteFirst ? [dutyNote, ...lines] : [...lines, dutyNote];
     }
 
     const dx = anchor.x - this.player.centerX;
@@ -206,13 +245,24 @@ export class ShipWorld implements GameWorld {
   /**
    * What a person says.
    *
-   * The captain notices if the player has already looked around before finding
-   * him. A small thing, but it is the difference between a ship full of props and
-   * a ship someone actually lives on. Only once, on the first conversation: a
-   * captain who remarked on your sightseeing every time would be a gimmick.
+   * Characters react realistically to whether ship routine is normal, an emergency
+   * thermal runaway is underway, or the Chapter 1 crisis has been resolved.
    */
   private linesFor(person: ScenePerson): readonly DialogueLine[] {
+    // 1. Navigator
     if (person.id === "navigator") {
+      if (this.crisis.isAlarmActive) {
+        return [
+          { speaker: "领航员", text: "「右舷散热翼卡在 42° 展开角了！机控室的电控总线完全锁死！」" },
+          { speaker: "领航员", text: "「快按舰长指令去南端机库穿防热服，下到动力排险泵房手动操作！」" }
+        ];
+      }
+      if (this.crisis.isResolved) {
+        return [
+          { speaker: "领航员", text: "「看！副散热翼全开后，散热效率甚至比平时还高了 3%。」" },
+          { speaker: "领航员", text: "「新航线坐标已经解算出来了……我们要准备迎接新星系了。」" }
+        ];
+      }
       if (!this.duty.isInspectionDone()) {
         return [
           { speaker: "领航员", text: "「二班的巡检员，来得正好。今天的巡检任务还没结签呢。」" },
@@ -222,28 +272,98 @@ export class ShipWorld implements GameWorld {
       }
     }
 
-    if (person.id !== "captain") return person.lines;
+    // 2. Captain
+    if (person.id === "captain") {
+      if (this.duty.isInspectionDone() && !this.duty.tasks.find((t) => t.id === "report")?.completed) {
+        this.duty.complete("report");
+        this.onDutyChange?.(this.duty);
+        this.crisis.triggerAlarm();
+        this.crisis.advanceToEva();
+        this.onCrisisChange?.(this.crisis);
+        return [
+          { speaker: "舰长", text: "「动力席读数、应急开关……还给人员席那盆绿植浇了水？」舰长接过你的巡检单，认真签下了名字。" },
+          { speaker: "舰长", text: "「这艘船能平稳飞三十年，靠的就是你们每天按部就班的检查。二班当班合格，辛苦了——」" },
+          { speaker: null, text: "【突然间，整艘飞船剧烈震颤！舰内应急蜂鸣器尖锐长鸣，深红色的警报光柱刺破通道！】" },
+          { speaker: "警报广播", text: "【特级管损警报：微碎片擦伤！右舷主散热翼在 42° 液压锁死！反应堆废热无法排放！】" },
+          { speaker: "舰长", text: "「所有岗位就位！微碎片击伤锁死了主散热翼液压伺服，机控室的远程指令失效了！」" },
+          { speaker: "舰长", text: "「二班巡检员！你熟悉管线物理走向！立刻去穿梭机机库穿戴重型防热工装，然后深入最南端动力排险泵房，手动释放旁路气压并扳动副散热翼展开杠杆！」" }
+        ];
+      }
 
-    if (this.duty.isInspectionDone() && !this.duty.tasks.find((t) => t.id === "report")?.completed) {
-      this.duty.complete("report");
-      this.onDutyChange?.(this.duty);
+      if (this.crisis.isResolved) {
+        return [
+          { speaker: "舰长", text: "「二班巡检员，干得漂亮！你拯救了整艘远望号和一万两千四百零八名同胞的未来。」" },
+          { speaker: "舰长", text: "「副散热翼已经锁定，聚变反应堆热平衡已恢复。刚才的传感器阵列已探测到前方星域的新航道……」" },
+          { speaker: "舰长", text: "「三十年的深空巡航即将告一段落。我们即将抵达第一个目标星系。准备迎接属于全人类的星际探索纪元吧！」" }
+        ];
+      }
+
+      if (this.crisis.isAlarmActive) {
+        return [
+          { speaker: "舰长", text: "「时间不多了！一万两千四百名休眠者的维生电力依赖反应堆正常散热！」" },
+          { speaker: "舰长", text: "「快去机库更衣架穿防热服，然后去最南端的动力排险泵房排险！」" }
+        ];
+      }
+
+      if (this.captainGreeted) return person.lines;
+      this.captainGreeted = true;
+
+      if (this.seen.size < 4) return person.lines;
+
       return [
-        { speaker: "舰长", text: "「动力席读数、应急开关……还给人员席那盆绿植浇了水？」舰长接过你的巡检单，认真签下了名字。" },
-        { speaker: "舰长", text: "「这艘船能平稳飞三十年，靠的就是你们每天按部就班的检查。二班当班合格，辛苦了。」" },
-        ...person.lines
+        ...person.lines.slice(0, 3),
+        { speaker: "舰长", text: "你已经把船上转了一圈了？" },
+        ...person.lines.slice(3)
       ];
     }
 
-    if (this.captainGreeted) return person.lines;
-    this.captainGreeted = true;
+    // 3. Engineer (Lao Zhou)
+    if (person.id === "engineer") {
+      if (this.crisis.isAlarmActive) {
+        return [
+          { speaker: "老周", text: "「咳咳……小伙子！主回路气压快把高压管顶爆了，我在这守着主循环！」" },
+          { speaker: "老周", text: "「你穿上重型防热服，下到泵房去转泄压转轮，再拉开副散热翼的击发栓！」" }
+        ];
+      }
+      if (this.crisis.isResolved) {
+        return [
+          { speaker: "老周", text: "「哈哈！老头子我听见机械锁扣弹开的声音了！压力表全绿了！」" },
+          { speaker: "老周", text: "「你这小子真有两把刷子！等下班了一定得来生活区喝一杯！」" }
+        ];
+      }
+    }
 
-    if (this.seen.size < 4) return person.lines;
+    // 4. Medic (Dr. Chen)
+    if (person.id === "medic") {
+      if (this.crisis.isAlarmActive) {
+        return [
+          { speaker: "陈医生", text: "「休眠舱的冷凝循环温度正在攀升！必须在 15 分钟内排险，否则不可逆脑损伤就会发生！」" },
+          { speaker: "陈医生", text: "「全船人的性命都在你们工程巡检员手里了，千万小心！」" }
+        ];
+      }
+      if (this.crisis.isResolved) {
+        return [
+          { speaker: "陈医生", text: "「一万两千四百零八个生命体征信号灯全都恢复平稳绿光了……」" },
+          { speaker: "陈医生", text: "「大家都会平安抵达新家园的。谢谢你，小伙子。」" }
+        ];
+      }
+    }
 
-    return [
-      ...person.lines.slice(0, 3),
-      { speaker: "舰长", text: "你已经把船上转了一圈了？" },
-      ...person.lines.slice(3)
-    ];
+    // 5. Transit Guard (Xiao Liu)
+    if (person.id === "transit_guard") {
+      if (this.crisis.isAlarmActive) {
+        return [
+          { speaker: "调度员小刘", text: "「中央穿梭轨道已切换至特级抢险模式！南向通道全线绿灯，快通过！」" }
+        ];
+      }
+      if (this.crisis.isResolved) {
+        return [
+          { speaker: "调度员小刘", text: "「全舰轨道警报解除！各区段气压与电压恢复额定水平！」" }
+        ];
+      }
+    }
+
+    return person.lines;
   }
 
   /**
@@ -285,6 +405,27 @@ export class ShipWorld implements GameWorld {
     this.renderPeople(renderer);
     this.renderPlayer(renderer);
     this.renderPrompt(renderer);
+    this.renderAlarmOverlay(renderer);
+  }
+
+  /**
+   * Deep space emergency alarm lighting.
+   *
+   * Pulses an atmospheric amber-red alert glow over the visible deck when
+   * the Chapter 1 thermal runaway crisis is active.
+   */
+  private renderAlarmOverlay(renderer: Renderer): void {
+    if (!this.crisis.isAlarmActive) return;
+
+    const pulse = (Math.sin(this.elapsedTime * 4) + 1) / 2;
+    const alpha = 0.08 + pulse * 0.12;
+    renderer.drawRect(
+      renderer.camera.worldX,
+      renderer.camera.worldY,
+      renderer.camera.viewportWidth,
+      renderer.camera.viewportHeight,
+      { color: `rgba(235, 50, 20, ${alpha.toFixed(3)})` }
+    );
   }
 
   /**

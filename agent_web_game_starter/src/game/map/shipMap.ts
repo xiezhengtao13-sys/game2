@@ -9,6 +9,13 @@ import {
   TRANSIT_SOUTH_DOOR
 } from "./transitHubMap";
 import {
+  hangarGrid,
+  HANGAR_COLUMNS,
+  HANGAR_ROWS,
+  HANGAR_NORTH_DOOR,
+  HANGAR_SOUTH_DOOR
+} from "./hangarMap";
+import {
   habitatGrid,
   HABITAT_COLUMNS,
   HABITAT_ROWS,
@@ -22,36 +29,43 @@ import {
   MEDICAL_NORTH_DOOR,
   MEDICAL_SOUTH_DOOR
 } from "./medicalMap";
+import {
+  reactorBayGrid,
+  REACTOR_COLUMNS,
+  REACTOR_ROWS,
+  REACTOR_NORTH_DOOR
+} from "./reactorBayMap";
 
 /**
  * The complete playable Yuanwang colony ship, as ONE CONTINUOUS MAP.
  *
- * Compartments:
+ * Longitudinal compartments:
  *   1. Bridge (舰桥, rows 0..19)
  *   2. Command Passage (指挥通道, rows 20..23)
  *   3. Captain's Stateroom (舰长室, rows 24..39)
  *   4. Main Arterial Corridor (中央主交通干线联络道, rows 21..41)
  *   5. Central Transit Hub (中央交通站 / 枢纽大厅, rows 42..65)
- *   6. Habitat Transition Corridor (生活区联络通道, rows 66..69)
- *   7. Crew Habitat & Mess Hall (船员生活区与公共综合舱, rows 70..92)
- *   8. Medical Airlock Corridor (医疗隔离通道, rows 93..96)
- *   9. Central Medical & Cryo-Stasis Bay (中央医疗与休眠监视舱, rows 97..118)
- *  10. Heavy Industrial & Reactor Gate (后部推进与重工隔离闸口, rows 119..122)
+ *   6. EVA Airlock & Shuttle Hangar Bay (穿梭机机库备勤与舱外整备舱, rows 70..87)
+ *   7. Crew Habitat & Mess Hall (船员生活区与公共综合舱, rows 92..114)
+ *   8. Central Medical & Cryo-Stasis Bay (中央医疗与休眠监视舱, rows 119..140)
+ *   9. Reactor Auxiliary Heat-Sink Station (聚变动力与应急散热排险泵房, rows 145..162)
  *
  * Scale: 1 tile = 1 person height = 1.8 m (config.ts).
- * Total playable area: 40 cols x 124 rows = 72 m wide x 223.2 m long.
+ * Total playable area: 40 cols x 166 rows = 72 m wide x 298.8 m long.
  */
 
 /** Where each compartment sits on the deck. */
 export const BRIDGE_ORIGIN = { tx: 0, ty: 0 };
 export const CABIN_ORIGIN = { tx: 8, ty: 24 };
 export const TRANSIT_ORIGIN = { tx: 3, ty: 42 };
-export const HABITAT_ORIGIN = { tx: 4, ty: 70 };
-export const MEDICAL_ORIGIN = { tx: 5, ty: 97 };
+export const HANGAR_ORIGIN = { tx: 4, ty: 70 };
+export const HABITAT_ORIGIN = { tx: 4, ty: 92 };
+export const MEDICAL_ORIGIN = { tx: 5, ty: 119 };
+export const REACTOR_ORIGIN = { tx: 4, ty: 145 };
 
 export const PASSAGE_WIDTH = 4;
 export const SHIP_COLUMNS = 40;
-export const SHIP_ROWS = 124;
+export const SHIP_ROWS = 166;
 
 /** Where a compartment's doorway lands on the deck. */
 function doorOnDeck(origin: { tx: number; ty: number }, door: { x: number; y: number; w: number }) {
@@ -86,15 +100,18 @@ export function buildShipGrid(): TileType[][] {
   blit(grid, bridgeGrid(), BRIDGE_ORIGIN);
   blit(grid, cabinGrid(), CABIN_ORIGIN);
   blit(grid, transitHubGrid(), TRANSIT_ORIGIN);
+  blit(grid, hangarGrid(), HANGAR_ORIGIN);
   blit(grid, habitatGrid(), HABITAT_ORIGIN);
   blit(grid, medicalGrid(), MEDICAL_ORIGIN);
+  blit(grid, reactorBayGrid(), REACTOR_ORIGIN);
 
   // Carve passages and arterial corridors
   carveCommandPassage(grid);
   carveArterialCorridor(grid);
-  carveStraightPassage(grid, TRANSIT_ORIGIN.ty + TRANSIT_SOUTH_DOOR.y, HABITAT_ORIGIN.ty + HABITAT_NORTH_DOOR.y);
+  carveStraightPassage(grid, TRANSIT_ORIGIN.ty + TRANSIT_SOUTH_DOOR.y, HANGAR_ORIGIN.ty + HANGAR_NORTH_DOOR.y);
+  carveStraightPassage(grid, HANGAR_ORIGIN.ty + HANGAR_SOUTH_DOOR.y, HABITAT_ORIGIN.ty + HABITAT_NORTH_DOOR.y);
   carveStraightPassage(grid, HABITAT_ORIGIN.ty + HABITAT_SOUTH_DOOR.y, MEDICAL_ORIGIN.ty + MEDICAL_NORTH_DOOR.y);
-  carveIndustrialGate(grid);
+  carveStraightPassage(grid, MEDICAL_ORIGIN.ty + MEDICAL_SOUTH_DOOR.y, REACTOR_ORIGIN.ty + REACTOR_NORTH_DOOR.y);
 
   return grid;
 }
@@ -150,9 +167,6 @@ function carveCommandPassage(grid: TileType[][]): void {
 
 /**
  * Starboard arterial corridor: connects the command passage to the Central Transit Hub.
- * Runs east from the command passage (row 21..23, cols 22..34),
- * then south along columns 32..35 past the cabin (rows 21..41),
- * then turns inward at row 41 into the Central Transit Hub's north doorway (cols 18..21).
  */
 function carveArterialCorridor(grid: TileType[][]): void {
   // 1. East branch from command passage (rows 21..23, cols 22..34)
@@ -219,23 +233,6 @@ function carveStraightPassage(grid: TileType[][], fromY: number, toY: number): v
   }
 }
 
-/** South Industrial & Reactor Isolation Gate. */
-function carveIndustrialGate(grid: TileType[][]): void {
-  const gateTop = MEDICAL_ORIGIN.ty + MEDICAL_SOUTH_DOOR.y;
-  for (let y = gateTop; y <= gateTop + 4; y++) {
-    for (let x = 16; x <= 23; x++) {
-      if (x >= 18 && x <= 21 && y < gateTop + 4) {
-        grid[y][x] = y === gateTop + 3 ? "deck_dark" : "deck";
-      } else if (grid[y][x] === "hull") {
-        grid[y][x] = y === gateTop + 4 ? "wall_dark" : "wall";
-      }
-    }
-  }
-  // Yellow safety warning threshold
-  grid[gateTop + 3][18] = "floor_light";
-  grid[gateTop + 3][21] = "floor_light";
-}
-
 /** The kinds of tile the player can stand on. */
 export function isFloor(type: TileType | undefined): boolean {
   return type === "deck" || type === "deck_dark" || type === "deck_rug" || type === "floor_light";
@@ -262,29 +259,34 @@ export type Place =
   | "cabin"
   | "transit_corridor"
   | "transit_hub"
+  | "hangar_bay"
   | "crew_habitat"
   | "medical_bay"
+  | "reactor_bay"
   | "structure";
 
 export function placeAt(tx: number, ty: number): Place {
   if (inCompartment(BRIDGE_ORIGIN, BRIDGE_COLUMNS, BRIDGE_ROWS, tx, ty)) return "bridge";
   if (inCompartment(CABIN_ORIGIN, ROOM_COLUMNS, ROOM_ROWS, tx, ty)) return "cabin";
   if (inCompartment(TRANSIT_ORIGIN, TRANSIT_COLUMNS, TRANSIT_ROWS, tx, ty)) return "transit_hub";
+  if (inCompartment(HANGAR_ORIGIN, HANGAR_COLUMNS, HANGAR_ROWS, tx, ty)) return "hangar_bay";
   if (inCompartment(HABITAT_ORIGIN, HABITAT_COLUMNS, HABITAT_ROWS, tx, ty)) return "crew_habitat";
   if (inCompartment(MEDICAL_ORIGIN, MEDICAL_COLUMNS, MEDICAL_ROWS, tx, ty)) return "medical_bay";
+  if (inCompartment(REACTOR_ORIGIN, REACTOR_COLUMNS, REACTOR_ROWS, tx, ty)) return "reactor_bay";
 
   if (tx >= PASSAGE.x0 && tx <= PASSAGE.x1 && ty > BRIDGE_ROWS - 1 && ty < CABIN_ORIGIN.ty) {
     return "passage";
   }
 
-  // Arterial connector routes
+  // Arterial connector routes and straight passages
   if (
     (ty >= 21 && ty <= 23 && tx >= 22 && tx <= 35) ||
     (ty >= 24 && ty <= 41 && tx >= 32 && tx <= 35) ||
     (ty >= 40 && ty <= 41 && tx >= 18 && tx <= 33) ||
-    (ty > TRANSIT_ORIGIN.ty + TRANSIT_ROWS - 1 && ty < HABITAT_ORIGIN.ty && tx >= 18 && tx <= 21) ||
+    (ty > TRANSIT_ORIGIN.ty + TRANSIT_ROWS - 1 && ty < HANGAR_ORIGIN.ty && tx >= 18 && tx <= 21) ||
+    (ty > HANGAR_ORIGIN.ty + HANGAR_ROWS - 1 && ty < HABITAT_ORIGIN.ty && tx >= 18 && tx <= 21) ||
     (ty > HABITAT_ORIGIN.ty + HABITAT_ROWS - 1 && ty < MEDICAL_ORIGIN.ty && tx >= 18 && tx <= 21) ||
-    (ty > MEDICAL_ORIGIN.ty + MEDICAL_ROWS - 1 && ty <= MEDICAL_ORIGIN.ty + MEDICAL_ROWS + 3 && tx >= 18 && tx <= 21)
+    (ty > MEDICAL_ORIGIN.ty + MEDICAL_ROWS - 1 && ty < REACTOR_ORIGIN.ty && tx >= 18 && tx <= 21)
   ) {
     return "transit_corridor";
   }
@@ -306,6 +308,8 @@ function inCompartment(
 export const CABIN_BOUNDS = { ...CABIN_ORIGIN, columns: ROOM_COLUMNS, rows: ROOM_ROWS };
 export const BRIDGE_BOUNDS = { ...BRIDGE_ORIGIN, columns: BRIDGE_COLUMNS, rows: BRIDGE_ROWS };
 export const TRANSIT_BOUNDS = { ...TRANSIT_ORIGIN, columns: TRANSIT_COLUMNS, rows: TRANSIT_ROWS };
+export const HANGAR_BOUNDS = { ...HANGAR_ORIGIN, columns: HANGAR_COLUMNS, rows: HANGAR_ROWS };
 export const HABITAT_BOUNDS = { ...HABITAT_ORIGIN, columns: HABITAT_COLUMNS, rows: HABITAT_ROWS };
 export const MEDICAL_BOUNDS = { ...MEDICAL_ORIGIN, columns: MEDICAL_COLUMNS, rows: MEDICAL_ROWS };
+export const REACTOR_BOUNDS = { ...REACTOR_ORIGIN, columns: REACTOR_COLUMNS, rows: REACTOR_ROWS };
 export const PASSAGE_BOUNDS = { ...PASSAGE, width: PASSAGE_WIDTH };
