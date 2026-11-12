@@ -10,7 +10,9 @@ import type { Dialogue } from "../game/systems/Dialogue";
  */
 export class DialogueBox {
   private readonly root: HTMLDivElement;
-  private readonly speakerEl: HTMLParagraphElement;
+  private readonly avatarEl: HTMLDivElement;
+  private readonly badgeEl: HTMLSpanElement;
+  private readonly speakerEl: HTMLSpanElement;
   private readonly textEl: HTMLParagraphElement;
   private readonly hintEl: HTMLSpanElement;
 
@@ -19,8 +21,22 @@ export class DialogueBox {
     this.root.id = "dialogue-box";
     this.root.hidden = true;
 
-    this.speakerEl = document.createElement("p");
+    this.avatarEl = document.createElement("div");
+    this.avatarEl.className = "dialogue-avatar";
+
+    const contentCol = document.createElement("div");
+    contentCol.className = "dialogue-content";
+
+    const headerRow = document.createElement("div");
+    headerRow.className = "dialogue-header";
+
+    this.badgeEl = document.createElement("span");
+    this.badgeEl.className = "dialogue-badge";
+
+    this.speakerEl = document.createElement("span");
     this.speakerEl.className = "dialogue-speaker";
+
+    headerRow.append(this.badgeEl, this.speakerEl);
 
     this.textEl = document.createElement("p");
     this.textEl.className = "dialogue-text";
@@ -28,15 +44,13 @@ export class DialogueBox {
     this.hintEl = document.createElement("span");
     this.hintEl.className = "dialogue-hint";
 
-    this.root.append(this.speakerEl, this.textEl, this.hintEl);
+    contentCol.append(headerRow, this.textEl, this.hintEl);
+    this.root.append(this.avatarEl, contentCol);
     parent.appendChild(this.root);
   }
 
   /**
    * Show or update the box. Passing null hides it.
-   *
-   * Safe to call every time the dialogue changes; it only touches the DOM when
-   * something actually differs, so it does not thrash the layout each frame.
    */
   render(dialogue: Dialogue | null): void {
     if (!dialogue || !dialogue.isOpen || !dialogue.current) {
@@ -45,16 +59,66 @@ export class DialogueBox {
     }
 
     const line = dialogue.current;
-    // Narration has no speaker, so the name row is hidden rather than left blank.
-    this.speakerEl.textContent = line.speaker ?? "";
-    this.speakerEl.hidden = line.speaker === null;
+    const speaker = line.speaker;
+
+    if (speaker === "舰长") {
+      this.badgeEl.textContent = "COMMAND · 远望号旗舰指挥官";
+      this.badgeEl.className = "dialogue-badge badge-command";
+      this.avatarEl.innerHTML = `<img src="/assets/sprites/npc_captain.png" alt="Captain" />`;
+      this.speakerEl.textContent = speaker;
+      this.speakerEl.hidden = false;
+      this.badgeEl.hidden = false;
+    } else if (speaker === "老周" || speaker?.includes("老周") || speaker?.includes("轮机")) {
+      this.badgeEl.textContent = "ENG · 轮机维护二班班长";
+      this.badgeEl.className = "dialogue-badge badge-eng";
+      this.avatarEl.innerHTML = `<img src="/assets/sprites/crew_down_idle.png" alt="Engineer" />`;
+      this.speakerEl.textContent = speaker;
+      this.speakerEl.hidden = false;
+      this.badgeEl.hidden = false;
+    } else if (speaker === "陈医生" || speaker?.includes("医")) {
+      this.badgeEl.textContent = "MED & CRYO · 休眠监护中心";
+      this.badgeEl.className = "dialogue-badge badge-med";
+      this.avatarEl.innerHTML = `<img src="/assets/sprites/crew_down_idle.png" alt="Doctor" />`;
+      this.speakerEl.textContent = speaker;
+      this.speakerEl.hidden = false;
+      this.badgeEl.hidden = false;
+    } else if (speaker === "调度员小刘" || speaker?.includes("调度")) {
+      this.badgeEl.textContent = "TRANSIT · 中央轨道换乘站";
+      this.badgeEl.className = "dialogue-badge badge-transit";
+      this.avatarEl.innerHTML = `<img src="/assets/sprites/crew_down_idle.png" alt="Transit" />`;
+      this.speakerEl.textContent = speaker;
+      this.speakerEl.hidden = false;
+      this.badgeEl.hidden = false;
+    } else if (speaker === "领航员" || speaker?.includes("领航")) {
+      this.badgeEl.textContent = "NAV · 深空航线导航席";
+      this.badgeEl.className = "dialogue-badge badge-nav";
+      this.avatarEl.innerHTML = `<img src="/assets/sprites/crew_down_idle.png" alt="Navigator" />`;
+      this.speakerEl.textContent = speaker;
+      this.speakerEl.hidden = false;
+      this.badgeEl.hidden = false;
+    } else if (speaker) {
+      this.badgeEl.textContent = "CREW · 远望号当班人员";
+      this.badgeEl.className = "dialogue-badge badge-crew";
+      this.avatarEl.innerHTML = `<img src="/assets/sprites/crew_down_idle.png" alt="Crew" />`;
+      this.speakerEl.textContent = speaker;
+      this.speakerEl.hidden = false;
+      this.badgeEl.hidden = false;
+    } else {
+      // Narration / inspection
+      this.badgeEl.textContent = "LOG · 巡检现场勘测记录";
+      this.badgeEl.className = "dialogue-badge badge-log";
+      this.avatarEl.innerHTML = `<div class="avatar-icon-log">📋</div>`;
+      this.speakerEl.textContent = "";
+      this.speakerEl.hidden = true;
+      this.badgeEl.hidden = false;
+    }
 
     this.textEl.textContent = line.text;
 
     const more = !dialogue.isLastLine;
-    this.hintEl.textContent = more
-      ? `E / 空格 继续　${dialogue.lineNumber}/${dialogue.lineCount}`
-      : "E / 空格 结束";
+    this.hintEl.innerHTML = more
+      ? `<span class="hint-key">E / 空格</span> 下一句 <span class="hint-counter">${dialogue.lineNumber}/${dialogue.lineCount}</span>`
+      : `<span class="hint-key">E / 空格</span> 翻阅结束`;
 
     this.root.hidden = false;
   }

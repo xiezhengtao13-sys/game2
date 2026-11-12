@@ -51,11 +51,13 @@ try {
     const name = relative(testsDir, file).replace(/[\\/]/g, "__").replace(/\.ts$/, ".mjs");
     const outfile = join(outDir, name);
 
-    const built = spawnSync(
-      process.execPath,
-      [esbuildBin, file, "--bundle", "--platform=node", "--format=esm", `--outfile=${outfile}`, "--log-level=warning"],
-      { stdio: "inherit", cwd: projectRoot }
-    );
+    const isNodeScript = esbuildBin.endsWith(".js") || esbuildBin.endsWith(".mjs") || esbuildBin.endsWith(".cjs");
+    const cmd = isNodeScript ? process.execPath : esbuildBin;
+    const args = isNodeScript
+      ? [esbuildBin, file, "--bundle", "--platform=node", "--format=esm", `--outfile=${outfile}`, "--log-level=warning"]
+      : [file, "--bundle", "--platform=node", "--format=esm", `--outfile=${outfile}`, "--log-level=warning"];
+
+    const built = spawnSync(cmd, args, { stdio: "inherit", cwd: projectRoot });
 
     if (built.error) {
       console.error(`Failed to run esbuild: ${built.error.message}`);

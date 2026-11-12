@@ -2,9 +2,9 @@ html, body {
   margin: 0;
   width: 100%;
   height: 100%;
-  background: #111;
+  background: #090c12;
   overflow: hidden;
-  font-family: system-ui, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 }
 
 #app {
@@ -12,6 +12,18 @@ html, body {
   height: 100%;
   display: grid;
   place-items: center;
+  position: relative;
+}
+
+/* Subtle cinematic vignette around the deep-space starship screen */
+#app::after {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  pointer-events: none;
+  background: radial-gradient(ellipse at center, transparent 60%, rgba(4, 7, 12, 0.45) 85%, rgba(2, 4, 8, 0.75) 100%);
+  box-shadow: inset 0 0 80px rgba(0, 0, 0, 0.6);
+  z-index: 5;
 }
 
 #gameCanvas {
@@ -19,8 +31,9 @@ html, body {
   max-height: calc(100vh - 40px);
   width: auto;
   height: auto;
-  background: #1b1b1b;
+  background: #11141c;
   image-rendering: pixelated;
+  box-shadow: 0 0 30px rgba(0, 0, 0, 0.8);
 }
 
 #hud {
@@ -28,46 +41,144 @@ html, body {
   top: 0;
   left: 0;
   right: 0;
-  height: 40px;
-  padding: 0 16px;
+  height: 42px;
+  padding: 0 20px;
   box-sizing: border-box;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  color: white;
-  background: rgba(0,0,0,.5);
-  /* The HUD sits over the canvas. Without this it would swallow pointer input
-     meant for the game. */
+  color: #d8e4f5;
+  background: linear-gradient(180deg, rgba(8, 12, 20, 0.92) 0%, rgba(12, 18, 30, 0.75) 100%);
+  border-bottom: 1px solid rgba(80, 140, 220, 0.25);
+  backdrop-filter: blur(8px);
   pointer-events: none;
+  font-size: 13px;
+  letter-spacing: 0.5px;
+  z-index: 20;
 }
 
-/* Dialogue box: a DOM overlay at the bottom of the screen. */
+/* Dialogue box: Sleek translucent titanium aerospace comms terminal */
 #dialogue-box {
   position: fixed;
   left: 50%;
   transform: translateX(-50%);
-  bottom: 24px;
-  width: min(760px, calc(100vw - 48px));
+  bottom: 28px;
+  width: min(820px, calc(100vw - 40px));
   box-sizing: border-box;
-  padding: 18px 22px 14px;
-  border-radius: 16px;
-  border: 3px solid #2b3566;
-  background: rgba(252, 250, 244, .97);
-  color: #22283a;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, .35);
-  font-size: 17px;
-  line-height: 1.6;
+  padding: 16px 20px;
+  border-radius: 12px;
+  border: 1px solid rgba(100, 160, 240, 0.45);
+  background: linear-gradient(135deg, rgba(11, 15, 24, 0.95) 0%, rgba(16, 22, 35, 0.92) 100%);
+  color: #e6eef8;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.7), inset 0 1px 0 rgba(160, 210, 255, 0.2);
+  font-size: 16px;
+  line-height: 1.65;
+  backdrop-filter: blur(12px);
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  z-index: 30;
 }
 
 #dialogue-box[hidden] {
   display: none;
 }
 
+.dialogue-avatar {
+  flex-shrink: 0;
+  width: 58px;
+  height: 64px;
+  background: radial-gradient(circle at center, rgba(30, 45, 70, 0.8) 0%, rgba(12, 18, 28, 0.95) 100%);
+  border: 1px solid rgba(100, 160, 240, 0.35);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: inset 0 0 12px rgba(0, 0, 0, 0.5);
+  overflow: hidden;
+}
+
+.dialogue-avatar img {
+  width: 40px;
+  height: 60px;
+  object-fit: contain;
+  image-rendering: pixelated;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
+}
+
+.avatar-icon-log {
+  font-size: 26px;
+  filter: grayscale(0.2);
+}
+
+.dialogue-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.dialogue-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.dialogue-badge {
+  font-size: 11px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  padding: 2px 7px;
+  border-radius: 4px;
+  text-transform: uppercase;
+}
+
+.badge-command {
+  background: rgba(230, 175, 45, 0.15);
+  color: #ffda73;
+  border: 1px solid rgba(230, 175, 45, 0.4);
+}
+
+.badge-eng {
+  background: rgba(240, 110, 40, 0.15);
+  color: #ffa166;
+  border: 1px solid rgba(240, 110, 40, 0.4);
+}
+
+.badge-med {
+  background: rgba(40, 210, 160, 0.15);
+  color: #5ef0c2;
+  border: 1px solid rgba(40, 210, 160, 0.4);
+}
+
+.badge-transit {
+  background: rgba(60, 180, 255, 0.15);
+  color: #7ad4ff;
+  border: 1px solid rgba(60, 180, 255, 0.4);
+}
+
+.badge-nav {
+  background: rgba(140, 130, 255, 0.15);
+  color: #b3a8ff;
+  border: 1px solid rgba(140, 130, 255, 0.4);
+}
+
+.badge-crew {
+  background: rgba(120, 140, 170, 0.15);
+  color: #b8cbe0;
+  border: 1px solid rgba(120, 140, 170, 0.35);
+}
+
+.badge-log {
+  background: rgba(100, 120, 150, 0.12);
+  color: #9cb0c8;
+  border: 1px solid rgba(100, 120, 150, 0.3);
+}
+
 .dialogue-speaker {
-  margin: 0 0 6px;
   font-weight: 700;
   font-size: 15px;
-  color: #4a5fb0;
+  color: #ffffff;
 }
 
 .dialogue-speaker[hidden] {
@@ -76,14 +187,33 @@ html, body {
 
 .dialogue-text {
   margin: 0;
+  color: #e2ecf8;
+  letter-spacing: 0.2px;
 }
 
 .dialogue-hint {
-  display: block;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
   margin-top: 10px;
-  text-align: right;
-  font-size: 13px;
-  color: #8a8f9e;
+  font-size: 12px;
+  color: #8da2be;
+}
+
+.hint-key {
+  display: inline-block;
+  padding: 1px 6px;
+  background: rgba(60, 95, 145, 0.3);
+  border: 1px solid rgba(90, 145, 215, 0.4);
+  border-radius: 4px;
+  color: #9cd5ff;
+  font-family: ui-monospace, monospace;
+  font-size: 11px;
+}
+
+.hint-counter {
+  opacity: 0.7;
 }
 
 /* Duty Checklist overlay: top-left corner */
