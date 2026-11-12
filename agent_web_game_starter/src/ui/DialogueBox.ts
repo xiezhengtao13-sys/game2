@@ -1,4 +1,5 @@
 import type { Dialogue } from "../game/systems/Dialogue";
+import type { GameAssets } from "../game/assets";
 
 /**
  * The dialogue box: an HTML overlay, not canvas.
@@ -15,8 +16,10 @@ export class DialogueBox {
   private readonly speakerEl: HTMLSpanElement;
   private readonly textEl: HTMLParagraphElement;
   private readonly hintEl: HTMLSpanElement;
+  private readonly assets: GameAssets | null;
 
-  constructor(parent: HTMLElement) {
+  constructor(parent: HTMLElement, assets: GameAssets | null = null) {
+    this.assets = assets;
     this.root = document.createElement("div");
     this.root.id = "dialogue-box";
     this.root.hidden = true;
@@ -64,42 +67,48 @@ export class DialogueBox {
     if (speaker === "舰长") {
       this.badgeEl.textContent = "COMMAND · 远望号旗舰指挥官";
       this.badgeEl.className = "dialogue-badge badge-command";
-      this.avatarEl.innerHTML = `<img src="/assets/sprites/npc_captain.png" alt="Captain" />`;
+      const captainImg = this.assets?.image("npc_captain")?.src;
+      this.avatarEl.innerHTML = captainImg ? `<img src="${captainImg}" alt="Captain" />` : `<div class="avatar-icon-log">👨‍✈️</div>`;
       this.speakerEl.textContent = speaker;
       this.speakerEl.hidden = false;
       this.badgeEl.hidden = false;
     } else if (speaker === "老周" || speaker?.includes("老周") || speaker?.includes("轮机")) {
       this.badgeEl.textContent = "ENG · 轮机维护二班班长";
       this.badgeEl.className = "dialogue-badge badge-eng";
-      this.avatarEl.innerHTML = `<img src="/assets/sprites/crew_down_idle.png" alt="Engineer" />`;
+      const crewImg = this.assets?.image("crew_down_idle")?.src;
+      this.avatarEl.innerHTML = crewImg ? `<img src="${crewImg}" alt="Engineer" />` : `<div class="avatar-icon-log">🧑‍🔧</div>`;
       this.speakerEl.textContent = speaker;
       this.speakerEl.hidden = false;
       this.badgeEl.hidden = false;
     } else if (speaker === "陈医生" || speaker?.includes("医")) {
       this.badgeEl.textContent = "MED & CRYO · 休眠监护中心";
       this.badgeEl.className = "dialogue-badge badge-med";
-      this.avatarEl.innerHTML = `<img src="/assets/sprites/crew_down_idle.png" alt="Doctor" />`;
+      const crewImg = this.assets?.image("crew_down_idle")?.src;
+      this.avatarEl.innerHTML = crewImg ? `<img src="${crewImg}" alt="Doctor" />` : `<div class="avatar-icon-log">🩺</div>`;
       this.speakerEl.textContent = speaker;
       this.speakerEl.hidden = false;
       this.badgeEl.hidden = false;
     } else if (speaker === "调度员小刘" || speaker?.includes("调度")) {
       this.badgeEl.textContent = "TRANSIT · 中央轨道换乘站";
       this.badgeEl.className = "dialogue-badge badge-transit";
-      this.avatarEl.innerHTML = `<img src="/assets/sprites/crew_down_idle.png" alt="Transit" />`;
+      const crewImg = this.assets?.image("crew_down_idle")?.src;
+      this.avatarEl.innerHTML = crewImg ? `<img src="${crewImg}" alt="Transit" />` : `<div class="avatar-icon-log">🚝</div>`;
       this.speakerEl.textContent = speaker;
       this.speakerEl.hidden = false;
       this.badgeEl.hidden = false;
     } else if (speaker === "领航员" || speaker?.includes("领航")) {
       this.badgeEl.textContent = "NAV · 深空航线导航席";
       this.badgeEl.className = "dialogue-badge badge-nav";
-      this.avatarEl.innerHTML = `<img src="/assets/sprites/crew_down_idle.png" alt="Navigator" />`;
+      const crewImg = this.assets?.image("crew_down_idle")?.src;
+      this.avatarEl.innerHTML = crewImg ? `<img src="${crewImg}" alt="Navigator" />` : `<div class="avatar-icon-log">🧭</div>`;
       this.speakerEl.textContent = speaker;
       this.speakerEl.hidden = false;
       this.badgeEl.hidden = false;
     } else if (speaker) {
       this.badgeEl.textContent = "CREW · 远望号当班人员";
       this.badgeEl.className = "dialogue-badge badge-crew";
-      this.avatarEl.innerHTML = `<img src="/assets/sprites/crew_down_idle.png" alt="Crew" />`;
+      const crewImg = this.assets?.image("crew_down_idle")?.src;
+      this.avatarEl.innerHTML = crewImg ? `<img src="${crewImg}" alt="Crew" />` : `<div class="avatar-icon-log">🧑‍🚀</div>`;
       this.speakerEl.textContent = speaker;
       this.speakerEl.hidden = false;
       this.badgeEl.hidden = false;

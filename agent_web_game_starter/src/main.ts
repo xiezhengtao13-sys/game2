@@ -70,7 +70,7 @@ game.start();
 // rather than reaching for the document itself.
 const app = document.querySelector<HTMLElement>("#app");
 if (app) {
-  const dialogueBox = new DialogueBox(app);
+  const dialogueBox = new DialogueBox(app, assets);
   ship.onDialogueChange = (dialogue) => dialogueBox.render(dialogue);
 
   // Duty Tracker HUD
