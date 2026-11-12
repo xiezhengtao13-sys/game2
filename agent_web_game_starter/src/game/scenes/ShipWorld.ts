@@ -21,6 +21,7 @@ import {
   type SceneProp,
   type ScenePerson
 } from "./shipProps";
+import { sounds } from "../../engine/audio/SoundEffects";
 
 /**
  * The ship, as one continuous world.
@@ -53,6 +54,19 @@ export class ShipWorld implements GameWorld {
   private readonly interactables: readonly Interactable[];
   private readonly propById = new Map<string, SceneProp>();
   private readonly personById = new Map<string, ScenePerson>();
+
+  /** Dynamic screen shake mechanics. */
+  private shakeIntensity = 0;
+  private shakeDuration = 0;
+
+  /** Central transit maglev hub stations. */
+  private transitHubIndex = 0;
+  private readonly transitHubs = [
+    { name: "舰桥指挥区站台", tx: 20, ty: 14 },
+    { name: "中央穿梭站平台", tx: 20, ty: 48 },
+    { name: "穿梭机库备勤站台", tx: 10, ty: 78 },
+    { name: "后部主聚变动力机房", tx: 20, ty: 152 }
+  ];
 
   /** What the player is being prompted about right now, or null. */
   private target: Interactable | null = null;
@@ -188,11 +202,35 @@ export class ShipWorld implements GameWorld {
     return PLACE_LABELS[placeAt(tx, ty)];
   }
 
+  addShake(intensity: number, duration: number): void {
+    this.shakeIntensity = Math.max(this.shakeIntensity, intensity);
+    this.shakeDuration = Math.max(this.shakeDuration, duration);
+  }
+
+  cycleTransitHub(): void {
+    this.transitHubIndex = (this.transitHubIndex + 1) % this.transitHubs.length;
+    const dest = this.transitHubs[this.transitHubIndex];
+    const size = this.map.tileSize;
+    this.player.x = dest.tx * size;
+    this.player.y = dest.ty * size;
+    this.player.animation.face("down");
+    sounds.playTransitChime();
+    this.addShake(5, 0.4);
+  }
+
   update(dt: number, input: Input): void {
     this.elapsedTime += dt;
 
+    if (this.shakeDuration > 0) {
+      this.shakeDuration -= dt;
+      if (this.shakeDuration <= 0) {
+        this.shakeIntensity = 0;
+      }
+    }
+
     if (this.dialogue.isOpen) {
       if (input.wasPressed("KeyE") || input.wasPressed("Space")) {
+        sounds.playBeep(920);
         this.dialogue.advance();
         this.onDialogueChange?.(this.dialogue.isOpen ? this.dialogue : null);
       }
@@ -244,6 +282,8 @@ export class ShipWorld implements GameWorld {
     const anchor = person ?? prop;
     if (!anchor) return;
 
+    sounds.playClick();
+
     let dutyNote: DialogueLine | null = null;
     let dutyNoteFirst = false;
     if (prop) {
@@ -262,9 +302,18 @@ export class ShipWorld implements GameWorld {
           dutyNote = { speaker: null, text: "【二班值班记录已更新】你从随身水壶倒了点水给这盆绿植。干涸的土壤吸收了水分，叶片显得精神了些。" };
           this.onDutyChange?.(this.duty);
         }
+      } else if (prop.label === "交通调度终端") {
+        this.cycleTransitHub();
+        dutyNote = {
+          speaker: null,
+          text: `【高速穿梭捷运车已送达】气动水密门开启，捷运车已平稳送达：${this.placeLabel}！可再次互动前往下一站枢纽。`
+        };
+        dutyNoteFirst = true;
       } else if (prop.label === "重型防热工程服备勤架") {
         if (this.crisis.stage === "eva_gear") {
           this.crisis.equipEvaSuit();
+          sounds.playClank();
+          this.addShake(4, 0.3);
           dutyNote = {
             speaker: null,
             text: "【应急装备穿戴完毕】你迅速换上重型防热工程服。加厚陶瓷胸甲密闭锁死，独立加压呼吸循环启动！现在可以耐受高温机舱！"
@@ -275,6 +324,8 @@ export class ShipWorld implements GameWorld {
       } else if (prop.label === "应急旁路泄压转轮") {
         if (this.crisis.stage === "valve_vent") {
           this.crisis.ventCoolantValve();
+          sounds.playSteam(1.4);
+          this.addShake(7, 0.7);
           dutyNote = {
             speaker: null,
             text: "【旁路泄压成功】你咬紧牙关逆时针连转三圈重型转轮！高压旁路阀门轰然弹开，过热蒸汽喷入吸收池，第一回路压力骤降到安全警戒线！"
@@ -285,6 +336,9 @@ export class ShipWorld implements GameWorld {
       } else if (prop.label === "副散热翼机械强制展开栓") {
         if (this.crisis.stage === "eject_lever") {
           this.crisis.pullEjectionLever();
+          sounds.playClank();
+          sounds.stopAlarm();
+          this.addShake(12, 1.2);
           dutyNote = {
             speaker: null,
             text: "【副散热翼应急展开】你拔下黄色安全插销，用全身力气将应急手柄拉到底！深空外爆鸣传导，副散热翼完全弹开！聚变反应堆热平衡恢复基线！"
@@ -344,6 +398,8 @@ export class ShipWorld implements GameWorld {
         this.crisis.triggerAlarm();
         this.crisis.advanceToEva();
         this.onCrisisChange?.(this.crisis);
+        sounds.startAlarm();
+        this.addShake(8, 1.2);
         return [
           { speaker: "老周", text: "「动力席读数、应急开关……还给人员席那盆绿植浇了水？行，小徐，没偷懒。」老周在你的手抄巡检单上重重盖下当班红印。" },
           { speaker: "老周", text: "「咱们远望号飞了三十年，两千八百米长的舰体，全靠各个底层系统按部就班。二班合格，准备交——」" },
@@ -519,6 +575,8 @@ export class ShipWorld implements GameWorld {
     this.exploration.enterSpaceFlight();
     this.mode = "space_flight";
     this.spaceFlight.spawnAtMothership();
+    sounds.playClank();
+    this.addShake(10, 1.0);
     this.onExplorationChange?.(this.exploration);
   }
 
@@ -526,6 +584,8 @@ export class ShipWorld implements GameWorld {
     this.exploration.landOnSurface();
     this.mode = "planetary_surface";
     this.planetSurface.spawnAtLandingSite();
+    sounds.playClank();
+    this.addShake(8, 0.8);
     this.onExplorationChange?.(this.exploration);
     this.dialogue.open([
       { speaker: "穿梭机着陆计算系统", text: "【黑障穿透完毕】气动绝热瓦承受峰值摩擦，反推减速火箭精准切入！拓荒者一号已稳固降落在远境-IV 玄武岩极地！" },
@@ -540,6 +600,8 @@ export class ShipWorld implements GameWorld {
     this.player.x = (HANGAR_ORIGIN.tx + 8) * size;
     this.player.y = (HANGAR_ORIGIN.ty + 6) * size;
     this.player.animation.face("down");
+    sounds.playTransitChime();
+    this.addShake(4, 0.4);
     this.dialogue.open([
       { speaker: "机库调度终端", text: "【停泊磁吸闭锁】拓荒者一号已稳固归位。主气闸加压完毕，环境气压已恢复标准 101.3 kPa。欢迎回舰，开拓者！" }
     ]);
@@ -548,6 +610,7 @@ export class ShipWorld implements GameWorld {
 
   scanBuoy(): void {
     this.spaceFlight.researchBuoy.scanned = true;
+    sounds.playBeaconPulse();
     this.dialogue.open([
       { speaker: "开阳-03 浮标数据总线", text: "【科研遥测下行】正在读取前哨探测器遗留的历史遥测包……" },
       { speaker: "开阳-03 浮标数据总线", text: "【坐标解算完毕】确认远境-IV 极地裂谷处存在高密度重氢（Deuterium）冰晶矿脉，极具开采科研价值！" }
@@ -564,6 +627,8 @@ export class ShipWorld implements GameWorld {
         this.spaceFlight.y = this.spaceFlight.targetPlanet.y - 120;
         this.spaceFlight.vx = -40;
         this.spaceFlight.vy = -30;
+        sounds.playClank();
+        this.addShake(6, 0.6);
         this.dialogue.open([
           { speaker: "穿梭机起飞系统", text: "【反推爬升】离子发动机二次点火，拓荒者一号脱离远境-IV 引力井，重回初辉恒星系深空巡航轨道！" },
           { speaker: "任务指令中心", text: "【返航指引】航向已自动对准远望号母舰（西北象限），请加速返回机库对接。" }
@@ -572,6 +637,7 @@ export class ShipWorld implements GameWorld {
         this.onExplorationChange?.(this.exploration);
         return;
       }
+      sounds.playClick();
       this.dialogue.open([
         { speaker: "拓荒者一号机载电脑", text: "地表勘测任务尚未全部完成：请先完成科研中继信标部署与高纯重氢样本采集，再执行返航程序。" }
       ]);
@@ -582,6 +648,8 @@ export class ShipWorld implements GameWorld {
     if (target.id === "surface_beacon") {
       if (!this.exploration.beaconDeployed) {
         this.exploration.deployBeacon();
+        sounds.playBeaconPulse();
+        this.addShake(6, 0.6);
         this.onExplorationChange?.(this.exploration);
         this.dialogue.open([
           { speaker: "地面科考终端", text: "【科研中继信标展开】重型合金地锚稳固钉入玄武岩裂隙！高增益相控阵天线展开，成功锁定远望号高轨信号！" },
@@ -589,6 +657,7 @@ export class ShipWorld implements GameWorld {
         ]);
         this.onDialogueChange?.(this.dialogue);
       } else {
+        sounds.playClick();
         this.dialogue.open([
           { speaker: "地面科考终端", text: "科研中继信标工作状态恒定。信号发射功率 120 W，已与远望号母舰中枢建立稳定低延迟链路。" }
         ]);
@@ -600,6 +669,8 @@ export class ShipWorld implements GameWorld {
     if (target.id === "surface_sample") {
       if (!this.exploration.sampleCollected) {
         this.exploration.collectSample();
+        sounds.playClank();
+        this.addShake(4, 0.3);
         this.onExplorationChange?.(this.exploration);
         this.dialogue.open([
           { speaker: "便携地质采样器", text: "【高纯重氢冰晶采集完毕】超低温隔热密封罐已封存 500 mL 重氢冰晶矿石样品！" },
@@ -607,6 +678,7 @@ export class ShipWorld implements GameWorld {
         ]);
         this.onDialogueChange?.(this.dialogue);
       } else {
+        sounds.playClick();
         this.dialogue.open([
           { speaker: "便携地质采样器", text: "该处露头的重氢样本已取样完毕。低温保温槽读数恒定在 14 K。" }
         ]);
@@ -617,25 +689,28 @@ export class ShipWorld implements GameWorld {
   }
 
   getCamera(): GameCamera {
+    const shakeX = this.shakeDuration > 0 ? (Math.random() - 0.5) * this.shakeIntensity : 0;
+    const shakeY = this.shakeDuration > 0 ? (Math.random() - 0.5) * this.shakeIntensity : 0;
+
     if (this.mode === "space_flight") {
       return {
-        x: this.spaceFlight.x,
-        y: this.spaceFlight.y,
+        x: this.spaceFlight.x + shakeX,
+        y: this.spaceFlight.y + shakeY,
         mapWidth: this.spaceFlight.width,
         mapHeight: this.spaceFlight.height
       };
     }
     if (this.mode === "planetary_surface") {
       return {
-        x: this.planetSurface.player.centerX,
-        y: this.planetSurface.player.centerY,
+        x: this.planetSurface.player.centerX + shakeX,
+        y: this.planetSurface.player.centerY + shakeY,
         mapWidth: this.planetSurface.pixelWidth,
         mapHeight: this.planetSurface.pixelHeight
       };
     }
     return {
-      x: this.player.centerX,
-      y: this.player.centerY,
+      x: this.player.centerX + shakeX,
+      y: this.player.centerY + shakeY,
       mapWidth: this.map.pixelWidth,
       mapHeight: this.map.pixelHeight
     };
@@ -747,6 +822,23 @@ export class ShipWorld implements GameWorld {
       size: { w: width, h: height },
       fallbackColor: "#ff00ff"
     });
+
+    // If heavy EVA thermal suit is equipped, render high-tech suit visor overlay and ceramic chest armor
+    if (this.crisis.isSuitEquipped) {
+      const visorY = this.player.y + 11;
+      const visorX = this.player.centerX - 6;
+      renderer.drawRect(visorX, visorY, 12, 5, {
+        color: "#38bdf8",
+        radius: 2,
+        stroke: { width: 1, color: "#e0f2fe" }
+      });
+      const chestY = this.player.y + 20;
+      renderer.drawRect(this.player.centerX - 7, chestY, 14, 9, {
+        color: "rgba(240, 246, 252, 0.55)",
+        radius: 2,
+        stroke: { width: 1, color: "rgba(56, 189, 248, 0.7)" }
+      });
+    }
   }
 
   private renderPrompt(renderer: Renderer): void {

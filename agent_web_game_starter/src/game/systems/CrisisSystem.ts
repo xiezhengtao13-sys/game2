@@ -37,6 +37,10 @@ export class CrisisSystem {
     return this._stage === "resolved";
   }
 
+  get isSuitEquipped(): boolean {
+    return this._stage === "valve_vent" || this._stage === "eject_lever" || this._stage === "resolved";
+  }
+
   /** Current urgent objective for the HUD. */
   get currentObjective(): CrisisObjective | null {
     switch (this._stage) {

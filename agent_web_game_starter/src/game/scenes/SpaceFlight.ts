@@ -1,6 +1,7 @@
 import type { Input } from "../../engine/input/Input";
 import type { Renderer } from "../../engine/graphics/Renderer";
 import type { Camera } from "../../engine/graphics/Camera";
+import { sounds } from "../../engine/audio/SoundEffects";
 
 /**
  * Star System Celestial Body.
@@ -163,6 +164,7 @@ export class SpaceFlight {
     const accel = 180; // px / sec^2
     if (input.isDown("KeyW") || input.isDown("ArrowUp")) {
       thrusting = true;
+      sounds.startThruster();
       this.vx += Math.cos(this.angle) * accel * dt;
       this.vy += Math.sin(this.angle) * accel * dt;
       this.fuel = Math.max(0, this.fuel - dt * 0.5);
@@ -181,6 +183,8 @@ export class SpaceFlight {
           maxLife: 0.25 + Math.random() * 0.2
         });
       }
+    } else {
+      sounds.stopThruster();
     }
 
     // Retro-brake (S or Down)
@@ -512,15 +516,20 @@ export class SpaceFlight {
     if (distP <= 140) {
       prompt = "【已进入行星引力井】按 E 启动大气耐磨绝热瓦着陆程序";
     } else if (distM <= 110) {
-      prompt = "【已接近远望号机库泊位】按 E 对接并返回母舰";
+      if (spd > 80) {
+        prompt = `⚠️【进港航速过高: ${spd} km/s】接近母舰泊位时请按 S 减速至 80 km/s 以下方可安全停泊！`;
+      } else {
+        prompt = "【已对准泊位导引灯】按 E 执行磁吸对接并返回母舰";
+      }
     } else if (this.distanceToBuoy() <= 80) {
       prompt = "【已接近科研浮标】按 E 接收深空远古星图遥测数据";
     }
 
     if (prompt) {
-      renderer.drawText(prompt, renderer.width / 2 - 180, renderer.height - 70, {
-        color: "#fef08a",
-        size: 15
+      const isWarn = prompt.includes("⚠️");
+      renderer.drawText(prompt, renderer.width / 2 - 210, renderer.height - 70, {
+        color: isWarn ? "#f87171" : "#fef08a",
+        size: 14
       });
     }
 

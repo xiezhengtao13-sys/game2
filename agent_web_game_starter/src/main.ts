@@ -5,6 +5,8 @@ import { TILE } from "./game/config";
 import { loadGameAssets } from "./game/assets";
 import { assertAnimationAssetsExist } from "./game/assets/animationSpec";
 import { DialogueBox } from "./ui/DialogueBox";
+import { ShipMinimap } from "./ui/ShipMinimap";
+import { sounds } from "./engine/audio/SoundEffects";
 
 const found = document.querySelector<HTMLCanvasElement>("#gameCanvas");
 
@@ -151,6 +153,42 @@ if (app) {
 
   renderExploration();
   ship.onExplorationChange = () => renderExploration();
+
+  // Holographic Ship Blueprint Minimap (M Key)
+  const minimap = new ShipMinimap(app);
+  const getMinimapState = () => ({
+    playerRow: Math.floor(ship.player.y / TILE),
+    totalRows: map.height,
+    placeLabel: ship.placeLabel,
+    objectiveText: ship.crisis.isAlarmActive
+      ? ship.crisis.currentObjective?.title ?? ""
+      : ship.crisis.isResolved
+      ? ship.exploration.currentObjective.title
+      : ship.duty.tasks.find((t) => !t.completed)?.title ?? "完成当班巡检",
+    isCrisisActive: ship.crisis.isAlarmActive
+  });
+
+  window.addEventListener("keydown", (e) => {
+    sounds.init();
+    if (e.code === "KeyM") {
+      minimap.toggle(getMinimapState);
+      sounds.playClick();
+    }
+    if (e.code === "Escape" && minimap.visible) {
+      minimap.close();
+      sounds.playClick();
+    }
+  });
+
+  const minimapBtn = document.createElement("button");
+  minimapBtn.id = "minimap-btn";
+  minimapBtn.innerHTML = "🗺️ 蓝图 [M]";
+  minimapBtn.onclick = () => {
+    sounds.init();
+    minimap.toggle(getMinimapState);
+    sounds.playClick();
+  };
+  app.appendChild(minimapBtn);
 
   // `&dialogue=1` interacts immediately, so a screenshot can show the box.
   if (params.get("dialogue") === "1") {
