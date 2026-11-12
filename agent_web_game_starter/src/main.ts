@@ -122,7 +122,35 @@ if (app) {
   };
 
   renderCrisis();
-  ship.onCrisisChange = () => renderCrisis();
+  ship.onCrisisChange = () => {
+    renderCrisis();
+    renderExploration();
+  };
+
+  // Exploration Tracker HUD (Chapter 2)
+  const explorationTracker = document.createElement("div");
+  explorationTracker.id = "exploration-tracker";
+  app.appendChild(explorationTracker);
+
+  const renderExploration = () => {
+    const exp = ship.exploration;
+    const isVisible = ship.crisis.isResolved || ship.currentMode !== "deck";
+    if (!isVisible) {
+      explorationTracker.style.display = "none";
+      return;
+    }
+    explorationTracker.style.display = "block";
+    explorationTracker.className = exp.isChapter2Done ? "resolved" : "active";
+    const obj = exp.currentObjective;
+    explorationTracker.innerHTML = `
+      <div class="exploration-badge">${exp.isChapter2Done ? "【深空初探完成 · 第二章结案】" : "【第二章 · 恒星系探索与地表勘测】"}</div>
+      <div class="exploration-title">${obj.title}</div>
+      <div class="exploration-hint">${obj.hint}</div>
+    `;
+  };
+
+  renderExploration();
+  ship.onExplorationChange = () => renderExploration();
 
   // `&dialogue=1` interacts immediately, so a screenshot can show the box.
   if (params.get("dialogue") === "1") {
@@ -156,6 +184,9 @@ interface Probe {
   crisisStage: string;
   crisisAlarm: number;
   crisisResolved: number;
+  explorationStage: string;
+  explorationDone: number;
+  currentMode: string;
   /** Art-load state, so "no art" can be told apart from "art failed to load". */
   artMissingCount: number;
   artFailureCount: number;
@@ -188,6 +219,9 @@ function readProbe(): Probe {
     crisisStage: ship.crisis.stage,
     crisisAlarm: ship.crisis.isAlarmActive ? 1 : 0,
     crisisResolved: ship.crisis.isResolved ? 1 : 0,
+    explorationStage: ship.exploration.stage,
+    explorationDone: ship.exploration.isChapter2Done ? 1 : 0,
+    currentMode: ship.currentMode,
     artMissingCount: assets.missing().length,
     artFailureCount: assets.failures().length
   };

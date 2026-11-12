@@ -340,3 +340,65 @@ html, body {
   50% { border-color: #ff8866; box-shadow: 0 0 22px rgba(255, 80, 40, 0.6); }
 }
 
+/* Chapter 2 Exploration Tracker HUD overlay: top-right corner below crisis tracker */
+#exploration-tracker {
+  position: fixed;
+  top: 155px;
+  right: 16px;
+  width: 320px;
+  background: rgba(10, 24, 45, 0.94);
+  border: 1px solid #38bdf8;
+  border-radius: 8px;
+  padding: 10px 14px;
+  box-sizing: border-box;
+  color: #e0f2fe;
+  font-size: 13px;
+  line-height: 1.5;
+  box-shadow: 0 4px 20px rgba(56, 189, 248, 0.35);
+  pointer-events: none;
+  backdrop-filter: blur(4px);
+  z-index: 10;
+  animation: exploration-pulse 3s infinite ease-in-out;
+}
+
+#exploration-tracker.resolved {
+  background: rgba(10, 38, 28, 0.94);
+  border-color: #34d399;
+  box-shadow: 0 4px 16px rgba(52, 211, 153, 0.3);
+  animation: none;
+  color: #d1fae5;
+}
+
+.exploration-badge {
+  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: 0.5px;
+  margin-bottom: 4px;
+}
+
+#exploration-tracker.active .exploration-badge {
+  color: #7dd3fc;
+}
+
+#exploration-tracker.resolved .exploration-badge {
+  color: #6ee7b7;
+}
+
+.exploration-title {
+  font-weight: 700;
+  font-size: 14px;
+  color: #ffffff;
+  margin-bottom: 4px;
+}
+
+.exploration-hint {
+  font-size: 12px;
+  opacity: 0.88;
+}
+
+@keyframes exploration-pulse {
+  0%, 100% { border-color: #38bdf8; box-shadow: 0 0 10px rgba(56, 189, 248, 0.3); }
+  50% { border-color: #7dd3fc; box-shadow: 0 0 20px rgba(125, 211, 252, 0.55); }
+}
+
+

@@ -8,9 +8,19 @@ import { findInteractable, reachPoint, type Interactable } from "../systems/Inte
 import { Dialogue, type DialogueLine } from "../systems/Dialogue";
 import { PLAYER_INTERACT_REACH } from "../config";
 import { placeAt, shipSpawn } from "../map/shipMap";
-import { PLACE_LABELS, ALL_SHIP_PEOPLE, SHIP_PROPS, type ScenePerson, type SceneProp } from "./shipProps";
 import { DutySystem } from "../systems/DutySystem";
 import { CrisisSystem } from "../systems/CrisisSystem";
+import { ExplorationSystem } from "../systems/ExplorationSystem";
+import { SpaceFlight } from "./SpaceFlight";
+import { PlanetSurface } from "./PlanetSurface";
+import { HANGAR_ORIGIN } from "../map/shipMap";
+import {
+  SHIP_PROPS,
+  ALL_SHIP_PEOPLE,
+  PLACE_LABELS,
+  type SceneProp,
+  type ScenePerson
+} from "./shipProps";
 
 /**
  * The ship, as one continuous world.
@@ -31,6 +41,10 @@ export class ShipWorld implements GameWorld {
   readonly map: TileMap;
   readonly duty = new DutySystem();
   readonly crisis = new CrisisSystem();
+  readonly exploration = new ExplorationSystem();
+  readonly spaceFlight = new SpaceFlight();
+  readonly planetSurface: PlanetSurface;
+  private mode: "deck" | "space_flight" | "planetary_surface" = "deck";
 
   private elapsedTime = 0;
   private readonly assets: GameAssets | null;
@@ -58,6 +72,9 @@ export class ShipWorld implements GameWorld {
   /** Told whenever the chapter 1 crisis progress updates. */
   onCrisisChange: ((crisis: CrisisSystem) => void) | null = null;
 
+  /** Told whenever the chapter 2 exploration progress updates. */
+  onExplorationChange: ((exploration: ExplorationSystem) => void) | null = null;
+
   constructor(
     map: TileMap,
     assets: GameAssets | null = null,
@@ -68,6 +85,7 @@ export class ShipWorld implements GameWorld {
     this.assets = assets;
     this.props = props;
     this.people = people;
+    this.planetSurface = new PlanetSurface(assets, this.exploration);
     // Derived from the map's own doorway rather than a constant: the player
     // arrives where the ship says its door is, and the two cannot drift apart.
     const spawn = shipSpawn(map.tileSize);
@@ -109,16 +127,38 @@ export class ShipWorld implements GameWorld {
     this.interactables = interactables;
   }
 
+  get currentMode(): "deck" | "space_flight" | "planetary_surface" {
+    return this.mode;
+  }
+
   get tileMap(): TileMap {
     return this.map;
   }
 
   get interactionTarget(): Interactable | null {
+    if (this.mode === "space_flight") {
+      const distP = this.spaceFlight.distanceToPlanet();
+      const distM = this.spaceFlight.distanceToMothership();
+      const distB = this.spaceFlight.distanceToBuoy();
+      if (distP <= 140) {
+        return { id: "orbit_farthest", label: "着陆远境-IV", x: this.spaceFlight.targetPlanet.x, y: this.spaceFlight.targetPlanet.y, radius: 140 };
+      }
+      if (distM <= 110) {
+        return { id: "dock_mothership", label: "返回远望号母舰", x: this.spaceFlight.mothership.x, y: this.spaceFlight.mothership.y, radius: 110 };
+      }
+      if (distB <= 80) {
+        return { id: "scan_buoy", label: "接收开阳-03浮标数据", x: this.spaceFlight.researchBuoy.x, y: this.spaceFlight.researchBuoy.y, radius: 80 };
+      }
+      return null;
+    }
+    if (this.mode === "planetary_surface") {
+      return this.planetSurface.interactionTarget;
+    }
     return this.target;
   }
 
   get interactionLabel(): string | null {
-    return this.target?.label ?? null;
+    return this.interactionTarget?.label ?? null;
   }
 
   /** Everything that can be examined, for tests and tooling. */
@@ -135,6 +175,12 @@ export class ShipWorld implements GameWorld {
    * you are standing.
    */
   get placeLabel(): string {
+    if (this.mode === "space_flight") {
+      return "深空航线 · 初辉恒星系 (Dawn Star System)";
+    }
+    if (this.mode === "planetary_surface") {
+      return "行星地表 · 远境-IV 玄武岩极地 (Farthest-IV)";
+    }
     const size = this.map.tileSize;
     const tx = Math.floor(this.player.centerX / size);
     const ty = Math.floor((this.player.y + this.player.height - this.player.colliderHeight / 2) / size);
@@ -149,6 +195,31 @@ export class ShipWorld implements GameWorld {
       if (input.wasPressed("KeyE") || input.wasPressed("Space")) {
         this.dialogue.advance();
         this.onDialogueChange?.(this.dialogue.isOpen ? this.dialogue : null);
+      }
+      return;
+    }
+
+    if (this.mode === "space_flight") {
+      this.spaceFlight.update(dt, input);
+      if (input.wasPressed("KeyE")) {
+        const distP = this.spaceFlight.distanceToPlanet();
+        const distM = this.spaceFlight.distanceToMothership();
+        const distB = this.spaceFlight.distanceToBuoy();
+        if (distP <= 140) {
+          this.landOnPlanet();
+        } else if (distM <= 110) {
+          this.dockAtMothership();
+        } else if (distB <= 80) {
+          this.scanBuoy();
+        }
+      }
+      return;
+    }
+
+    if (this.mode === "planetary_surface") {
+      this.planetSurface.update(dt, input);
+      if (this.planetSurface.interactionTarget && input.wasPressed("KeyE")) {
+        this.examineSurface(this.planetSurface.interactionTarget);
       }
       return;
     }
@@ -220,6 +291,21 @@ export class ShipWorld implements GameWorld {
           };
           dutyNoteFirst = true;
           this.onCrisisChange?.(this.crisis);
+        }
+      } else if (prop.label === "穿梭机登机舷梯控制台") {
+        if (!this.crisis.isResolved) {
+          dutyNote = {
+            speaker: null,
+            text: "【登机权限锁定】全舰处于特级管损警报状态，机库气闸已全部电控切断锁死！请先协助老周排除反应堆过热危机！"
+          };
+          dutyNoteFirst = true;
+        } else {
+          this.launchShuttle();
+          dutyNote = {
+            speaker: null,
+            text: "【特级指令：拓荒者一号深空出舱】你换上宇航服登上驾驶席，主气闸抽真空，磁力锁解脱！穿梭机轰然冲出机库，初辉恒星系的浩瀚星空在眼前豁然展开！"
+          };
+          dutyNoteFirst = true;
         }
       }
     }
@@ -389,6 +475,32 @@ export class ShipWorld implements GameWorld {
   interactInReach(): boolean {
     if (this.dialogue.isOpen) return false;
 
+    if (this.mode === "space_flight") {
+      const distP = this.spaceFlight.distanceToPlanet();
+      const distM = this.spaceFlight.distanceToMothership();
+      const distB = this.spaceFlight.distanceToBuoy();
+      if (distP <= 140) {
+        this.landOnPlanet();
+        return true;
+      }
+      if (distM <= 110) {
+        this.dockAtMothership();
+        return true;
+      }
+      if (distB <= 80) {
+        this.scanBuoy();
+        return true;
+      }
+      return false;
+    }
+
+    if (this.mode === "planetary_surface") {
+      const target = this.planetSurface.interactionTarget;
+      if (!target) return false;
+      this.examineSurface(target);
+      return this.dialogue.isOpen;
+    }
+
     const reach = reachPoint(
       this.player.centerX,
       this.player.y + this.player.height,
@@ -402,7 +514,125 @@ export class ShipWorld implements GameWorld {
     return this.dialogue.isOpen;
   }
 
+  launchShuttle(): void {
+    this.exploration.startLaunchSequence();
+    this.exploration.enterSpaceFlight();
+    this.mode = "space_flight";
+    this.spaceFlight.spawnAtMothership();
+    this.onExplorationChange?.(this.exploration);
+  }
+
+  landOnPlanet(): void {
+    this.exploration.landOnSurface();
+    this.mode = "planetary_surface";
+    this.planetSurface.spawnAtLandingSite();
+    this.onExplorationChange?.(this.exploration);
+    this.dialogue.open([
+      { speaker: "穿梭机着陆计算系统", text: "【黑障穿透完毕】气动绝热瓦承受峰值摩擦，反推减速火箭精准切入！拓荒者一号已稳固降落在远境-IV 玄武岩极地！" },
+      { speaker: "环境感知读数", text: "【地表大气读数】表面气压 0.18 atm，环境温度 -112℃，存在微弱高能离子风暴。请穿戴重型封闭防护服作业。" }
+    ]);
+    this.onDialogueChange?.(this.dialogue);
+  }
+
+  dockAtMothership(): void {
+    this.mode = "deck";
+    const size = this.map.tileSize;
+    this.player.x = (HANGAR_ORIGIN.tx + 8) * size;
+    this.player.y = (HANGAR_ORIGIN.ty + 6) * size;
+    this.player.animation.face("down");
+    this.dialogue.open([
+      { speaker: "机库调度终端", text: "【停泊磁吸闭锁】拓荒者一号已稳固归位。主气闸加压完毕，环境气压已恢复标准 101.3 kPa。欢迎回舰，开拓者！" }
+    ]);
+    this.onDialogueChange?.(this.dialogue);
+  }
+
+  scanBuoy(): void {
+    this.spaceFlight.researchBuoy.scanned = true;
+    this.dialogue.open([
+      { speaker: "开阳-03 浮标数据总线", text: "【科研遥测下行】正在读取前哨探测器遗留的历史遥测包……" },
+      { speaker: "开阳-03 浮标数据总线", text: "【坐标解算完毕】确认远境-IV 极地裂谷处存在高密度重氢（Deuterium）冰晶矿脉，极具开采科研价值！" }
+    ]);
+    this.onDialogueChange?.(this.dialogue);
+  }
+
+  examineSurface(target: Interactable): void {
+    if (target.id === "surface_shuttle") {
+      if (this.exploration.isChapter2Done) {
+        this.exploration.enterSpaceFlight();
+        this.mode = "space_flight";
+        this.spaceFlight.x = this.spaceFlight.targetPlanet.x - 160;
+        this.spaceFlight.y = this.spaceFlight.targetPlanet.y - 120;
+        this.spaceFlight.vx = -40;
+        this.spaceFlight.vy = -30;
+        this.dialogue.open([
+          { speaker: "穿梭机起飞系统", text: "【反推爬升】离子发动机二次点火，拓荒者一号脱离远境-IV 引力井，重回初辉恒星系深空巡航轨道！" },
+          { speaker: "任务指令中心", text: "【返航指引】航向已自动对准远望号母舰（西北象限），请加速返回机库对接。" }
+        ]);
+        this.onDialogueChange?.(this.dialogue);
+        this.onExplorationChange?.(this.exploration);
+        return;
+      }
+      this.dialogue.open([
+        { speaker: "拓荒者一号机载电脑", text: "地表勘测任务尚未全部完成：请先完成科研中继信标部署与高纯重氢样本采集，再执行返航程序。" }
+      ]);
+      this.onDialogueChange?.(this.dialogue);
+      return;
+    }
+
+    if (target.id === "surface_beacon") {
+      if (!this.exploration.beaconDeployed) {
+        this.exploration.deployBeacon();
+        this.onExplorationChange?.(this.exploration);
+        this.dialogue.open([
+          { speaker: "地面科考终端", text: "【科研中继信标展开】重型合金地锚稳固钉入玄武岩裂隙！高增益相控阵天线展开，成功锁定远望号高轨信号！" },
+          { speaker: "地面科考终端", text: "初辉恒星系永久深空科学观测基站已建立，地质遥测数据实时回传中！" }
+        ]);
+        this.onDialogueChange?.(this.dialogue);
+      } else {
+        this.dialogue.open([
+          { speaker: "地面科考终端", text: "科研中继信标工作状态恒定。信号发射功率 120 W，已与远望号母舰中枢建立稳定低延迟链路。" }
+        ]);
+        this.onDialogueChange?.(this.dialogue);
+      }
+      return;
+    }
+
+    if (target.id === "surface_sample") {
+      if (!this.exploration.sampleCollected) {
+        this.exploration.collectSample();
+        this.onExplorationChange?.(this.exploration);
+        this.dialogue.open([
+          { speaker: "便携地质采样器", text: "【高纯重氢冰晶采集完毕】超低温隔热密封罐已封存 500 mL 重氢冰晶矿石样品！" },
+          { speaker: "便携地质采样器", text: "高品位聚变原料纯度测定达 99.4%！这验证了初辉恒星系具备长期自给自足聚变推进的可行性！" }
+        ]);
+        this.onDialogueChange?.(this.dialogue);
+      } else {
+        this.dialogue.open([
+          { speaker: "便携地质采样器", text: "该处露头的重氢样本已取样完毕。低温保温槽读数恒定在 14 K。" }
+        ]);
+        this.onDialogueChange?.(this.dialogue);
+      }
+      return;
+    }
+  }
+
   getCamera(): GameCamera {
+    if (this.mode === "space_flight") {
+      return {
+        x: this.spaceFlight.x,
+        y: this.spaceFlight.y,
+        mapWidth: this.spaceFlight.width,
+        mapHeight: this.spaceFlight.height
+      };
+    }
+    if (this.mode === "planetary_surface") {
+      return {
+        x: this.planetSurface.player.centerX,
+        y: this.planetSurface.player.centerY,
+        mapWidth: this.planetSurface.pixelWidth,
+        mapHeight: this.planetSurface.pixelHeight
+      };
+    }
     return {
       x: this.player.centerX,
       y: this.player.centerY,
@@ -412,6 +642,14 @@ export class ShipWorld implements GameWorld {
   }
 
   render(renderer: Renderer): void {
+    if (this.mode === "space_flight") {
+      this.spaceFlight.render(renderer);
+      return;
+    }
+    if (this.mode === "planetary_surface") {
+      this.planetSurface.render(renderer);
+      return;
+    }
     this.renderBackdrop(renderer);
     this.renderDeck(renderer);
     this.renderProps(renderer);
