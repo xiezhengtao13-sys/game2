@@ -1,18 +1,24 @@
 html, body {
   margin: 0;
-  width: 100%;
-  height: 100%;
+  padding: 0;
+  width: 100vw;
+  height: 100vh;
+  min-height: 480px;
   background: #090c12;
   overflow: hidden;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 }
 
 #app {
-  width: 100%;
-  height: 100%;
-  display: grid;
-  place-items: center;
+  width: 100vw;
+  height: 100vh;
+  min-height: 480px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
   position: relative;
+  overflow: hidden;
 }
 
 /* Subtle cinematic vignette around the deep-space starship screen */
@@ -27,13 +33,15 @@ html, body {
 }
 
 #gameCanvas {
+  width: 100%;
+  height: calc(100vh - 44px);
   max-width: 100vw;
-  max-height: calc(100vh - 40px);
-  width: auto;
-  height: auto;
+  max-height: calc(100vh - 44px);
+  object-fit: contain;
   background: #11141c;
   image-rendering: pixelated;
   box-shadow: 0 0 30px rgba(0, 0, 0, 0.8);
+  transition: transform 0.2s cubic-bezier(0.2, 0, 0, 1);
 }
 
 #hud {
@@ -562,29 +570,47 @@ html, body {
   font-weight: 600;
 }
 
-#minimap-btn {
+#action-toolbar {
   position: fixed;
   bottom: 16px;
   right: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  z-index: 50;
+}
+
+.toolbar-btn {
   background: rgba(11, 20, 36, 0.92);
   border: 1px solid #38bdf8;
   color: #7dd3fc;
   font-size: 12px;
   font-weight: 700;
-  padding: 6px 14px;
+  padding: 6px 13px;
   border-radius: 6px;
   cursor: pointer;
-  z-index: 10;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.45);
   backdrop-filter: blur(4px);
   transition: all 0.2s ease;
+  user-select: none;
 }
 
-#minimap-btn:hover {
+.toolbar-btn:hover {
   background: rgba(56, 189, 248, 0.25);
   border-color: #7dd3fc;
   color: #ffffff;
   transform: translateY(-1px);
+}
+
+.toolbar-btn.highlight {
+  background: rgba(14, 165, 233, 0.35);
+  border-color: #38bdf8;
+  color: #ffffff;
+}
+
+.toolbar-btn.highlight:hover {
+  background: #0284c7;
+  border-color: #bae6fd;
 }
 
 

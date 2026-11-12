@@ -168,10 +168,80 @@ if (app) {
     isCrisisActive: ship.crisis.isAlarmActive
   });
 
+  // Control Action Toolbar (Zoom, Fullscreen, New Tab, Blueprint)
+  const actionToolbar = document.createElement("div");
+  actionToolbar.id = "action-toolbar";
+
+  let currentZoomIndex = 0;
+  const zoomLevels = [1.0, 1.25, 1.5];
+  const zoomBtn = document.createElement("button");
+  zoomBtn.className = "toolbar-btn";
+  zoomBtn.innerHTML = "🔍 视角: 1.0x [Z]";
+  zoomBtn.title = "切换镜头缩放比例 (快捷键 Z)";
+  const updateZoom = () => {
+    const zoom = zoomLevels[currentZoomIndex];
+    canvas.style.transform = zoom === 1 ? "none" : `scale(${zoom})`;
+    canvas.style.transformOrigin = "center center";
+    zoomBtn.innerHTML = `🔍 视角: ${zoom.toFixed(2)}x [Z]`;
+  };
+  zoomBtn.onclick = () => {
+    currentZoomIndex = (currentZoomIndex + 1) % zoomLevels.length;
+    updateZoom();
+    sounds.playClick();
+  };
+
+  const fullscreenBtn = document.createElement("button");
+  fullscreenBtn.className = "toolbar-btn";
+  fullscreenBtn.innerHTML = "⛶ 全屏 [F]";
+  fullscreenBtn.title = "进入/退出浏览器全屏 (快捷键 F)";
+  fullscreenBtn.onclick = () => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch(() => {});
+    } else {
+      document.exitFullscreen().catch(() => {});
+    }
+    sounds.playClick();
+  };
+
+  const newTabBtn = document.createElement("button");
+  newTabBtn.className = "toolbar-btn highlight";
+  newTabBtn.innerHTML = "↗ 独立大屏";
+  newTabBtn.title = "在独立的 Google Chrome 新标签页中开启全屏游玩";
+  newTabBtn.onclick = () => {
+    window.open(window.location.href, "_blank");
+  };
+
+  const minimapBtn = document.createElement("button");
+  minimapBtn.id = "minimap-btn";
+  minimapBtn.className = "toolbar-btn";
+  minimapBtn.innerHTML = "🗺️ 蓝图 [M]";
+  minimapBtn.title = "开启/关闭 2800米 全舰拓扑全息蓝图 (快捷键 M)";
+  minimapBtn.onclick = () => {
+    sounds.init();
+    minimap.toggle(getMinimapState);
+    sounds.playClick();
+  };
+
+  actionToolbar.append(zoomBtn, fullscreenBtn, newTabBtn, minimapBtn);
+  app.appendChild(actionToolbar);
+
   window.addEventListener("keydown", (e) => {
     sounds.init();
     if (e.code === "KeyM") {
       minimap.toggle(getMinimapState);
+      sounds.playClick();
+    }
+    if (e.code === "KeyZ") {
+      currentZoomIndex = (currentZoomIndex + 1) % zoomLevels.length;
+      updateZoom();
+      sounds.playClick();
+    }
+    if (e.code === "KeyF") {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(() => {});
+      } else {
+        document.exitFullscreen().catch(() => {});
+      }
       sounds.playClick();
     }
     if (e.code === "Escape" && minimap.visible) {
@@ -179,16 +249,6 @@ if (app) {
       sounds.playClick();
     }
   });
-
-  const minimapBtn = document.createElement("button");
-  minimapBtn.id = "minimap-btn";
-  minimapBtn.innerHTML = "🗺️ 蓝图 [M]";
-  minimapBtn.onclick = () => {
-    sounds.init();
-    minimap.toggle(getMinimapState);
-    sounds.playClick();
-  };
-  app.appendChild(minimapBtn);
 
   // `&dialogue=1` interacts immediately, so a screenshot can show the box.
   if (params.get("dialogue") === "1") {
