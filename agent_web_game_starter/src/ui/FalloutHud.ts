@@ -90,7 +90,8 @@ export class FalloutHud {
     this.stimBtnEl = document.createElement("button");
     this.stimBtnEl.type = "button";
     this.stimBtnEl.className = "fo-stim-btn";
-    this.stimBtnEl.title = "快捷键 [H]：使用舰载创伤急救包恢复 +40 HP 并缓解 -50 热应激";
+    this.stimBtnEl.hidden = true;
+    this.stimBtnEl.title = "快捷键 [H]：使用随身应急急救包恢复 +40 HP 并缓解 -50 热应激";
     this.stimQtyEl = document.createElement("span");
     this.stimQtyEl.className = "stim-qty";
     this.stimBtnEl.innerHTML = `<span class="stim-ico">🩹</span><span class="stim-name">急救包 <kbd>H</kbd></span>`;
@@ -199,9 +200,23 @@ export class FalloutHud {
     this.hpBarEl.classList.toggle("low", hpPct <= 35);
     this.hpTextEl.textContent = `${Math.round(rpg.hp)} / ${rpg.maxHp}`;
 
-    this.radTextEl.textContent = `热应激 ${Math.round(rpg.rad)}%`;
-    this.radTextEl.title = "反应堆泵房或高温管廊造成的体表热应激指数（穿防热服或按 [H] 用急救包降温）";
-    this.radTextEl.classList.toggle("warn", rpg.rad >= 40);
+    if (rpg.rad > 0) {
+      this.radTextEl.textContent = `热应激 ${Math.round(rpg.rad)}%`;
+      this.radTextEl.title = "反应堆泵房或高温管廊造成的体表热应激指数（穿防热服或按 [H] 用急救包降温）";
+      this.radTextEl.classList.remove("safe");
+      this.radTextEl.classList.toggle("warn", rpg.rad >= 40);
+    } else {
+      this.radTextEl.textContent = "舱内常压";
+      this.radTextEl.title = "当前舱室环境温压平稳正常";
+      this.radTextEl.classList.add("safe");
+      this.radTextEl.classList.remove("warn");
+    }
+
+    const stimQty = rpg.items.get("med_stim")?.quantity ?? 0;
+    const needsMed = rpg.hp < rpg.maxHp || rpg.rad > 0;
+    this.stimQtyEl.textContent = `x${stimQty}`;
+    this.stimBtnEl.hidden = !needsMed || stimQty <= 0;
+    this.stimBtnEl.disabled = stimQty <= 0;
 
     const filledAp = Math.floor(rpg.ap);
     if (this.apPipsEl.children.length !== rpg.maxAp) {
@@ -247,12 +262,7 @@ export class FalloutHud {
       btn.classList.toggle("active", rpg.activeMode === mode);
     }
 
-    // 3. Stimpack quick slot
-    const stimQty = rpg.items.get("med_stim")?.quantity ?? 0;
-    this.stimQtyEl.textContent = `x${stimQty}`;
-    this.stimBtnEl.disabled = stimQty <= 0;
-
-    // 4. Vitals Meters
+    // 3. Vitals Meters + conditional Stimpack quick slot
     this.syncVitalsOnly(rpg);
 
     if (this.isCharOpen) {
@@ -359,7 +369,7 @@ export class FalloutHud {
               ${portraitUrl ? `<img class="portrait-hd" src="${portraitUrl}" alt="Player" />` : `<div class="avatar-icon-log">🧑‍🔧</div>`}
             </div>
             <div class="char-nameplate">巡检工勤 · 小徐 (Lv.${rpg.level})</div>
-            <div class="char-xp-readout">XP ${rpg.xp} / ${rpg.xpForNextLevel} · HP ${Math.round(rpg.hp)}/${rpg.maxHp}<br/>热应激 ${Math.round(rpg.rad)}%</div>
+            <div class="char-xp-readout">XP ${rpg.xp} / ${rpg.xpForNextLevel} · HP ${Math.round(rpg.hp)}/${rpg.maxHp}<br/>${rpg.rad > 0 ? `热应激 ${Math.round(rpg.rad)}%` : "环境 常压稳态"}</div>
             <div class="char-section-title">值班履历专精 ${canSwitch ? "(可切换)" : "(已锁定)"}</div>
             <div class="char-arch-list">${archButtons}</div>
             <div class="char-arch-desc">${archDef.traitDesc}</div>

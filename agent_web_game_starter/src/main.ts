@@ -321,6 +321,9 @@ if (app && stage) {
   if (params.get("dialogue") === "1") {
     ship.interactInReach();
     dialogueBox.render(ship.dialogue.isOpen ? ship.dialogue : null);
+  } else if (!spawnParam && params.get("intro") !== "0") {
+    ship.beginWakeUpIntro();
+    dialogueBox.render(ship.dialogue.isOpen ? ship.dialogue : null);
   }
 }
 

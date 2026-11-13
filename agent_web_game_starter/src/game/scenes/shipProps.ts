@@ -316,8 +316,8 @@ export const RING_PROPS: readonly SceneProp[] = [
 
 export const HABITAT_PROPS: readonly SceneProp[] = [
   habitat("fx_bed", 3.8, 3.8, 2, 3, "船员起居铺位", [
-    { speaker: null, text: "这就是你睡了六年的标准双层船员窄铺，配有防失重约束带和个人置物格。" },
-    { speaker: null, text: "床头挡板上刻着一排小小的划痕——每七道代表一个深空轮班周期。" }
+    { speaker: null, text: "公共宿舍区 A1 隔间的标准窄铺，防失重睡眠约束带刚解开，铺垫还留着余温。" },
+    { speaker: null, text: "床头小格里放着二班手抄单与日常工装——出门去生活区走廊找老周点卯吧。" }
   ]),
   habitat("fx_bed", 8.8, 3.8, 2, 3, "邻铺夜班床位", [
     { speaker: null, text: "A2 隔间夜班机修工友的铺位，床单折得像豆腐块，墙面挂着工装安全带。" }

@@ -348,6 +348,29 @@ export class ShipWorld implements GameWorld {
     this.onRpgChange?.(this.rpg);
   }
 
+  /** Trigger the peaceful 06:00 public dormitory wake-up scene when launching in the browser. */
+  beginWakeUpIntro(): void {
+    if (this.dialogue.isOpen) return;
+    this.dialogue.open([
+      {
+        speaker: "小徐",
+        portraitId: "portrait_player",
+        text: "06:00。宿舍区柔光照明缓缓亮起，窄铺上的睡眠约束扣发出一声轻响自动松开。"
+      },
+      {
+        speaker: "小徐",
+        portraitId: "portrait_player",
+        text: "你从公共宿舍区 A1 隔间的铺位起身踩上脚垫。舱内常压恒温、安安静静，隔墙那头的夜班工友还在熟睡。"
+      },
+      {
+        speaker: "小徐",
+        portraitId: "portrait_player",
+        text: "把二班巡检单揣进兜里——先走出宿舍门，找走廊里的老周点卯，领今天生活区和车间的例行巡查工作吧。"
+      }
+    ]);
+    this.onDialogueChange?.(this.dialogue);
+  }
+
   /** Trigger a numbered choice in an active branching Fallout dialogue. */
   selectDialogueChoice(index: number): void {
     if (!this.dialogue.isOpen) return;
@@ -729,7 +752,7 @@ export class ShipWorld implements GameWorld {
       if (check.ok && !this.rpg.hasItem("med_stim")) {
         this.rpg.addItem({
           id: "med_stim",
-          name: "舰载创伤急救包",
+          name: "随身应急急救包",
           icon: "🩹",
           category: "consumable",
           desc: "工勤标准应急医疗包，可处理烫伤外伤并缓解热应激。",
@@ -737,7 +760,7 @@ export class ShipWorld implements GameWorld {
         }, anchor.x, anchor.y);
       }
       const text = check.ok
-        ? `【交涉成功】[魅力/话术生效] ${person.name}神色明显缓和下来，拍了拍你的肩膀：「还是你们基层干活稳重，这盒备用【舰载创伤急救包】拿好，深空轮班别硬撑。」`
+        ? `【交涉成功】[魅力/话术生效] ${person.name}神色明显缓和下来，拍了拍你的肩膀：「还是你们基层干活稳重，这盒备用【随身应急急救包】拿好，深空轮班别硬撑。」`
         : `【交涉受挫】${person.name}摆了摆手：「现在当班呢，别扯那些有的没的，抓紧把手头活干完吧。」`;
       this.dialogue.open([{ speaker: person.name, text, portraitId: this.portraitForPerson(person.id) }]);
       this.onDialogueChange?.(this.dialogue);
@@ -1070,7 +1093,7 @@ export class ShipWorld implements GameWorld {
                 this.rpg.completedChecks.add("medic_stim_gift");
                 this.rpg.addItem({
                   id: "med_stim",
-                  name: "舰载创伤急救包",
+                  name: "随身应急急救包",
                   icon: "🩹",
                   category: "consumable",
                   desc: "医务室冷敷急救包，配备水凝胶烫伤敷料与口服补液盐。",
@@ -1083,7 +1106,7 @@ export class ShipWorld implements GameWorld {
                   speaker: "陈医生",
                   portraitId: "portrait_medic",
                   text: r.ok
-                    ? "「天哪，零点零二赫兹的微弱杂波让你找出来了！难怪 407 号冷机老是虚警。这盒库存的【舰载创伤急救包】请收下，下面炉房又闷又烫，防中暑防烫伤随时保命。」"
+                    ? "「天哪，零点零二赫兹的微弱杂波让你找出来了！难怪 407 号冷机老是虚警。这盒库存的【随身应急急救包】请收下，下面炉房又闷又烫，防中暑防烫伤随时保命。」"
                     : "「谢谢你的好意，不过休眠母线的精密信号校准最好还是留给专职医工电脑自动扫频吧。」"
                 }
               ];
@@ -1181,7 +1204,7 @@ export class ShipWorld implements GameWorld {
       // Phase 1 -> Grant midship_pass
       if (!this.duty.isLowerTasksDone()) {
         return [
-          { speaker: "老周", text: "「小徐，刚换班吧？咱们底层工勤二班现在没权去中层干线，南北跟东边的气闸都落着电子门禁。」" },
+          { speaker: "老周", text: "「小徐，刚睡醒出宿舍吧？咱们底层工勤二班现在没权去中层干线，南北跟东边的气闸都落着电子门禁。」" },
           { speaker: "老周", text: "「先去东头核对一下生活区【水循环监测阀台】，再穿过西面门洞进 【L-2 重工业车间】把【机械臂液压装配台】压力读数签回来。办妥了我才好批给你中层通行条！」" }
         ];
       }

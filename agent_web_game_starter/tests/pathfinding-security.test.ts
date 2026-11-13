@@ -23,8 +23,8 @@ describe("Intelligent A* Pathfinding & Multi-Segment Navigation", () => {
     assert.equal(result.partialBlocked, false, "open lower corridor to L-2 should not be security blocked");
     assert.ok(result.waypoints.length >= 2, `expected multi-segment A* path around corners, got ${result.waypoints.length}`);
 
-    // Simulate frame ticks following the A* waypoints to destination
-    for (let i = 0; i < 600 && world.player.waypoints.length > 0; i++) {
+    // Simulate frame ticks following the A* waypoints from Dorm A1 out into L-2
+    for (let i = 0; i < 720 && world.player.waypoints.length > 0; i++) {
       world.update(1 / 60, fakeInput([]));
     }
 

@@ -154,16 +154,30 @@ describe("the deck is one map (TASK-S3)", () => {
 });
 
 describe("lower crewman spawn, locked upper compartments, and seamless deck walking", () => {
-  test("the spawn is inside the crew habitat on walkable deck", () => {
+  test("the spawn is inside Public Dormitory A1 on walkable deck", () => {
     const spawn = shipSpawn(TILE);
     const tile = feetTile(map, spawn.x, spawn.y);
 
     assert.equal(placeAt(tile.tx, tile.ty), "crew_habitat", "the player does not start in crew habitat");
+    assert.ok(
+      tile.tx >= HABITAT_BOUNDS.tx + 1 &&
+        tile.tx <= HABITAT_BOUNDS.tx + 11 &&
+        tile.ty >= HABITAT_BOUNDS.ty + 1 &&
+        tile.ty <= HABITAT_BOUNDS.ty + 8,
+      `expected spawn inside NW dorm suite, got local (${tile.tx - HABITAT_BOUNDS.tx}, ${tile.ty - HABITAT_BOUNDS.ty})`
+    );
     assert.equal(
       isBoxBlocked(map, { x: spawn.x + 5, y: spawn.y + 48 - 16, width: 22, height: 16 }),
       false,
       "the player starts inside a wall"
     );
+
+    const world = ship();
+    assert.equal(world.dialogue.isOpen, false, "headless construction starts quiet for deterministic tests");
+    world.beginWakeUpIntro();
+    assert.equal(world.dialogue.isOpen, true, "beginWakeUpIntro opens morning wake-up story");
+    world.dialogue.advance();
+    assert.match(world.dialogue.current?.text ?? "", /公共宿舍区/);
   });
 
   test("standing at the spawn, the game names the lower crew habitat", () => {

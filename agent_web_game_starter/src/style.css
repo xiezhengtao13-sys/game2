@@ -690,6 +690,10 @@ html, body {
   color: #ffffff;
 }
 
+.fo-stim-btn[hidden] {
+  display: none !important;
+}
+
 .fo-stim-btn:disabled {
   opacity: 0.38;
   cursor: not-allowed;
@@ -750,6 +754,11 @@ html, body {
   border-radius: 2px;
   color: #86efac;
   background: rgba(20, 83, 45, 0.45);
+}
+
+.fo-rad-pill.safe {
+  color: #94a3b8;
+  background: rgba(30, 41, 59, 0.55);
 }
 
 .fo-rad-pill.warn {

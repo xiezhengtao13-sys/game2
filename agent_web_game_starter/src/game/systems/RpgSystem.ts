@@ -28,7 +28,7 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
     id: "veteran",
     name: "二班老手 · 铁钳技工",
     traitName: "【特质：老茧机修】",
-    traitDesc: "三十年老船上的硬派工勤。机械工程 +14%，耐热抗压体质（最大HP +12），随身多备一套急救包。",
+    traitDesc: "长年在底层管廊与车间跑维保的硬派工勤。机械工程 +14%，耐热抗压体质（最大HP +12）。",
     stats: { str: 7, per: 6, end: 7, cha: 4, int: 6, agi: 5, lck: 5 },
     skillBonuses: { repair: 14 }
   },
@@ -136,8 +136,8 @@ export class RpgSystem {
   constructor(initialArchetype: ArchetypeId = "veteran") {
     this.seedInitialInventory();
     this.applyArchetype(initialArchetype, true);
-    this.pushLog("system", "系统自检完毕。远望号第二班工程终端离线挂载中——鼠标左键移动/交互，右键或底栏切换技能动作。");
-    this.pushLog("system", "当前可按 [Tab] 随时打开《工勤个人终端》分配 20 点初始技能点数或切换履历专精。");
+    this.pushLog("system", "06:00 公共宿舍区起床灯已开启，舱内常压稳态。左键移动/交互，右键或底栏切换技能动作。");
+    this.pushLog("system", "按 [Tab] 可随时打开《个人终端与随身背包》，分配初始技能点或查看二班手抄巡检单。");
   }
 
   private seedInitialInventory(): void {
@@ -147,7 +147,7 @@ export class RpgSystem {
       name: "二班手抄巡检单",
       icon: "📋",
       category: "quest",
-      desc: "老周手写的当班巡检夹板，记录了动力席、应急开关与绿植位置。",
+      desc: "老周手写的当班巡检夹板，记录了生活区及车间例行巡查点。",
       quantity: 1
     });
     this.addItem({
@@ -162,12 +162,12 @@ export class RpgSystem {
     });
     this.addItem({
       id: "med_stim",
-      name: "舰载创伤急救包",
+      name: "随身应急急救包",
       icon: "🩹",
       category: "consumable",
-      desc: "远望号工勤标准应急医疗包，内含低温水凝胶烫伤敷料与口服补液盐，用于处理高温灼伤与热应激。",
+      desc: "收在工具包夹层的小型医用敷料盒，含降温水凝胶与基础消毒贴。平时船舱内安全稳态无需取出，仅作机房意外擦烫备用。",
       bonusDesc: "使用恢复 +40 HP / 缓解 -50 热应激",
-      quantity: 2
+      quantity: 1
     });
   }
 
@@ -186,9 +186,6 @@ export class RpgSystem {
     this.hp = this.maxHp;
     this.maxAp = 6 + Math.floor(this.stats.agi * 0.8) + (id === "fixer" ? 2 : 0);
     this.ap = this.maxAp;
-
-    const stim = this.items.get("med_stim");
-    if (stim) stim.quantity = id === "veteran" ? 3 : 2;
 
     if (!silent) {
       this.pushLog("system", `已切换个人履历：【${def.name}】 ${def.traitName}`);
@@ -335,7 +332,7 @@ export class RpgSystem {
       this.rad = Math.max(0, this.rad - 50);
       const healed = this.hp - prevHp;
       const purged = prevRad - this.rad;
-      this.pushLog("loot", `使用【舰载创伤急救包】：生命 +${healed} (${this.hp}/${this.maxHp})，热应激降温 -${purged} (余 ${item.quantity} 份)`);
+      this.pushLog("loot", `使用【随身应急急救包】：生命 +${healed} (${this.hp}/${this.maxHp})，热应激降温 -${purged} (余 ${item.quantity} 份)`);
       if (anchorX !== undefined && anchorY !== undefined) {
         this.spawnFloatingText(anchorX, anchorY - 40, `+${healed} HP / -${purged} 热应激`, "#34d399");
       }

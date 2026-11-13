@@ -333,13 +333,14 @@ export function createShipMap(tileSize: number): TileMap {
 }
 
 /**
- * Where the protagonist begins Shift 2: inside the cramped lower Crew Habitat bunks,
- * next to Shift Foreman Lao Zhou and the open L-2 Heavy Industrial Workshop.
- * All mid-ship, upper command, hangar, reactor, and captain quarters are sealed off.
+ * Where the protagonist wakes up at 06:00 Shift 2 start: inside Public Dormitory A1
+ * right beside their narrow bunk ("船员起居铺位"), with corridors leading to Foreman
+ * Lao Zhou and the open L-2 Heavy Industrial Workshop. All mid-ship, upper command,
+ * hangar, reactor, and captain quarters remain sealed off by physical bulkheads.
  */
 export function shipSpawn(tileSize: number): { x: number; y: number } {
-  const spawnTx = HABITAT_ORIGIN.tx + 10;
-  const spawnTy = HABITAT_ORIGIN.ty + 10;
+  const spawnTx = HABITAT_ORIGIN.tx + 5;
+  const spawnTy = HABITAT_ORIGIN.ty + 6;
   return {
     x: spawnTx * tileSize + (tileSize - 32) / 2,
     y: spawnTy * tileSize

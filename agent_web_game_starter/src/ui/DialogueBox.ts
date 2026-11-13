@@ -107,6 +107,9 @@ export class DialogueBox {
     } else if (speaker === "领航员" || speaker?.includes("领航")) {
       this.badgeEl.textContent = "NAV · 深空航线导航席";
       this.badgeEl.className = "dialogue-badge badge-nav";
+    } else if (speaker === "小徐") {
+      this.badgeEl.textContent = "CREW · 底层工勤二班（生活宿舍区）";
+      this.badgeEl.className = "dialogue-badge badge-crew";
     } else if (speaker) {
       this.badgeEl.textContent = "COMM · 远望号通讯链路";
       this.badgeEl.className = "dialogue-badge badge-crew";
