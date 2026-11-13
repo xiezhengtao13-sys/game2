@@ -30,6 +30,7 @@ export class PlanetSurface {
   readonly sampleSite = { x: 21 * TILE, y: 11 * TILE, label: "重氢冰晶露头" };
 
   private readonly interactables: Interactable[] = [];
+  private readonly windParticles: Array<{ x: number; y: number; vx: number; vy: number; len: number; alpha: number }> = [];
 
   constructor(assets: GameAssets | null, exploration: ExplorationSystem) {
     this.assets = assets;
@@ -42,6 +43,17 @@ export class PlanetSurface {
       { id: "surface_beacon", label: this.beaconSite.label, x: this.beaconSite.x, y: this.beaconSite.y, radius: 46 },
       { id: "surface_sample", label: this.sampleSite.label, x: this.sampleSite.x, y: this.sampleSite.y, radius: 46 }
     ];
+
+    for (let i = 0; i < 34; i++) {
+      this.windParticles.push({
+        x: (i * 113) % this.pixelWidth,
+        y: (i * 79) % this.pixelHeight,
+        vx: 42 + (i % 5) * 14,
+        vy: 10 + (i % 3) * 5,
+        len: 12 + (i % 4) * 8,
+        alpha: 0.16 + (i % 4) * 0.06
+      });
+    }
   }
 
   get interactionTarget(): Interactable | null {
@@ -66,6 +78,12 @@ export class PlanetSurface {
 
   update(dt: number, input: Input): void {
     this.elapsedTime += dt;
+
+    // Cryogenic polar wind particles drifting across Farthest-IV tundra
+    for (const w of this.windParticles) {
+      w.x = (w.x + w.vx * dt) % this.pixelWidth;
+      w.y = (w.y + w.vy * dt) % this.pixelHeight;
+    }
 
     // Direct movement on the planetary surface
     const speed = 140; // px/s on low gravity alien surface
@@ -102,7 +120,7 @@ export class PlanetSurface {
   }
 
   render(renderer: Renderer): void {
-    // 1. Alien basalt terrain ground tiles
+    // 1. Alien basalt & frosted silica ground tiles
     const size = TILE;
     for (let ty = 0; ty < this.rows; ty++) {
       for (let tx = 0; tx < this.cols; tx++) {
@@ -112,9 +130,17 @@ export class PlanetSurface {
         renderer.drawSprite(img, tx * size + size / 2, ty * size + size / 2, {
           anchor: "center",
           size: { w: size, h: size },
-          fallbackColor: "#1e293b"
+          fallbackColor: "#141b29"
         });
       }
+    }
+
+    // Subdued basalt shadow ridges & contact AO shadows under surface fixtures
+    if (renderer.drawEllipse) {
+      renderer.drawEllipse(this.landingShuttle.x + 4, this.landingShuttle.y + 42, 74, 14, "rgba(2, 4, 10, 0.7)");
+      renderer.drawEllipse(this.beaconSite.x + 2, this.beaconSite.y + 22, 46, 10, "rgba(2, 4, 10, 0.65)");
+      renderer.drawEllipse(this.sampleSite.x + 2, this.sampleSite.y + 18, 28, 9, "rgba(2, 4, 10, 0.65)");
+      renderer.drawEllipse(this.player.centerX, this.player.y + this.player.height - 2, 13, 6, "rgba(2, 4, 10, 0.7)");
     }
 
     // 2. Landed Pioneer-1 Shuttle
@@ -122,24 +148,25 @@ export class PlanetSurface {
     renderer.drawSprite(shuttleImg, this.landingShuttle.x, this.landingShuttle.y, {
       anchor: "center",
       size: { w: 144, h: 96 },
-      fallbackColor: "#e2e8f0"
+      fallbackColor: "#cbd5e1"
     });
-    renderer.drawWorldText("🚀 拓荒者一号 (着陆状态)", this.landingShuttle.x - 70, this.landingShuttle.y - 60, {
+    renderer.drawWorldText("🚀 拓荒者一号 (着陆状态)", this.landingShuttle.x, this.landingShuttle.y - 62, {
       color: "#93c5fd",
-      size: 13
+      size: 13,
+      align: "center"
     });
 
     // 3. Research Beacon Site
     const beaconActive = this.exploration.beaconDeployed;
     const pulse = (Math.sin(this.elapsedTime * 6) + 1) / 2;
     if (beaconActive) {
-      // Pulsing vertical beam
-      renderer.drawRect(this.beaconSite.x - 6, this.beaconSite.y - 120, 12, 120, {
-        color: `rgba(52, 211, 153, ${(0.4 + pulse * 0.4).toFixed(2)})`
+      renderer.drawRect(this.beaconSite.x - 5, this.beaconSite.y - 120, 10, 120, {
+        color: `rgba(52, 211, 153, ${(0.35 + pulse * 0.45).toFixed(2)})`
       });
-      renderer.drawWorldText("✅ 科研中继信标 · 信号满格", this.beaconSite.x - 80, this.beaconSite.y - 135, {
+      renderer.drawWorldText("✅ 科研中继信标 · 信号满格", this.beaconSite.x, this.beaconSite.y - 134, {
         color: "#6ee7b7",
-        size: 13
+        size: 13,
+        align: "center"
       });
     }
     const beaconImg = this.assets?.image("fx_switch_panel") ?? null;
@@ -159,12 +186,12 @@ export class PlanetSurface {
     });
     renderer.drawWorldText(
       sampleDone ? "✅ 重氢样本已采集" : "💎 纯度99.4% 重氢冰晶",
-      this.sampleSite.x - 60,
-      this.sampleSite.y - 36,
-      { color: sampleDone ? "#6ee7b7" : "#7dd3fc", size: 12 }
+      this.sampleSite.x,
+      this.sampleSite.y - 38,
+      { color: sampleDone ? "#6ee7b7" : "#7dd3fc", size: 12, align: "center" }
     );
 
-    // 5. Player Character (EVA suit)
+    // 5. Player Character (EVA suit visor overlay)
     const frame = this.player.animation.frame;
     const playerImg = this.assets?.image(frame.assetId) ?? null;
     renderer.drawSprite(playerImg, this.player.centerX, this.player.y + this.player.height, {
@@ -173,8 +200,56 @@ export class PlanetSurface {
       size: { w: this.player.width, h: this.player.height },
       fallbackColor: "#ffffff"
     });
+    renderer.drawRect(this.player.centerX - 6, this.player.y + 11, 12, 5, {
+      color: "#38bdf8",
+      radius: 2,
+      stroke: { width: 1, color: "#e0f2fe" }
+    });
 
-    // 6. Interaction Prompt E
+    // 6. Planetary Dusk Atmospheric Mask & Helmet Flashlight Cone
+    let beamAngle = Math.PI / 2;
+    if (this.player.facing === "up") beamAngle = -Math.PI / 2;
+    else if (this.player.facing === "left") beamAngle = Math.PI;
+    else if (this.player.facing === "right") beamAngle = 0;
+
+    if (renderer.beginLightMask && renderer.punchLightHole && renderer.endLightMask) {
+      renderer.beginLightMask("rgba(4, 9, 18, 0.56)");
+      renderer.punchLightHole(this.landingShuttle.x, this.landingShuttle.y, 40, 215);
+      renderer.punchLightHole(this.beaconSite.x, this.beaconSite.y, 20, beaconActive ? 195 : 110);
+      renderer.punchLightHole(this.sampleSite.x, this.sampleSite.y, 16, 130);
+      renderer.punchLightHole(this.player.centerX, this.player.y + 20, 20, 120);
+      renderer.punchLightHole(this.player.centerX, this.player.y + 20, 24, 240, beamAngle, Math.PI * 0.48);
+      renderer.endLightMask();
+    }
+
+    if (renderer.drawRadialLight) {
+      renderer.drawRadialLight(this.landingShuttle.x, this.landingShuttle.y + 12, 135, "rgba(251, 191, 36, 0.16)", "rgba(0,0,0,0)", true);
+      renderer.drawRadialLight(
+        this.beaconSite.x,
+        this.beaconSite.y,
+        beaconActive ? 130 : 75,
+        beaconActive ? "rgba(52, 211, 153, 0.25)" : "rgba(245, 158, 11, 0.14)",
+        "rgba(0,0,0,0)",
+        true
+      );
+      if (!sampleDone) {
+        renderer.drawRadialLight(this.sampleSite.x, this.sampleSite.y, 85, "rgba(56, 189, 248, 0.24)", "rgba(0,0,0,0)", true);
+      }
+    }
+
+    // 7. Cryogenic alien frost wind streaks
+    for (const w of this.windParticles) {
+      renderer.drawLine?.(
+        w.x,
+        w.y,
+        w.x + w.len,
+        w.y + w.len * 0.24,
+        `rgba(186, 230, 253, ${w.alpha.toFixed(2)})`,
+        1.2
+      );
+    }
+
+    // 8. Interaction Prompt E
     if (this.target) {
       const promptImg = this.assets?.image("ui_prompt_e") ?? null;
       renderer.drawSprite(promptImg, this.target.x, this.target.y - 32, {

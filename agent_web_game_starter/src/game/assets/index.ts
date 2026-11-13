@@ -3,6 +3,7 @@ import { selectAssetSource, type UrlMap } from "./sources";
 export { selectAssetSource } from "./sources";
 import { ALL_ASSETS, getAssetSpec } from "./manifest";
 import type { AssetSpec } from "./types";
+import { resolvePortraitUrl } from "./portraits";
 
 /**
  * The game-side asset layer: decides WHERE art comes from and what to do when
@@ -16,14 +17,6 @@ import type { AssetSpec } from "./types";
  * See docs/ART_PIPELINE.md.
  */
 
-// Vite rewrites these globs at build time into path -> URL maps.
-//
-// Two silent failures have been made here, both worth avoiding again:
-//   - `import.meta.glob?.(...)` is NOT transformed. Vite matches the literal
-//     text, so the optional-call form evaluates to undefined in the browser and
-//     every asset falls back to a flat colour, with no error anywhere.
-//   - `?? {}` hides a glob that matched nothing. Left off on purpose: if the
-//     paths ever stop matching, this should break loudly instead.
 const spriteUrls: UrlMap = import.meta.glob("../../../assets/sprites/*.png", {
   query: "?url",
   import: "default",
@@ -36,21 +29,6 @@ const generatedUrls: UrlMap = import.meta.glob("../../../assets/generated/*.png"
   eager: true
 });
 
-/**
- * Find the URL for `id` inside a glob map keyed by file path.
- *
- * Matches the `id` as a whole file-name segment, so `grass` does not match
- * `tile_grass.png`. Both separators are accepted because Windows and POSIX
- * produce different paths.
- */
-
-/**
- * Choose the source URL for an asset id, preferring real art over placeholder.
- *
- * Thin wrapper over the pure `selectAssetSource` in `sources.ts`, binding it to
- * the maps the bundler produced. The pure version lives separately so tests can
- * exercise the priority rule without importing a bundler-specific module.
- */
 export function assetSourceFor(id: string): string | undefined {
   return selectAssetSource(id, spriteUrls, generatedUrls);
 }
@@ -63,6 +41,8 @@ export function debugSourceFor(id: string): string | undefined {
 export interface GameAssets {
   /** The image for `id`, or null when only a placeholder recipe is available. */
   image(id: string): HTMLImageElement | null;
+  /** High-resolution painterly portrait URL if present. */
+  portraitUrl?(id: string): string | undefined;
   /** The manifest recipe for `id`. Always available; throws on an unknown id. */
   spec(id: string): AssetSpec;
   /** Ids that were looked up but have no image, so the caller must draw them. */
@@ -76,6 +56,10 @@ class LoadedAssets implements GameAssets {
 
   image(id: string): HTMLImageElement | null {
     return this.loader.get(id);
+  }
+
+  portraitUrl(id: string): string | undefined {
+    return resolvePortraitUrl(id);
   }
 
   spec(id: string): AssetSpec {

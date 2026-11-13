@@ -105,11 +105,11 @@ export class ShipMinimap {
         <div class="minimap-footer">
           <div class="minimap-current-info">
             <span class="info-label">当前所在分区：</span>
-            <span class="info-value text-cyan-300">${state.placeLabel}</span>
+            <span class="info-value info-zone">${state.placeLabel}</span>
           </div>
           <div class="minimap-objective">
             <span class="info-label">任务引导：</span>
-            <span class="info-value text-amber-300">${state.objectiveText}</span>
+            <span class="info-value info-obj">${state.objectiveText}</span>
           </div>
         </div>
       </div>

@@ -266,105 +266,151 @@ export class SpaceFlight {
   }
 
   private renderStars(renderer: Renderer, camera: Camera): void {
-    // Clear background to pitch black void
-    renderer.clear("#04070d");
+    // Clear background to deep cosmic obsidian
+    renderer.clear("#03050a");
 
-    // Draw multi-layer star grid
-    const cols = 22;
-    const rows = 16;
+    // Volumetric deep-space nebula clouds (soft additive blooms at sector anchors)
+    if (renderer.drawRadialLight) {
+      renderer.drawRadialLight(1250, 900, 680, "rgba(30, 58, 138, 0.14)", "rgba(3, 5, 10, 0)", false);
+      renderer.drawRadialLight(2900, 1450, 760, "rgba(88, 28, 135, 0.09)", "rgba(3, 5, 10, 0)", false);
+      renderer.drawRadialLight(3400, 2300, 540, "rgba(14, 116, 144, 0.14)", "rgba(3, 5, 10, 0)", false);
+      renderer.drawRadialLight(2200, 400, 920, "rgba(180, 83, 9, 0.13)", "rgba(3, 5, 10, 0)", false);
+    }
+
+    // Draw multi-layer parallax stars
+    const cols = 26;
+    const rows = 18;
     const cellW = this.width / cols;
     const cellH = this.height / rows;
 
     for (let i = 0; i < cols; i++) {
       for (let j = 0; j < rows; j++) {
-        const sx = i * cellW + ((i * 73 + j * 91) % cellW);
-        const sy = j * cellH + ((i * 127 + j * 43) % cellH);
+        const pxOffset = (i + j) % 2 === 0 ? camera.worldX * 0.08 : camera.worldX * 0.03;
+        const pyOffset = (i + j) % 2 === 0 ? camera.worldY * 0.08 : camera.worldY * 0.03;
+        const sx = (i * cellW + ((i * 73 + j * 91) % cellW) - pxOffset + this.width) % this.width;
+        const sy = (j * cellH + ((i * 127 + j * 43) % cellH) - pyOffset + this.height) % this.height;
         const brightness = ((i * 17 + j * 31) % 100) / 100;
         const color =
-          brightness > 0.8
-            ? "#cfe4ff"
-            : brightness > 0.5
-            ? "#e2ecf8"
-            : "rgba(180, 205, 235, 0.4)";
-        const size = brightness > 0.85 ? 2.5 : 1.5;
+          brightness > 0.88
+            ? "#fde68a"
+            : brightness > 0.72
+            ? "#bae6fd"
+            : brightness > 0.45
+            ? "#cbd5e1"
+            : "rgba(148, 163, 184, 0.35)";
+        const size = brightness > 0.88 ? 2.6 : brightness > 0.65 ? 1.8 : 1.2;
+        if (brightness > 0.92 && renderer.drawRadialLight) {
+          renderer.drawRadialLight(sx + 1, sy + 1, 9, "rgba(186, 230, 253, 0.25)", "rgba(0,0,0,0)", true);
+        }
         renderer.drawRect(sx, sy, size, size, { color });
+      }
+    }
+
+    // Faint tactical nav trajectory guides from shuttle
+    if (renderer.drawLine) {
+      renderer.drawLine(
+        this.x,
+        this.y,
+        this.targetPlanet.x,
+        this.targetPlanet.y,
+        "rgba(56, 189, 248, 0.16)",
+        1.2,
+        [8, 8]
+      );
+      if (!this.researchBuoy.scanned) {
+        renderer.drawLine(
+          this.x,
+          this.y,
+          this.researchBuoy.x,
+          this.researchBuoy.y,
+          "rgba(245, 158, 11, 0.18)",
+          1.2,
+          [5, 7]
+        );
       }
     }
   }
 
   private renderCentralStar(renderer: Renderer): void {
     const star = this.centralStar;
-    // Radiant coronal layers
-    renderer.drawRect(star.x - 220, star.y - 220, 440, 440, {
-      color: "rgba(255, 220, 110, 0.06)",
-      radius: 220
-    });
-    renderer.drawRect(star.x - 170, star.y - 170, 340, 340, {
-      color: "rgba(255, 230, 140, 0.15)",
-      radius: 170
-    });
+    const pulse = Math.sin(this.elapsedTime * 1.8) * 14;
+
+    if (renderer.drawRadialLight) {
+      renderer.drawRadialLight(star.x, star.y, 440 + pulse, "rgba(234, 88, 12, 0.22)", "rgba(0,0,0,0)", true);
+      renderer.drawRadialLight(star.x, star.y, 290 + pulse * 0.5, "rgba(251, 191, 36, 0.36)", "rgba(0,0,0,0)", true);
+    }
+
     renderer.drawRect(star.x - star.radius, star.y - star.radius, star.radius * 2, star.radius * 2, {
-      color: star.color,
+      color: "#fde68a",
       radius: star.radius
     });
-    // Core flare
-    renderer.drawRect(star.x - 60, star.y - 60, 120, 120, {
-      color: "#ffffff",
-      radius: 60
+    renderer.drawRect(star.x - 86, star.y - 86, 172, 172, {
+      color: "#fef3c7",
+      radius: 86
     });
-    renderer.drawWorldText("恒星 · 初辉 (Dawn Star)", star.x - 70, star.y + star.radius + 15, {
-      color: "#ffe082",
-      size: 13
+    renderer.drawRect(star.x - 48, star.y - 48, 96, 96, {
+      color: "#ffffff",
+      radius: 48
+    });
+    renderer.drawWorldText("✦ 恒星 · 初辉 (Dawn Star)", star.x, star.y + star.radius + 16, {
+      color: "#fcd34d",
+      size: 13,
+      align: "center"
     });
   }
 
   private renderTargetPlanet(renderer: Renderer): void {
     const p = this.targetPlanet;
 
-    // Atmospheric outer halo
-    renderer.drawRect(p.x - p.radius - 24, p.y - p.radius - 24, (p.radius + 24) * 2, (p.radius + 24) * 2, {
-      color: "rgba(70, 175, 240, 0.18)",
-      radius: p.radius + 24
-    });
+    // Luminous cryogenic azure atmosphere rim
+    if (renderer.drawRadialLight) {
+      renderer.drawRadialLight(p.x - 16, p.y - 18, p.radius + 54, "rgba(56, 189, 248, 0.32)", "rgba(0,0,0,0)", true);
+    }
 
-    // Planetary body (Azure / ice blue)
+    // Lit planetary sphere
     renderer.drawRect(p.x - p.radius, p.y - p.radius, p.radius * 2, p.radius * 2, {
-      color: p.color,
+      color: "#226799",
       radius: p.radius,
-      stroke: { width: 2, color: "#92d4f8" }
+      stroke: { width: 2, color: "#7dd3fc" }
     });
 
-    // Cloud bands & ice polar cap
-    renderer.drawRect(p.x - p.radius + 12, p.y - p.radius + 8, (p.radius - 12) * 2, 22, {
-      color: "#e6f5ff",
-      radius: 10
+    // Illuminated polar continent / cloud swirls on sunward upper-left hemisphere
+    renderer.drawRect(p.x - p.radius + 14, p.y - p.radius + 10, (p.radius - 14) * 1.7, 24, {
+      color: "#cbd5e1",
+      radius: 11
     });
-    renderer.drawRect(p.x - p.radius + 8, p.y + 10, (p.radius - 8) * 2, 14, {
-      color: "rgba(220, 240, 255, 0.6)",
-      radius: 6
+    renderer.drawRect(p.x - p.radius + 10, p.y - 6, (p.radius - 16) * 1.4, 14, {
+      color: "rgba(186, 230, 253, 0.65)",
+      radius: 7
     });
 
-    // Label and distance prompt
+    // Nightside terminator shadow (cast opposite Dawn Star)
+    renderer.drawEllipse?.(p.x + 20, p.y + 18, p.radius * 0.78, p.radius * 0.82, "rgba(2, 6, 14, 0.68)");
+
     const dist = Math.round(this.distanceToPlanet());
     renderer.drawWorldText(
       `🎯 远境-IV (Farthest-IV) · ${dist} km`,
-      p.x - 90,
-      p.y + p.radius + 16,
-      { color: "#80d0ff", size: 14 }
+      p.x,
+      p.y + p.radius + 18,
+      { color: "#7dd3fc", size: 13, align: "center" }
     );
   }
 
   private renderAsteroids(renderer: Renderer): void {
     for (const a of this.asteroids) {
+      // Dark rocky underside + sunlit upper-left bevel
       renderer.drawRect(a.x - a.radius, a.y - a.radius, a.radius * 2, a.radius * 2, {
-        color: "#6b7280",
-        radius: a.radius * 0.7,
-        stroke: { width: 1, color: "#4b5563" }
+        color: "#334155",
+        radius: a.radius * 0.65,
+        stroke: { width: 1.5, color: "#64748b" }
       });
-      // Crater detail
-      renderer.drawRect(a.x - a.radius * 0.3, a.y - a.radius * 0.3, a.radius * 0.5, a.radius * 0.5, {
-        color: "#424855",
-        radius: 3
+      renderer.drawRect(a.x - a.radius * 0.65, a.y - a.radius * 0.65, a.radius * 0.85, a.radius * 0.75, {
+        color: "#64748b",
+        radius: a.radius * 0.35
+      });
+      renderer.drawRect(a.x + a.radius * 0.05, a.y + a.radius * 0.05, a.radius * 0.55, a.radius * 0.55, {
+        color: "#0f172a",
+        radius: 4
       });
     }
   }
@@ -372,146 +418,158 @@ export class SpaceFlight {
   private renderBuoy(renderer: Renderer): void {
     const b = this.researchBuoy;
     const pulse = (Math.sin(this.elapsedTime * 5) + 1) / 2;
-    // Signal wave
-    renderer.drawRect(b.x - 28, b.y - 28, 56, 56, {
-      color: `rgba(100, 220, 255, ${(0.1 + pulse * 0.2).toFixed(2)})`,
-      radius: 28
-    });
+    const beaconCol = b.scanned ? "rgba(52, 211, 153, 0.32)" : `rgba(245, 158, 11, ${(0.22 + pulse * 0.28).toFixed(2)})`;
+    if (renderer.drawRadialLight) {
+      renderer.drawRadialLight(b.x, b.y, 44 + pulse * 10, beaconCol, "rgba(0,0,0,0)", true);
+    }
     renderer.drawRect(b.x - b.radius, b.y - b.radius, b.radius * 2, b.radius * 2, {
-      color: "#d97706",
+      color: b.scanned ? "#0f766e" : "#b45309",
       radius: 4,
-      stroke: { width: 2, color: "#fbbf24" }
+      stroke: { width: 2, color: b.scanned ? "#5eead4" : "#fbbf24" }
     });
-    renderer.drawWorldText("📡 开阳-03 科研浮标", b.x - 55, b.y + 24, {
-      color: "#fcd34d",
-      size: 11
-    });
+    renderer.drawWorldText(
+      b.scanned ? "✓ 开阳-03 浮标 (已下载)" : "📡 开阳-03 科研浮标",
+      b.x,
+      b.y + 24,
+      { color: b.scanned ? "#6ee7b7" : "#fcd34d", size: 12, align: "center" }
+    );
   }
 
   private renderMothership(renderer: Renderer): void {
     const m = this.mothership;
-    // Central Spine
+    // Engine plume & bay worklights
+    if (renderer.drawRadialLight) {
+      renderer.drawRadialLight(m.x - m.width / 2 - 22, m.y, 70, "rgba(239, 68, 68, 0.28)", "rgba(0,0,0,0)", true);
+      renderer.drawRadialLight(m.x, m.y + 28, 52, "rgba(52, 211, 153, 0.25)", "rgba(0,0,0,0)", true);
+    }
+
+    // Central Spine (Brushed Titanium Dark)
     renderer.drawRect(m.x - m.width / 2, m.y - 14, m.width, 28, {
-      color: "#cbd5e1",
+      color: "#64748b",
       radius: 6,
-      stroke: { width: 2, color: "#334155" }
+      stroke: { width: 2, color: "#1e293b" }
+    });
+    renderer.drawRect(m.x - m.width / 2 + 8, m.y - 8, m.width - 16, 8, {
+      color: "#94a3b8",
+      radius: 3
     });
 
     // 6 Modular Habitat blocks
     for (let i = 0; i < 3; i++) {
       const ox = m.x - 70 + i * 65;
-      renderer.drawRect(ox - 20, m.y - 36, 40, 18, {
-        color: "#94a3b8",
+      renderer.drawRect(ox - 20, m.y - 38, 40, 18, {
+        color: "#475569",
         radius: 4,
-        stroke: { width: 1, color: "#1e293b" }
+        stroke: { width: 1.5, color: "#94a3b8" }
       });
-      renderer.drawRect(ox - 20, m.y + 18, 40, 18, {
-        color: "#94a3b8",
+      renderer.drawRect(ox - 20, m.y + 20, 40, 18, {
+        color: "#475569",
         radius: 4,
-        stroke: { width: 1, color: "#1e293b" }
+        stroke: { width: 1.5, color: "#94a3b8" }
       });
     }
 
     // Dual Rotating Habitat Rings
     const ringAngle = this.elapsedTime * 0.8;
-    const ringH = 55 + Math.sin(ringAngle) * 10;
-    renderer.drawRect(m.x - 100, m.y - ringH / 2, 16, ringH, {
-      color: "#64748b",
+    const ringH = 58 + Math.sin(ringAngle) * 10;
+    renderer.drawRect(m.x - 102, m.y - ringH / 2, 16, ringH, {
+      color: "#334155",
       radius: 8,
-      stroke: { width: 2, color: "#0f172a" }
+      stroke: { width: 2, color: "#cbd5e1" }
     });
-    renderer.drawRect(m.x + 84, m.y - ringH / 2, 16, ringH, {
-      color: "#64748b",
+    renderer.drawRect(m.x + 86, m.y - ringH / 2, 16, ringH, {
+      color: "#334155",
       radius: 8,
-      stroke: { width: 2, color: "#0f172a" }
+      stroke: { width: 2, color: "#cbd5e1" }
     });
 
-    // Radiator Wings at Stern
-    renderer.drawRect(m.x - m.width / 2 - 20, m.y - 48, 26, 96, {
-      color: "#dc2626",
+    // Radiator Wings at Stern (dull ember copper)
+    renderer.drawRect(m.x - m.width / 2 - 22, m.y - 48, 26, 96, {
+      color: "#991b1b",
       radius: 3,
-      stroke: { width: 1, color: "#7f1d1d" }
+      stroke: { width: 1.5, color: "#f87171" }
     });
 
     // Docking Berth Beacon
     const dockPulse = (Math.sin(this.elapsedTime * 6) + 1) / 2;
-    renderer.drawRect(m.x - 12, m.y + 20, 24, 24, {
-      color: `rgba(34, 197, 94, ${(0.4 + dockPulse * 0.4).toFixed(2)})`,
-      radius: 12
+    renderer.drawRect(m.x - 11, m.y + 20, 22, 22, {
+      color: `rgba(52, 211, 153, ${(0.45 + dockPulse * 0.4).toFixed(2)})`,
+      radius: 11,
+      stroke: { width: 1, color: "#a7f3d0" }
     });
-    renderer.drawWorldText("⚓ 远望号母舰 (Yuanwang Mothership)", m.x - 110, m.y - 60, {
+    renderer.drawWorldText("⚓ 远望号母舰 (Yuanwang)", m.x, m.y - 62, {
       color: "#38bdf8",
-      size: 14
+      size: 13,
+      align: "center"
     });
   }
 
   private renderParticles(renderer: Renderer): void {
     for (const p of this.particles) {
       const alpha = 1 - p.life / p.maxLife;
-      const size = 3 * alpha;
+      const size = 3.2 * alpha;
+      renderer.drawRadialLight?.(
+        p.x,
+        p.y,
+        size * 3.2,
+        `rgba(56, 189, 248, ${(alpha * 0.45).toFixed(2)})`,
+        "rgba(0,0,0,0)",
+        true
+      );
       renderer.drawRect(p.x - size / 2, p.y - size / 2, size, size, {
-        color: `rgba(90, 210, 255, ${alpha.toFixed(2)})`,
+        color: `rgba(186, 230, 253, ${alpha.toFixed(2)})`,
         radius: size / 2
       });
     }
   }
 
   private renderShuttle(renderer: Renderer): void {
-    // Draw shuttle oriented according to heading angle
     const cos = Math.cos(this.angle);
     const sin = Math.sin(this.angle);
 
-    // Shuttle nose, left wing, right wing, fuselage
     const noseX = this.x + cos * 16;
     const noseY = this.y + sin * 16;
-    const tailX = this.x - cos * 12;
-    const tailY = this.y - sin * 12;
+    const tailX = this.x - cos * 13;
+    const tailY = this.y - sin * 13;
 
     const leftWingX = this.x - cos * 6 - sin * 13;
     const leftWingY = this.y - sin * 6 + cos * 13;
     const rightWingX = this.x - cos * 6 + sin * 13;
     const rightWingY = this.y - sin * 6 - cos * 13;
 
-    // Wings
-    renderer.drawRect(leftWingX - 3, leftWingY - 3, 6, 6, {
-      color: "#e2e8f0",
-      radius: 2,
-      stroke: { width: 1, color: "#1e293b" }
-    });
-    renderer.drawRect(rightWingX - 3, rightWingY - 3, 6, 6, {
-      color: "#e2e8f0",
-      radius: 2,
-      stroke: { width: 1, color: "#1e293b" }
-    });
+    // Ion nozzle bloom
+    renderer.drawRadialLight?.(tailX, tailY, 22, "rgba(251, 191, 36, 0.38)", "rgba(0,0,0,0)", true);
+
+    // Wing strut outline
+    renderer.drawLine?.(leftWingX, leftWingY, rightWingX, rightWingY, "#94a3b8", 4);
+    renderer.drawLine?.(tailX, tailY, noseX, noseY, "#cbd5e1", 5);
 
     // Fuselage
     renderer.drawRect(this.x - 8, this.y - 8, 16, 16, {
-      color: "#f8fafc",
+      color: "#cbd5e1",
       radius: 6,
-      stroke: { width: 2, color: "#0f172a" }
+      stroke: { width: 2, color: "#1e293b" }
     });
 
-    // Cockpit canopy (cyan glowing glass)
+    // Cockpit canopy
     renderer.drawRect(noseX - 4, noseY - 4, 8, 8, {
       color: "#38bdf8",
       radius: 3,
-      stroke: { width: 1, color: "#0369a1" }
+      stroke: { width: 1, color: "#e0f2fe" }
     });
 
-    // Twin Ion engine nozzles at tail
-    renderer.drawRect(tailX - 4, tailY - 4, 8, 8, {
+    // Twin Ion nozzle core
+    renderer.drawRect(tailX - 3.5, tailY - 3.5, 7, 7, {
       color: "#f59e0b",
-      radius: 2
+      radius: 3
     });
   }
 
   private renderSpaceHud(renderer: Renderer): void {
-    // Cockpit telemetry readouts pinned to screen corners
     const distP = Math.round(this.distanceToPlanet());
     const distM = Math.round(this.distanceToMothership());
     const spd = Math.round(this.speed);
 
-    // Space Flight status prompt
     let prompt = "";
     if (distP <= 140) {
       prompt = "【已进入行星引力井】按 E 启动大气耐磨绝热瓦着陆程序";
@@ -527,19 +585,21 @@ export class SpaceFlight {
 
     if (prompt) {
       const isWarn = prompt.includes("⚠️");
-      renderer.drawText(prompt, renderer.width / 2 - 210, renderer.height - 70, {
+      renderer.drawText(prompt, renderer.width / 2, renderer.height - 64, {
         color: isWarn ? "#f87171" : "#fef08a",
-        size: 14
+        size: 14,
+        align: "center"
       });
     }
 
-    renderer.drawText(`⚡ 航行航速: ${spd} km/s  |  燃料储备: ${Math.round(this.fuel)}%`, 24, renderer.height - 40, {
+    renderer.drawText(`⚡ 航行航速: ${spd} km/s  |  燃料储备: ${Math.round(this.fuel)}%`, 24, renderer.height - 32, {
       color: "#7dd3fc",
       size: 13
     });
-    renderer.drawText(`🎯 目标距离: ${distP} km  |  母舰距离: ${distM} km`, renderer.width - 320, renderer.height - 40, {
+    renderer.drawText(`🎯 目标距离: ${distP} km  |  母舰距离: ${distM} km`, renderer.width - 24, renderer.height - 32, {
       color: "#a7f3d0",
-      size: 13
+      size: 13,
+      align: "right"
     });
   }
 }

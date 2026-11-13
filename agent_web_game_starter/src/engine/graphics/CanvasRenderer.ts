@@ -11,6 +11,8 @@ export class CanvasRenderer implements Renderer {
   private readonly ctx: CanvasRenderingContext2D;
   readonly camera: Camera;
   private defaultTextColor: Color = "#ffffff";
+  private lightCanvas: HTMLCanvasElement | null = null;
+  private lightCtx: CanvasRenderingContext2D | null = null;
 
   constructor(private readonly canvas: HTMLCanvasElement) {
     const ctx = canvas.getContext("2d");
@@ -87,6 +89,166 @@ export class CanvasRenderer implements Renderer {
     this.withCamera(() => this.text(text, x, y, options));
   }
 
+  drawGradientRect(
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+    stops: ReadonlyArray<{ offset: number; color: Color }>,
+    vertical = true
+  ): void {
+    this.withCamera(() => {
+      const { ctx } = this;
+      const grad = vertical
+        ? ctx.createLinearGradient(x, y, x, y + height)
+        : ctx.createLinearGradient(x, y, x + width, y);
+      for (const s of stops) grad.addColorStop(s.offset, s.color);
+      ctx.fillStyle = grad;
+      ctx.fillRect(x, y, width, height);
+    });
+  }
+
+  drawEllipse(
+    x: number,
+    y: number,
+    rx: number,
+    ry: number,
+    color: Color,
+    additive = false
+  ): void {
+    this.withCamera(() => {
+      const { ctx } = this;
+      ctx.save();
+      if (additive) ctx.globalCompositeOperation = "lighter";
+      ctx.beginPath();
+      ctx.ellipse(x, y, Math.max(0.5, rx), Math.max(0.5, ry), 0, 0, Math.PI * 2);
+      ctx.fillStyle = color;
+      ctx.fill();
+      ctx.restore();
+    });
+  }
+
+  drawRadialLight(
+    x: number,
+    y: number,
+    radius: number,
+    innerColor: Color,
+    outerColor: Color,
+    additive = true
+  ): void {
+    this.withCamera(() => {
+      const { ctx } = this;
+      const r = Math.max(1, radius);
+      ctx.save();
+      if (additive) ctx.globalCompositeOperation = "lighter";
+      const grad = ctx.createRadialGradient(x, y, 0, x, y, r);
+      grad.addColorStop(0, innerColor);
+      grad.addColorStop(1, outerColor);
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.arc(x, y, r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    });
+  }
+
+  drawLine(
+    x1: number,
+    y1: number,
+    x2: number,
+    y2: number,
+    color: Color,
+    width = 1.5,
+    dash?: readonly number[]
+  ): void {
+    this.withCamera(() => {
+      const { ctx } = this;
+      ctx.save();
+      ctx.strokeStyle = color;
+      ctx.lineWidth = width;
+      if (dash) ctx.setLineDash([...dash]);
+      ctx.beginPath();
+      ctx.moveTo(x1, y1);
+      ctx.lineTo(x2, y2);
+      ctx.stroke();
+      ctx.restore();
+    });
+  }
+
+  beginLightMask(ambientColor: Color): void {
+    if (typeof document === "undefined") return;
+    if (!this.lightCanvas || this.lightCanvas.width !== this.width || this.lightCanvas.height !== this.height) {
+      this.lightCanvas = document.createElement("canvas");
+      this.lightCanvas.width = this.width;
+      this.lightCanvas.height = this.height;
+      this.lightCtx = this.lightCanvas.getContext("2d");
+    }
+    const lctx = this.lightCtx;
+    if (!lctx) return;
+
+    lctx.save();
+    lctx.setTransform(1, 0, 0, 1, 0, 0);
+    lctx.globalCompositeOperation = "source-over";
+    lctx.clearRect(0, 0, this.width, this.height);
+    lctx.fillStyle = ambientColor;
+    lctx.fillRect(0, 0, this.width, this.height);
+    lctx.restore();
+  }
+
+  punchLightHole(
+    x: number,
+    y: number,
+    innerRadius: number,
+    outerRadius: number,
+    coneAngleRad?: number,
+    coneSpreadRad?: number
+  ): void {
+    const lctx = this.lightCtx;
+    if (!lctx) return;
+
+    const sx = x - Math.round(this.camera.worldX);
+    const sy = y - Math.round(this.camera.worldY);
+    const r = Math.max(1, outerRadius);
+    if (sx < -r || sy < -r || sx > this.width + r || sy > this.height + r) return;
+
+    lctx.save();
+    lctx.globalCompositeOperation = "destination-out";
+
+    if (coneAngleRad !== undefined && coneSpreadRad !== undefined) {
+      // Tactical cone beam (e.g. suit flashlight / headlight)
+      lctx.beginPath();
+      lctx.moveTo(sx, sy);
+      lctx.arc(sx, sy, r, coneAngleRad - coneSpreadRad / 2, coneAngleRad + coneSpreadRad / 2);
+      lctx.closePath();
+      const grad = lctx.createRadialGradient(sx, sy, Math.max(1, innerRadius), sx, sy, r);
+      grad.addColorStop(0, "rgba(0,0,0,0.96)");
+      grad.addColorStop(0.55, "rgba(0,0,0,0.65)");
+      grad.addColorStop(1, "rgba(0,0,0,0)");
+      lctx.fillStyle = grad;
+      lctx.fill();
+    } else {
+      const grad = lctx.createRadialGradient(sx, sy, Math.max(0, innerRadius), sx, sy, r);
+      grad.addColorStop(0, "rgba(0,0,0,0.98)");
+      grad.addColorStop(0.5, "rgba(0,0,0,0.62)");
+      grad.addColorStop(1, "rgba(0,0,0,0)");
+      lctx.fillStyle = grad;
+      lctx.beginPath();
+      lctx.arc(sx, sy, r, 0, Math.PI * 2);
+      lctx.fill();
+    }
+
+    lctx.restore();
+  }
+
+  endLightMask(): void {
+    if (!this.lightCanvas) return;
+    const { ctx } = this;
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.drawImage(this.lightCanvas, 0, 0);
+    ctx.restore();
+  }
+
   // --- internals -------------------------------------------------------------
 
   /**
@@ -135,10 +297,12 @@ export class CanvasRenderer implements Renderer {
     const { ctx } = this;
     const size = options.size ?? 14;
     ctx.save();
-    ctx.font = `${size}px system-ui, sans-serif`;
+    ctx.font = `600 ${size}px "Segoe UI", system-ui, -apple-system, sans-serif`;
     ctx.fillStyle = options.color ?? this.defaultTextColor;
     ctx.textAlign = options.align ?? "left";
     ctx.textBaseline = options.baseline ?? "top";
+    ctx.shadowColor = "rgba(0, 0, 0, 0.85)";
+    ctx.shadowBlur = 4;
     ctx.fillText(text, x, y);
     ctx.restore();
   }

@@ -9,7 +9,7 @@ export class Game {
   private afterFrame: (() => void) | null = null;
 
   constructor(
-    canvas: HTMLCanvasElement,
+    private readonly canvas: HTMLCanvasElement,
     private readonly world: GameWorld
   ) {
     this.renderer = new CanvasRenderer(canvas);
@@ -18,7 +18,63 @@ export class Game {
   start() {
     window.addEventListener("keydown", this.input.onKeyDown);
     window.addEventListener("keyup", this.input.onKeyUp);
+    window.addEventListener("blur", () => this.input.reset());
+
+    this.canvas.addEventListener("mousemove", (e) => {
+      const pt = this.mapClientToCanvas(e.clientX, e.clientY);
+      this.input.setMousePos(pt.x, pt.y, pt.inside);
+    });
+    this.canvas.addEventListener("mouseleave", () => {
+      this.input.setMousePos(this.input.mouseX, this.input.mouseY, false);
+    });
+    this.canvas.addEventListener("mousedown", (e) => {
+      const pt = this.mapClientToCanvas(e.clientX, e.clientY);
+      if (pt.inside) {
+        this.input.triggerMouseClick(e.button, pt.x, pt.y);
+      }
+    });
+    this.canvas.addEventListener("contextmenu", (e) => {
+      e.preventDefault();
+    });
+
     requestAnimationFrame(this.loop);
+  }
+
+  /**
+   * Maps client CSS coordinates into exact canvas pixel space accounting for
+   * CSS `object-fit: contain` letterboxing and optional CSS transform scale.
+   */
+  private mapClientToCanvas(clientX: number, clientY: number) {
+    const rect = this.canvas.getBoundingClientRect();
+    const cw = this.canvas.width;
+    const ch = this.canvas.height;
+    if (rect.width <= 0 || rect.height <= 0) {
+      return { x: 0, y: 0, inside: false };
+    }
+    const aspectCanvas = cw / ch;
+    const aspectRect = rect.width / rect.height;
+
+    let drawW = rect.width;
+    let drawH = rect.height;
+    let offsetX = 0;
+    let offsetY = 0;
+
+    if (aspectRect > aspectCanvas) {
+      drawW = rect.height * aspectCanvas;
+      offsetX = (rect.width - drawW) / 2;
+    } else {
+      drawH = rect.width / aspectCanvas;
+      offsetY = (rect.height - drawH) / 2;
+    }
+
+    const relX = clientX - rect.left - offsetX;
+    const relY = clientY - rect.top - offsetY;
+    const inside = relX >= 0 && relX <= drawW && relY >= 0 && relY <= drawH;
+    return {
+      x: Math.max(0, Math.min(cw, (relX / drawW) * cw)),
+      y: Math.max(0, Math.min(ch, (relY / drawH) * ch)),
+      inside
+    };
   }
 
   /**

@@ -61,6 +61,9 @@ export class Player {
 
   readonly animation = new Animation();
 
+  /** Optional world destination (feet center) set by mouse left-click. */
+  moveTarget: { x: number; y: number } | null = null;
+
   constructor(public x: number, public y: number) {}
 
   /** Centre of the player, which is what the camera frames. */
@@ -87,8 +90,41 @@ export class Player {
     };
   }
 
+  setMoveTarget(worldX: number, worldY: number): void {
+    this.moveTarget = { x: worldX, y: worldY };
+  }
+
+  clearMoveTarget(): void {
+    this.moveTarget = null;
+  }
+
   update(dt: number, input: Input, map: TileMap): void {
-    const { dx, dy } = readDirection(input);
+    let { dx, dy } = readDirection(input);
+    const keyMoving = dx !== 0 || dy !== 0;
+    let moving = keyMoving;
+
+    if (keyMoving) {
+      // Manual keyboard input cancels automated click-to-walk immediately.
+      this.moveTarget = null;
+    } else if (this.moveTarget) {
+      const feetX = this.centerX;
+      const feetY = this.y + this.height - this.colliderHeight / 2;
+      const vx = this.moveTarget.x - feetX;
+      const vy = this.moveTarget.y - feetY;
+      const dist = Math.hypot(vx, vy);
+      if (dist <= 6) {
+        this.moveTarget = null;
+        moving = false;
+      } else {
+        dx = vx / dist;
+        dy = vy / dist;
+        moving = true;
+      }
+    }
+
+    const prevX = this.x;
+    const prevY = this.y;
+
     const moved = resolveMovement(
       map,
       this.colliderAt(),
@@ -101,10 +137,11 @@ export class Player {
     this.x = moved.x - (this.width - this.colliderWidth) / 2;
     this.y = moved.y - (this.height - this.colliderHeight);
 
-    // Facing follows the keys, not the resulting movement, so pushing against a
-    // wall still turns the character -- and the walk cycle then plays on the
-    // spot, which is the usual convention for this kind of game.
-    const moving = dx !== 0 || dy !== 0;
+    // Cancel mouse target if completely blocked by a wall
+    if (!keyMoving && this.moveTarget && Math.hypot(this.x - prevX, this.y - prevY) < 0.05 && dt > 0.001) {
+      this.moveTarget = null;
+    }
+
     if (moving) this.animation.face(facingFor(dx, dy));
     this.animation.update(dt, moving);
   }

@@ -6,6 +6,7 @@ import { loadGameAssets } from "./game/assets";
 import { assertAnimationAssetsExist } from "./game/assets/animationSpec";
 import { DialogueBox } from "./ui/DialogueBox";
 import { ShipMinimap } from "./ui/ShipMinimap";
+import { FalloutHud } from "./ui/FalloutHud";
 import { sounds } from "./engine/audio/SoundEffects";
 
 const found = document.querySelector<HTMLCanvasElement>("#gameCanvas");
@@ -13,7 +14,6 @@ const found = document.querySelector<HTMLCanvasElement>("#gameCanvas");
 if (!found) {
   throw new Error("Canvas not found");
 }
-// Re-bound so the non-null type survives into the closures below.
 const canvas: HTMLCanvasElement = found;
 
 const map = createShipMap(TILE);
@@ -25,28 +25,13 @@ if (map.width !== SHIP_COLUMNS || map.height !== SHIP_ROWS) {
   );
 }
 
-// Fail loudly during development if the animation names art the manifest does
-// not define, rather than rendering an invisible character.
 assertAnimationAssetsExist();
 
-// Every asset in the manifest is loaded up front. Deliberately NOT a hand-picked
-// list: an earlier version loaded only what it thought it needed, and everything
-// else silently rendered as a flat fallback colour for several tasks.
 const assets = await loadGameAssets();
 
 const status = document.querySelector<HTMLSpanElement>("#status");
-
 const ship = new ShipWorld(map, assets);
 
-/**
- * Development aids, driven from the URL so a headless browser can reach a
- * specific state without being able to send keystrokes.
- *
- *   ?spawn=x,y          place the player (sprite top-left, world pixels)
- *   &facing=up|down|left|right
- *   &dialogue=1         interact with whatever is in reach on the first frame
- *   &debug=1            draw magenta corner markers inside the canvas
- */
 const params = new URLSearchParams(window.location.search);
 
 const spawnParam = params.get("spawn");
@@ -66,17 +51,24 @@ if (facingParam === "up" || facingParam === "down" || facingParam === "left" || 
 const game = new Game(canvas, ship);
 game.start();
 
-// The dialogue box is DOM, so the world pushes its dialogue state out to it
-// rather than reaching for the document itself.
 const app = document.querySelector<HTMLElement>("#app");
-if (app) {
-  const dialogueBox = new DialogueBox(app, assets);
+const stage = document.querySelector<HTMLElement>("#canvas-stage") ?? app;
+const hudTools = document.querySelector<HTMLElement>("#hud-tools");
+
+let falloutHud: FalloutHud | null = null;
+
+if (app && stage) {
+  const dialogueBox = new DialogueBox(stage, assets);
+  dialogueBox.onSelectChoice = (idx) => {
+    sounds.init();
+    ship.selectDialogueChoice(idx);
+  };
   ship.onDialogueChange = (dialogue) => dialogueBox.render(dialogue);
 
-  // Duty Tracker HUD
+  // Duty Tracker HUD (top-left of canvas stage)
   const tracker = document.createElement("div");
   tracker.id = "duty-tracker";
-  app.appendChild(tracker);
+  stage.appendChild(tracker);
 
   const renderDuty = () => {
     const duty = ship.duty;
@@ -105,7 +97,7 @@ if (app) {
   // Crisis Tracker HUD (Chapter 1)
   const crisisTracker = document.createElement("div");
   crisisTracker.id = "crisis-tracker";
-  app.appendChild(crisisTracker);
+  stage.appendChild(crisisTracker);
 
   const renderCrisis = () => {
     const crisis = ship.crisis;
@@ -132,7 +124,7 @@ if (app) {
   // Exploration Tracker HUD (Chapter 2)
   const explorationTracker = document.createElement("div");
   explorationTracker.id = "exploration-tracker";
-  app.appendChild(explorationTracker);
+  stage.appendChild(explorationTracker);
 
   const renderExploration = () => {
     const exp = ship.exploration;
@@ -168,7 +160,42 @@ if (app) {
     isCrisisActive: ship.crisis.isAlarmActive
   });
 
-  // Control Action Toolbar (Zoom, Fullscreen, New Tab, Blueprint)
+  // Classic Fallout Docked Bottom Console & Character Sheet (Tab / C)
+  falloutHud = new FalloutHud(app, assets, {
+    onSelectMode: (mode) => {
+      sounds.init();
+      sounds.playClick();
+      ship.rpg.activeMode = mode;
+      falloutHud?.sync(ship.rpg);
+    },
+    onUseItem: (itemId) => {
+      sounds.init();
+      if (itemId === "med_stim") {
+        ship.useHealingStim();
+        falloutHud?.sync(ship.rpg);
+      }
+    },
+    onInvestSkill: (skill) => {
+      sounds.init();
+      if (ship.rpg.investSkillPoint(skill, 5)) {
+        sounds.playBeep(880);
+        falloutHud?.sync(ship.rpg);
+      }
+    },
+    onSelectArchetype: (id) => {
+      sounds.init();
+      if (ship.rpg.canSwitchArchetype()) {
+        ship.rpg.applyArchetype(id);
+        sounds.playClick();
+        falloutHud?.sync(ship.rpg);
+      }
+    }
+  });
+  falloutHud.sync(ship.rpg);
+  ship.onRpgChange = () => falloutHud?.sync(ship.rpg);
+
+  // Header Utility Toolbar (Zoom, Blueprint, Fullscreen, Popout)
+  const toolsMount = hudTools ?? app;
   const actionToolbar = document.createElement("div");
   actionToolbar.id = "action-toolbar";
 
@@ -176,13 +203,13 @@ if (app) {
   const zoomLevels = [1.0, 1.25, 1.5];
   const zoomBtn = document.createElement("button");
   zoomBtn.className = "toolbar-btn";
-  zoomBtn.innerHTML = "🔍 视角: 1.0x [Z]";
+  zoomBtn.innerHTML = "🔍 1.0x <kbd>Z</kbd>";
   zoomBtn.title = "切换镜头缩放比例 (快捷键 Z)";
   const updateZoom = () => {
     const zoom = zoomLevels[currentZoomIndex];
     canvas.style.transform = zoom === 1 ? "none" : `scale(${zoom})`;
     canvas.style.transformOrigin = "center center";
-    zoomBtn.innerHTML = `🔍 视角: ${zoom.toFixed(2)}x [Z]`;
+    zoomBtn.innerHTML = `🔍 ${zoom.toFixed(2)}x <kbd>Z</kbd>`;
   };
   zoomBtn.onclick = () => {
     currentZoomIndex = (currentZoomIndex + 1) % zoomLevels.length;
@@ -192,7 +219,7 @@ if (app) {
 
   const fullscreenBtn = document.createElement("button");
   fullscreenBtn.className = "toolbar-btn";
-  fullscreenBtn.innerHTML = "⛶ 全屏 [F]";
+  fullscreenBtn.innerHTML = `<svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" style="flex-shrink:0"><path d="M1 4V1h3M8 1h3v3M11 8v3H8M4 11H1V8"/></svg> 全屏 <kbd>F</kbd>`;
   fullscreenBtn.title = "进入/退出浏览器全屏 (快捷键 F)";
   fullscreenBtn.onclick = () => {
     if (!document.fullscreenElement) {
@@ -206,7 +233,7 @@ if (app) {
   const newTabBtn = document.createElement("button");
   newTabBtn.className = "toolbar-btn highlight";
   newTabBtn.innerHTML = "↗ 独立大屏";
-  newTabBtn.title = "在独立的 Google Chrome 新标签页中开启全屏游玩";
+  newTabBtn.title = "在独立的 Chrome 新标签页中开启全屏游玩";
   newTabBtn.onclick = () => {
     window.open(window.location.href, "_blank");
   };
@@ -214,27 +241,44 @@ if (app) {
   const minimapBtn = document.createElement("button");
   minimapBtn.id = "minimap-btn";
   minimapBtn.className = "toolbar-btn";
-  minimapBtn.innerHTML = "🗺️ 蓝图 [M]";
+  minimapBtn.innerHTML = "🗺️ 蓝图 <kbd>M</kbd>";
   minimapBtn.title = "开启/关闭 2800米 全舰拓扑全息蓝图 (快捷键 M)";
   minimapBtn.onclick = () => {
     sounds.init();
+    if (falloutHud?.characterOpen) falloutHud.closeCharacterSheet();
     minimap.toggle(getMinimapState);
     sounds.playClick();
   };
 
-  actionToolbar.append(zoomBtn, fullscreenBtn, newTabBtn, minimapBtn);
-  app.appendChild(actionToolbar);
+  actionToolbar.append(zoomBtn, minimapBtn, fullscreenBtn, newTabBtn);
+  toolsMount.appendChild(actionToolbar);
 
   window.addEventListener("keydown", (e) => {
     sounds.init();
-    if (e.code === "KeyM") {
+    if (e.code === "Tab") {
+      e.preventDefault();
+      if (minimap.visible) minimap.close();
+      falloutHud?.toggleCharacterSheet();
+      sounds.playClick();
+      return;
+    }
+    if (e.code === "KeyC" && !ship.dialogue.isOpen) {
+      if (minimap.visible) minimap.close();
+      falloutHud?.toggleCharacterSheet();
+      sounds.playClick();
+      return;
+    }
+    if (e.code === "KeyM" && !ship.dialogue.isOpen) {
+      if (falloutHud?.characterOpen) falloutHud.closeCharacterSheet();
       minimap.toggle(getMinimapState);
       sounds.playClick();
+      return;
     }
-    if (e.code === "KeyZ") {
+    if (e.code === "KeyZ" && !ship.dialogue.isOpen) {
       currentZoomIndex = (currentZoomIndex + 1) % zoomLevels.length;
       updateZoom();
       sounds.playClick();
+      return;
     }
     if (e.code === "KeyF") {
       if (!document.fullscreenElement) {
@@ -243,21 +287,25 @@ if (app) {
         document.exitFullscreen().catch(() => {});
       }
       sounds.playClick();
+      return;
     }
-    if (e.code === "Escape" && minimap.visible) {
-      minimap.close();
-      sounds.playClick();
+    if (e.code === "Escape") {
+      if (falloutHud?.characterOpen) {
+        falloutHud.closeCharacterSheet();
+        sounds.playClick();
+      } else if (minimap.visible) {
+        minimap.close();
+        sounds.playClick();
+      }
     }
   });
 
-  // `&dialogue=1` interacts immediately, so a screenshot can show the box.
   if (params.get("dialogue") === "1") {
     ship.interactInReach();
     dialogueBox.render(ship.dialogue.isOpen ? ship.dialogue : null);
   }
 }
 
-/** Live state, mirrored for automated checks in a headless browser. */
 interface Probe {
   tile: number;
   place: string;
@@ -285,7 +333,9 @@ interface Probe {
   explorationStage: string;
   explorationDone: number;
   currentMode: string;
-  /** Art-load state, so "no art" can be told apart from "art failed to load". */
+  rpgLevel: number;
+  rpgHp: number;
+  rpgRad: number;
   artMissingCount: number;
   artFailureCount: number;
 }
@@ -320,6 +370,9 @@ function readProbe(): Probe {
     explorationStage: ship.exploration.stage,
     explorationDone: ship.exploration.isChapter2Done ? 1 : 0,
     currentMode: ship.currentMode,
+    rpgLevel: ship.rpg.level,
+    rpgHp: Math.round(ship.rpg.hp),
+    rpgRad: Math.round(ship.rpg.rad),
     artMissingCount: assets.missing().length,
     artFailureCount: assets.failures().length
   };
@@ -327,12 +380,6 @@ function readProbe(): Probe {
 
 (window as unknown as { __probe: unknown }).__probe = readProbe;
 
-/**
- * Mirrors live state into the DOM and, with `?debug=1`, marks the sprite's
- * top-left corner inside the canvas. Both exist so a headless browser can check
- * what actually rendered: the canvas is opaque to script, and markers drawn in
- * the same frame are the only way to compare reported state against pixels.
- */
 const probeElement = document.createElement("div");
 probeElement.id = "debug-probe";
 probeElement.hidden = true;
@@ -345,11 +392,13 @@ game.onAfterFrame(() => {
   const snapshot = readProbe();
   probeElement.textContent = JSON.stringify(snapshot);
 
-  // The HUD doubles as a prompt readout while walking around, and otherwise says
-  // which part of the ship you are standing in.
+  canvas.dataset.mode = ship.rpg.activeMode;
+  canvas.dataset.hover = ship.hoveredTarget ? "1" : "0";
+  falloutHud?.syncVitalsOnly(ship.rpg);
+
   if (status) {
     status.textContent = snapshot.targetLabel
-      ? `${snapshot.targetLabel} · 按 E`
+      ? `${snapshot.targetLabel} · 按 E / 点击`
       : snapshot.place;
   }
 

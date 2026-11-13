@@ -71,4 +71,63 @@ export interface Renderer {
   drawText(text: string, x: number, y: number, options?: TextOptions): void;
   /** World-space text, for labels pinned to objects on the map. */
   drawWorldText(text: string, x: number, y: number, options?: TextOptions): void;
+
+  // --- Optional BG3 / Diablo atmospheric CRPG lighting primitives -----------
+
+  /** Draw a smooth linear-gradient world rectangle (used for 2.5D wall extrusion & AO). */
+  drawGradientRect?(
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+    stops: ReadonlyArray<{ offset: number; color: Color }>,
+    vertical?: boolean
+  ): void;
+
+  /** Draw a soft ellipse (contact shadows under props & crew, or volumetric pools). */
+  drawEllipse?(
+    x: number,
+    y: number,
+    rx: number,
+    ry: number,
+    color: Color,
+    additive?: boolean
+  ): void;
+
+  /** Draw a radial gradient point light halo in world space. */
+  drawRadialLight?(
+    x: number,
+    y: number,
+    radius: number,
+    innerColor: Color,
+    outerColor: Color,
+    additive?: boolean
+  ): void;
+
+  /** Draw a crisp line in world space (reticles, navigation paths, cables). */
+  drawLine?(
+    x1: number,
+    y1: number,
+    x2: number,
+    y2: number,
+    color: Color,
+    width?: number,
+    dash?: readonly number[]
+  ): void;
+
+  /** Begin offscreen atmospheric darkness pass (clears & fills ambient shadow tint). */
+  beginLightMask?(ambientColor: Color): void;
+
+  /** Punch a radial or cone-shaped light cutout through the offscreen darkness mask. */
+  punchLightHole?(
+    x: number,
+    y: number,
+    innerRadius: number,
+    outerRadius: number,
+    coneAngleRad?: number,
+    coneSpreadRad?: number
+  ): void;
+
+  /** Composite the offscreen darkness mask onto the viewport. */
+  endLightMask?(): void;
 }
