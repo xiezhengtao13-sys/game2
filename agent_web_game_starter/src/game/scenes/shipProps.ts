@@ -235,28 +235,28 @@ export const BRIDGE_PROPS: readonly SceneProp[] = [
 // --- 3. Central Transit Hub --------------------------------------------------
 
 export const TRANSIT_PROPS: readonly SceneProp[] = [
-  transit("fx_terminal", 23, 4.5, 1, 1, "交通调度终端", [
+  transit("fx_terminal", 23.5, 4.5, 1, 1, "交通调度终端", [
     { speaker: null, text: "远望号中央交通枢纽高速捷运调度终端。可乘坐穿梭车快速前往已获授权的开放站台。" }
   ]),
-  transit("fx_screen_lit", 25, 2.5, 1, 1, "全舰拓扑图大屏", [
+  transit("fx_screen_lit", 26.5, 2.0, 1, 1, "全舰拓扑图大屏", [
     { speaker: null, text: "大屏幕上亮着远望号全长 2800 米的纵向拓扑图——从 0m 前向消融盾一直到 2800m 尾部 1200 米展开散热羽翼。" },
     { speaker: null, text: "西侧气闸连向 L-1 生态农业模块；东侧气闸连向 R-1 生活区及 440 米双旋转环大厅。" }
   ]),
-  transit("fx_chair", 7, 4.5, 1, 1, "候车长椅", [
+  transit("fx_chair", 7.2, 4.5, 1, 1, "候车长椅", [
     { speaker: null, text: "固定在站台甲板上的金属长椅，扶手经过防静电包覆处理。" }
   ]),
-  transit("fx_chair", 9, 4.5, 1, 1, "候车长椅", null),
-  transit("fx_switch_panel", 2, 9.5, 2, 1, "L-1农业模块气闸手柄", [
+  transit("fx_chair", 9.2, 4.5, 1, 1, "候车长椅", null),
+  transit("fx_switch_panel", 5.5, 9.5, 2, 1, "L-1农业模块气闸手柄", [
     { speaker: null, text: "通往 L-1 生态农业模块的连接廊桥气闸控制箱。" }
   ]),
-  transit("fx_switch_panel", 31, 9.5, 2, 1, "R-1生活环气闸手柄", [
+  transit("fx_switch_panel", 28.5, 9.5, 2, 1, "R-1生活环气闸手柄", [
     { speaker: null, text: "通往 R-1 社会模块及 440 米双旋转环的离心换乘气闸。" },
     { speaker: null, text: "标牌写着：『生活环转速 1.35 rpm，外缘模拟重力 0.45g。请勿攀爬桁架』。" }
   ]),
-  transit("fx_switch_panel", 8, 17.5, 2, 1, "站台检修开关箱", [
+  transit("fx_switch_panel", 9.0, 18.0, 2, 1, "站台检修开关箱", [
     { speaker: null, text: "中央站台高压接触网断路器箱，锁着安全黄牌。" }
   ]),
-  transit("fx_paper_log", 24, 17.5, 1, 1, "轨道排班手抄表", [
+  transit("fx_paper_log", 25.0, 18.0, 1, 1, "轨道排班手抄表", [
     { speaker: null, text: "夹在防风夹板上的手抄排班表。清楚印着各级舱门的权限分层等级。" }
   ])
 ];
@@ -264,20 +264,24 @@ export const TRANSIT_PROPS: readonly SceneProp[] = [
 // --- 4. L-1 Agricultural & Ecological Module (Port Wing) --------------------
 
 export const AGRI_PROPS: readonly SceneProp[] = [
-  agri("fx_plant", 6, 6, 1, 1, "一号水培谷物培养槽", [
+  agri("fx_plant", 5.5, 5.0, 1, 1, "一号水培谷物培养槽", [
     { speaker: null, text: "人工全光谱灯带温和地笼罩着无土栽培的水稻、小麦与转基因高产大豆。" },
     { speaker: null, text: "整座 L-1 模块被严密绝热结构包裹——外界没有窗，全靠独立循环泵带走人工光热。" }
   ]),
-  agri("fx_plant", 14, 6, 1, 1, "二号氧循环藻类培植池", [
+  agri("fx_plant", 4.2, 4.5, 1, 1, "水培谷物株丛", null),
+  agri("fx_plant", 6.8, 5.5, 1, 1, "水培谷物株丛", null),
+  agri("fx_plant", 12.5, 5.0, 1, 1, "二号氧循环藻类培植池", [
     { speaker: null, text: "高密度光合固碳微藻液正发出淡淡气泡，为全船及休眠仓维持氧气份额。" }
   ]),
-  agri("fx_plant", 6, 16, 1, 1, "三号根茎常绿作物苗圃", [
+  agri("fx_plant", 13.8, 5.5, 1, 1, "藻类培养槽分池", null),
+  agri("fx_plant", 5.5, 17.0, 1, 1, "三号根茎常绿作物苗圃", [
     { speaker: null, text: "潮湿的培养岩棉里抽出绿油油的嫩芽。农艺师们常说，闻到泥水青草味才算活着。" }
   ]),
-  agri("fx_terminal", 14, 16, 1, 1, "营养液浓度分析终端", [
+  agri("fx_plant", 4.2, 16.5, 1, 1, "培育苗木槽", null),
+  agri("fx_terminal", 12.5, 17.0, 1, 1, "营养液浓度分析终端", [
     { speaker: null, text: "实时显示钾氮磷微量元素流速与电解水循环回用效率（99.2%）。" }
   ]),
-  agri("fx_switch_panel", 3, 10.5, 2, 1, "L-1 生态散热分流总阀", [
+  agri("fx_switch_panel", 3.5, 11.2, 2, 1, "L-1 生态散热分流总阀", [
     { speaker: null, text: "L-1 模块最关键的独立散热总阀——把全光谱植物灯产生的废热直接排往主散热环。" },
     { speaker: null, text: "阀体表面能感觉到微妙的不规则高频震颤……主冷却总管压力确实有点偏高。" }
   ])
@@ -286,20 +290,23 @@ export const AGRI_PROPS: readonly SceneProp[] = [
 // --- 5. R-1 Social Module & Rotating Ring Atrium (Starboard Wing) -----------
 
 export const RING_PROPS: readonly SceneProp[] = [
-  ring("fx_meeting_table", 10, 5.5, 3, 3, "生活环休憩交谊圆桌", [
+  ring("fx_meeting_table", 11.0, 5.5, 3, 3, "生活环休憩交谊圆桌", [
     { speaker: null, text: "R-1 社会模块公共交谊厅。下班船员和刚解冻适应重力的技术员常来这里喝合成麦芽茶。" },
     { speaker: null, text: "从这往东穿过桁架电梯就能进入 440 米直径的双反向旋转生活环。" }
   ]),
-  ring("fx_chair", 8.5, 5.5, 1, 1, "休整座椅", null),
-  ring("fx_chair", 11.5, 5.5, 1, 1, "休整座椅", null),
-  ring("fx_bookshelf", 10, 15.5, 3, 1, "公共人文怀旧图书角", [
+  ring("fx_chair", 9.0, 5.5, 1, 1, "休整座椅", null),
+  ring("fx_chair", 13.0, 5.5, 1, 1, "休整座椅", null),
+  ring("fx_chair", 11.0, 3.5, 1, 1, "休整座椅", null),
+  ring("fx_plant", 17.0, 4.5, 1, 1, "观景廊绿植", null),
+  ring("fx_bookshelf", 10.5, 15.5, 3, 1, "公共人文怀旧图书角", [
     { speaker: null, text: "摆满影印纸本书、老机械图鉴和二十年前带出地球的旧电影刊物。" }
   ]),
-  ring("fx_reading_chair", 8, 17.5, 1, 1, "休息角扶手椅", [
+  ring("fx_reading_chair", 8.5, 17.8, 1, 1, "休息角扶手椅", [
     { speaker: null, text: "布面旧得起了球，但靠上去很安心。" }
   ]),
-  ring("fx_reading_lamp", 12, 17.5, 1, 1, "温馨阅读地灯", null),
-  ring("fx_switch_panel", 17.5, 11.5, 2, 1, "旋转环离心重力调速指示箱", [
+  ring("fx_reading_chair", 10.5, 17.8, 1, 1, "休息角扶手椅", null),
+  ring("fx_reading_lamp", 12.5, 17.8, 1, 1, "温馨阅读地灯", null),
+  ring("fx_switch_panel", 17.5, 11.2, 2, 1, "旋转环离心重力调速指示箱", [
     { speaker: null, text: "透过右侧耐压弧窗，可见 440 米巨型生活环如星舰巨轮般悄然缓缓旋转，双环反向对消掉全部旋转扭矩。" },
     { speaker: null, text: "表盘显示：当前环外缘稳态离心重力为 0.45g，结构轴承噪声零异常。" }
   ])
@@ -308,52 +315,65 @@ export const RING_PROPS: readonly SceneProp[] = [
 // --- 6. Crew Habitat & Mess Hall (Starting Zone!) ---------------------------
 
 export const HABITAT_PROPS: readonly SceneProp[] = [
-  habitat("fx_bed", 4, 4.5, 2, 3, "船员起居铺位", [
+  habitat("fx_bed", 3.8, 3.8, 2, 3, "船员起居铺位", [
     { speaker: null, text: "这就是你睡了六年的标准双层船员窄铺，配有防失重约束带和个人置物格。" },
     { speaker: null, text: "床头挡板上刻着一排小小的划痕——每七道代表一个深空轮班周期。" }
   ]),
-  habitat("fx_bed", 4, 14.5, 2, 3, "备用轮值铺位", [
-    { speaker: null, text: "隔壁下班组工友的床铺，被子按照内务条例整整齐齐压进约束扣。" }
+  habitat("fx_bed", 8.8, 3.8, 2, 3, "邻铺夜班床位", [
+    { speaker: null, text: "A2 隔间夜班机修工友的铺位，床单折得像豆腐块，墙面挂着工装安全带。" }
   ]),
-  habitat("fx_meeting_table", 24, 5.5, 3, 3, "公共餐桌", [
+  habitat("fx_chair", 3.2, 6.8, 1, 1, "寝室固定椅", null),
+  habitat("fx_reading_lamp", 7.5, 6.8, 1, 1, "寝室夜灯", null),
+  habitat("fx_bed", 3.8, 18.0, 2, 3, "备用轮值铺位", [
+    { speaker: null, text: "南宿舍 B1 隔间工友的床铺，被子按照内务条例整整齐齐压进约束扣。" }
+  ]),
+  habitat("fx_bed", 8.8, 18.0, 2, 3, "轮休狭铺", null),
+  habitat("fx_chair", 3.5, 15.0, 1, 1, "宿舍矮凳", null),
+  habitat("fx_meeting_table", 23.5, 4.5, 3, 3, "公共餐桌", [
     { speaker: null, text: "生活区公共餐桌。浅木纹复合阻燃台面带有一圈防溢饮水杯凹槽。" },
     { speaker: null, text: "上面留着半杯已经晾凉的温水，和几张刚签收完的值班饭票。" }
   ]),
-  habitat("fx_chair", 22.5, 5.5, 1, 1, "固定餐椅", null),
-  habitat("fx_chair", 25.5, 5.5, 1, 1, "固定餐椅", null),
-  habitat("fx_plant", 21, 14.5, 1, 1, "水培生机展示槽", [
-    { speaker: null, text: "生活区公共植物槽中茂盛生长的地球常春藤——全区最有温度的色彩。" }
+  habitat("fx_chair", 21.5, 4.5, 1, 1, "固定餐椅", null),
+  habitat("fx_chair", 25.5, 4.5, 1, 1, "固定餐椅", null),
+  habitat("fx_chair", 23.5, 2.3, 1, 1, "固定餐椅", null),
+  habitat("fx_chair", 23.5, 6.7, 1, 1, "固定餐椅", null),
+  habitat("fx_plant", 20.8, 2.0, 1, 1, "食堂窗台绿植", null),
+  habitat("fx_terminal", 28.2, 4.5, 1, 1, "营养配餐终端", [
+    { speaker: null, text: "自动化合成食品补给站。底层二班每天按工号定量领取蛋白质膏、压干谷饼和饮用水。" }
   ]),
-  habitat("fx_paper_log", 26, 14.5, 1, 1, "船员便签留言板", [
+  habitat("fx_paper_log", 20.8, 15.0, 1, 1, "船员便签留言板", [
     { speaker: null, text: "软木板上密密麻麻钉着三十年来船员写的便签：" },
     { speaker: null, text: "「老周，你落在值班室台沿底的三号铬钒管路扳手，谁眼神好自己摸一下领回去还老头。」「周日配餐加菜：脱水素丸。」" }
   ]),
-  habitat("fx_terminal", 28.5, 5.5, 1, 1, "营养配餐终端", [
-    { speaker: null, text: "自动化合成食品补给站。底层二班每天按工号定量领取蛋白质膏、压干谷饼和饮用水。" }
+  habitat("fx_plant", 21.2, 18.0, 1, 1, "水培生机展示槽", [
+    { speaker: null, text: "生活区公共植物槽中茂盛生长的地球常春藤——全区最有温度的色彩。" }
   ]),
+  habitat("fx_reading_chair", 23.2, 18.0, 1, 1, "休闲阅读椅", null),
+  habitat("fx_reading_lamp", 24.2, 19.2, 1, 1, "休闲角落暖灯", null),
+  habitat("fx_bookshelf", 22.5, 20.8, 3, 1, "公共闲书架", null),
   habitat("fx_terminal", 28.5, 15.5, 1, 1, "水循环监测阀台", [
-    { speaker: null, text: "生活区二级水净化处理终端。指针稳定落在绿区，纯净度 99.98%。" }
+    { speaker: null, text: "生活区二级水净化处理终端（已用防水格栅墙隔离在湿区机房）。指针稳定落在绿区，纯净度 99.98%。" }
   ])
 ];
 
 // --- 7. L-2 Heavy Industrial & Manufacturing Bay (Open Starting Wing!) ------
 
 export const INDUSTRIAL_PROPS: readonly SceneProp[] = [
-  industrial("fx_console", 5, 5.5, 2, 1, "激光数控镗铣车床", [
+  industrial("fx_console", 4.5, 5.0, 2, 1, "激光数控镗铣车床", [
     { speaker: null, text: "大型数控镗铣车床。飞船自身三十年的小修小补零件全靠这台 L-2 主力老伙计加工成型。" },
     { speaker: null, text: "左侧厚窗外就是悬空机械臂吊架，深空极寒就在几十毫米厚的防爆玻璃之外。" }
   ]),
-  industrial("fx_holo_table", 15, 6.5, 3, 2, "机械臂液压装配台", [
+  industrial("fx_holo_table", 11.0, 5.5, 3, 2, "机械臂液压装配台", [
     { speaker: null, text: "重工业模块的四轴液压组装平台。台上卡着一截正待更换耐热衬垫的散热回路备用联轴器。" },
     { speaker: null, text: "压力表、扭矩扳手与电子校零盒一字排开——这是底层机修工最熟悉的工作现场。" }
   ]),
-  industrial("fx_switch_panel", 4, 15.5, 2, 1, "真空焊切机械臂控制柜", [
+  industrial("fx_switch_panel", 4.5, 16.5, 2, 1, "真空焊切机械臂控制柜", [
     { speaker: null, text: "用于远程操控外舷冷焊机械臂的双摇杆重工业控制台。指示灯呈平稳待机蓝。" }
   ]),
-  industrial("fx_paper_log", 15, 16.5, 1, 1, "重工备件领用台账", [
-    { speaker: null, text: "沾着黑机油的实体登记本，记满了高负荷阀芯与密封圈的领用记录。" }
+  industrial("fx_paper_log", 18.5, 14.5, 1, 1, "重工备件领用台账", [
+    { speaker: null, text: "放在钳工领料隔音前厅里的实体登记本，沾着黑机油，记满了高负荷阀芯与密封圈的领用记录。" }
   ]),
-  industrial("fx_terminal", 12, 3.5, 1, 1, "材料应力探伤终端", [
+  industrial("fx_terminal", 5.0, 2.5, 1, 1, "材料应力探伤终端", [
     { speaker: null, text: "超声探伤仪屏幕不断回放焊缝波形：「主龙骨承受应力在安全上限以内」。" }
   ])
 ];
@@ -361,17 +381,17 @@ export const INDUSTRIAL_PROPS: readonly SceneProp[] = [
 // --- 8. R-2 Deep-Space Science & Exploration Lab (Starboard Wing) -----------
 
 export const SCIENCE_PROPS: readonly SceneProp[] = [
-  science("fx_holo_table", 10, 6.5, 3, 2, "深空光谱折射测绘台", [
+  science("fx_holo_table", 11.5, 5.0, 3, 2, "深空光谱折射测绘台", [
     { speaker: null, text: "高精度光学与尘埃光谱折射测绘台，直连舰体外舷广角传感器阵列。" },
     { speaker: null, text: "图谱末端标注着一组刚刚出现的高能碎冰粉尘反射峰——远望号正在掠过一条未标绘的小型星际尘埃微带。" }
   ]),
-  science("fx_terminal", 16, 5.5, 1, 1, "星系尘埃组分分析仪", [
+  science("fx_terminal", 16.5, 5.0, 1, 1, "星系尘埃组分分析仪", [
     { speaker: null, text: "连续抓取初辉恒星系外围微陨石碎屑质谱数据的分析工作站。" }
   ]),
-  science("fx_desk", 10, 16.5, 3, 2, "地外矿物样本精密台", [
+  science("fx_desk", 11.5, 17.5, 3, 2, "地外矿物样本精密台", [
     { speaker: null, text: "负压密封样品操作台，此刻空置等待着未来拓荒小队带回异星岩石与水冰样本。" }
   ]),
-  science("fx_bookshelf", 15, 18.5, 3, 1, "科研手抄档案架", [
+  science("fx_bookshelf", 16.0, 19.0, 3, 1, "科研手抄档案架", [
     { speaker: null, text: "按照地球年代整理的光谱定标卷宗与前哨无人探测器遥测打印稿。" }
   ])
 ];
@@ -379,29 +399,29 @@ export const SCIENCE_PROPS: readonly SceneProp[] = [
 // --- 9. Central Medical & Cryo-Stasis Bay -----------------------------------
 
 export const MEDICAL_PROPS: readonly SceneProp[] = [
-  medical("fx_holo_table", 15, 10.5, 3, 2, "生理全景诊断台", [
+  medical("fx_holo_table", 15.5, 11.5, 3, 2, "生理全景诊断台", [
     { speaker: null, text: "中央医疗中心的生理多参数全景诊断台。配备失重负压吸附与深层组织扫描阵列。" }
   ]),
-  medical("fx_bed", 15, 14.5, 2, 3, "医疗监护病床", [
+  medical("fx_bed", 15.0, 15.0, 2, 3, "医疗监护病床", [
     { speaker: null, text: "浅灰白色的医用可调软垫病床，配有独立的生命体征遥测腕带。" }
   ]),
-  medical("fx_terminal", 13, 7.5, 1, 1, "休眠生理监测终端", [
-    { speaker: null, text: "直连休眠舱阵列的中央巡检终端。屏幕显示着实时冷凝回路状态：" },
-    { speaker: null, text: "「休眠总人数：12,408 / 12,408」「生理代谢抑制率：99.7%」「低温维生母线：双路运行」" }
+  medical("fx_terminal", 13.5, 8.5, 1, 1, "休眠生理监测终端", [
+    { speaker: null, text: "直连四个独立休眠分仓阵列的中央巡检终端。屏幕显示着实时冷凝回路状态：" },
+    { speaker: null, text: "「休眠总人数：12,408 / 12,408」「生理代谢抑制率：99.7%」「低温维生母线：四分仓独立运行」" }
   ]),
-  medical("fx_bed", 5, 4.5, 2, 3, "休眠舱框架·第1组", [
-    { speaker: null, text: "多层复合材料框架中紧凑排列的冷冻休眠舱单元，观测窗结着一层薄薄白霜。" }
+  medical("fx_bed", 5.5, 5.8, 2, 3, "休眠舱框架·第1组", [
+    { speaker: null, text: "第一分仓独立的冷冻休眠舱阵列，冷机维持 -135℃ 深眠，观测窗结着一层薄薄白霜。" }
   ]),
-  medical("fx_bed", 5, 14.5, 2, 3, "休眠舱框架·第2组", [
-    { speaker: null, text: "第二组休眠舱框架。蓝绿色的生命监测微光在暗处安静地跳动。" }
+  medical("fx_bed", 5.5, 16.5, 2, 3, "休眠舱框架·第2组", [
+    { speaker: null, text: "第二分仓独立冷冻框架。蓝绿色的生命监测微光在暗处安静地跳动。" }
   ]),
-  medical("fx_bed", 23, 4.5, 2, 3, "休眠舱框架·第3组", [
-    { speaker: null, text: "第三组休眠舱框架。冷凝循环管道微微发凉。" }
+  medical("fx_bed", 24.5, 5.8, 2, 3, "休眠舱框架·第3组", [
+    { speaker: null, text: "第三分仓独立冷冻框架。冷凝循环管道微微发凉。" }
   ]),
-  medical("fx_bed", 23, 14.5, 2, 3, "休眠舱框架·第4组", [
-    { speaker: null, text: "第四组休眠舱框架。这里沉睡着未来的首批地面拓荒工程师们。" }
+  medical("fx_bed", 24.5, 16.5, 2, 3, "休眠舱框架·第4组", [
+    { speaker: null, text: "第四分仓独立冷冻框架。这里沉睡着未来的首批地面拓荒工程师们。" }
   ]),
-  medical("fx_switch_panel", 18, 20.2, 2, 1, "后部工业区安全隔离轮", [
+  medical("fx_switch_panel", 17.5, 20.2, 2, 1, "后部工业区安全隔离轮", [
     { speaker: null, text: "通向 1850-2800m 后部机库与高危聚变动力区的重压水密隔离轮。" },
     { speaker: null, text: "平日锁死封闭；仅在全舰切入【特级损管动员】时强制放行机械抢修人员。" }
   ])
@@ -410,20 +430,22 @@ export const MEDICAL_PROPS: readonly SceneProp[] = [
 // --- 10. EVA Airlock & Shuttle Hangar Bay -----------------------------------
 
 export const HANGAR_PROPS: readonly SceneProp[] = [
-  hangar("fx_terminal", 6, 5.5, 1, 1, "穿梭机登机舷梯控制台", [
+  hangar("fx_terminal", 6.0, 5.5, 1, 1, "穿梭机登机舷梯控制台", [
     { speaker: null, text: "短途地表穿梭机「拓荒者一号」的停泊登艇梯。" },
     { speaker: null, text: "机身覆盖耐磨防烧蚀绝热瓦。通过第一章危机并获指挥授权后，可驾艇勘测初辉恒星系与远境-IV。" }
   ]),
-  hangar("fx_bed", 5, 9.5, 2, 3, "穿梭机磁吸主泊位", [
+  hangar("fx_bed", 5.5, 9.5, 2, 3, "穿梭机磁吸主泊位", [
     { speaker: null, text: "穿梭机重型磁吸液压停泊基座。仪表显示电磁锁止状态正常。" }
   ]),
-  hangar("fx_screen_lit", 24, 2.5, 1, 1, "机库气压监测屏", [
-    { speaker: null, text: "机库主气闸舱内外气压监测大屏：内部 101.3 kPa，外部为深空真空。" }
+  hangar("fx_screen_lit", 24.5, 2.0, 1, 1, "机库气压监测屏", [
+    { speaker: null, text: "加压整备间气压监测大屏：内部 101.3 kPa，西侧发射区外为深空真空。" }
   ]),
-  hangar("fx_switch_panel", 27, 4.5, 2, 1, "重型防热工程服备勤架", [
+  hangar("fx_switch_panel", 27.5, 4.5, 2, 1, "重型防热工程服备勤架", [
     { speaker: null, text: "悬挂在加压锁柜上的重型耐高温工程作业服，配备陶瓷胸甲与独立高压呼吸循环背包。" }
   ]),
-  hangar("fx_terminal", 27, 10.5, 1, 1, "便携高压氧气充气柱", [
+  hangar("fx_chair", 23.5, 6.8, 1, 1, "整备换装座椅", null),
+  hangar("fx_chair", 23.5, 10.5, 1, 1, "整备换装座椅", null),
+  hangar("fx_terminal", 27.5, 12.5, 1, 1, "便携高压氧气充气柱", [
     { speaker: null, text: "工程作业服呼吸气瓶快速充气站，压力表指针稳定在 30 MPa 满格绿区。" }
   ])
 ];
@@ -431,17 +453,17 @@ export const HANGAR_PROPS: readonly SceneProp[] = [
 // --- 11. Reactor Auxiliary Heat-Sink Station --------------------------------
 
 export const REACTOR_PROPS: readonly SceneProp[] = [
-  reactor("fx_holo_table", 15, 6.5, 3, 2, "聚变反应堆状态监测台", [
-    { speaker: null, text: "后部主聚变反应堆热负荷遥测工作台。" },
+  reactor("fx_holo_table", 15.5, 6.5, 3, 2, "聚变反应堆状态监测台", [
+    { speaker: null, text: "后部两座物理隔离反应堆的热负荷遥测工作台。" },
     { speaker: null, text: "显示第一回路与第二回路的实时热平衡曲面。深空中废热无法散发，全舰全靠南边展开千米的巨型散热羽翼。" }
   ]),
-  reactor("fx_switch_panel", 6, 8.5, 2, 1, "应急旁路泄压转轮", [
-    { speaker: null, text: "带有厚重机械齿轮啮合的巨型红色泄压手轮。手动操作能迅速释放过载高压冷却蒸气。" }
+  reactor("fx_switch_panel", 6.0, 8.5, 2, 1, "应急旁路泄压转轮", [
+    { speaker: null, text: "位于独立防护间内、带有厚重机械齿轮啮合的巨型红色泄压手轮。手动操作能迅速释放过载高压冷却蒸气。" }
   ]),
-  reactor("fx_switch_panel", 24, 8.5, 2, 1, "副散热翼机械强制展开栓", [
+  reactor("fx_switch_panel", 25.5, 8.5, 2, 1, "副散热翼机械强制展开栓", [
     { speaker: null, text: "被黄色防误触护罩罩住的重型液压释放杠杆。紧急时利用爆破火工品弹开备用散热翼！" }
   ]),
-  reactor("fx_terminal", 15, 13.5, 1, 1, "散热循环压力双针表", [
+  reactor("fx_terminal", 15.5, 13.5, 1, 1, "散热循环压力双针表", [
     { speaker: null, text: "第一回路与副回路压力双联机械指针表。南侧通门直抵尾部主推进阵列与散热翼传动长廊。" }
   ])
 ];
@@ -449,25 +471,25 @@ export const REACTOR_PROPS: readonly SceneProp[] = [
 // --- 12. Aft Propulsion & 1,200m Radiator Wing Gallery ----------------------
 
 export const PROPULSION_PROPS: readonly SceneProp[] = [
-  propulsion("fx_console", 7, 10.5, 2, 1, "左舷磁约束聚变喷口控制台", [
+  propulsion("fx_console", 7.0, 10.5, 2, 1, "左舷磁约束聚变喷口控制台", [
     { speaker: null, text: "远望号尾部磁约束聚变推进主喷口的流场监测台。高能等离子尾焰在此经过重重磁场导流后喷入深空。" }
   ]),
-  propulsion("fx_switch_panel", 18, 9.5, 2, 1, "左翼600米辐射散热展收油压箱", [
+  propulsion("fx_switch_panel", 13.5, 10.0, 2, 1, "左翼600米辐射散热展收油压箱", [
     { speaker: null, text: "左侧延伸出去六百余米的炽红散热面板液压转轴总箱。即便只开三成功率巡航，整翼仍散发着暗红红外热辉。" }
   ]),
-  propulsion("fx_holo_table", 28, 10.5, 3, 2, "主推进矢量与千瓦级热平衡总台", [
+  propulsion("fx_holo_table", 28.0, 10.0, 3, 2, "主推进矢量与千瓦级热平衡总台", [
     { speaker: null, text: "跨越 100 米宽舰尾的总控诊断平台。屏幕标注：『总展翼跨度 1,200 m，两座主磁约束反应堆正常输出』。" }
   ]),
-  propulsion("fx_switch_panel", 38, 9.5, 2, 1, "右翼600米辐射散热展收油压箱", [
+  propulsion("fx_switch_panel", 42.5, 10.0, 2, 1, "右翼600米辐射散热展收油压箱", [
     { speaker: null, text: "右侧可展大型散热羽翼机械作动总成——刚才正是这里的液压限位销被微碎片崩卡，差点引发堆芯热失控。" }
   ]),
-  propulsion("fx_console", 49, 10.5, 2, 1, "右舷磁约束聚变喷口控制台", [
+  propulsion("fx_console", 49.0, 10.5, 2, 1, "右舷磁约束聚变喷口控制台", [
     { speaker: null, text: "右舷两座主推力喷口校准席。喷管冷却循环管道粗如合抱大树。" }
   ]),
-  propulsion("fx_terminal", 4, 7.5, 1, 1, "左翼辐射温场直视端", [
+  propulsion("fx_terminal", 3.5, 7.5, 1, 1, "左翼辐射温场直视端", [
     { speaker: null, text: "望向窗外真空，一片绵延半公里多的巨大暗红金属羽翼正在沉默地将远望号的心跳热流吐入极寒黑夜。" }
   ]),
-  propulsion("fx_terminal", 52, 7.5, 1, 1, "右翼辐射温场直视端", [
+  propulsion("fx_terminal", 52.5, 7.5, 1, 1, "右翼辐射温场直视端", [
     { speaker: null, text: "右侧巨大展开翼犹如钢铁翼龙的骨骼，几根应急副翅正在稳定放射出橘红色热辐射余晖。" }
   ])
 ];
@@ -528,8 +550,8 @@ export const OTHER_CREW: readonly ScenePerson[] = [
     id: "transit_guard",
     name: "交通调度员",
     assetId: "crew_down_idle",
-    x: (TRANSIT_ORIGIN.tx + 21) * TILE,
-    y: (TRANSIT_ORIGIN.ty + 4.5) * TILE,
+    x: (TRANSIT_ORIGIN.tx + 22.0) * TILE,
+    y: (TRANSIT_ORIGIN.ty + 4.8) * TILE,
     facing: "down",
     promptLabel: "和交通调度员说话",
     lines: [
@@ -542,9 +564,9 @@ export const OTHER_CREW: readonly ScenePerson[] = [
     id: "agronomist",
     name: "生态农艺师林芸",
     assetId: "crew_down_idle",
-    x: (L1_ORIGIN.tx + 10) * TILE,
-    y: (L1_ORIGIN.ty + 9.5) * TILE,
-    facing: "down",
+    x: (L1_ORIGIN.tx + 13.5) * TILE,
+    y: (L1_ORIGIN.ty + 11.5) * TILE,
+    facing: "left",
     promptLabel: "和生态农艺师说话",
     lines: [
       { speaker: "林芸", text: "刚领到中层卡？欢迎来到全船氧气和新鲜食物的源头——L-1 模块。" },
@@ -556,8 +578,8 @@ export const OTHER_CREW: readonly ScenePerson[] = [
     id: "ring_steward",
     name: "生活环值守阿诚",
     assetId: "crew_down_idle",
-    x: (R1_ORIGIN.tx + 8) * TILE,
-    y: (R1_ORIGIN.ty + 10.5) * TILE,
+    x: (R1_ORIGIN.tx + 14.5) * TILE,
+    y: (R1_ORIGIN.ty + 11.5) * TILE,
     facing: "down",
     promptLabel: "和生活环值守说话",
     lines: [
@@ -569,8 +591,8 @@ export const OTHER_CREW: readonly ScenePerson[] = [
     id: "engineer",
     name: "轮机检修员",
     assetId: "crew_down_idle",
-    x: (HABITAT_ORIGIN.tx + 13.5) * TILE,
-    y: (HABITAT_ORIGIN.ty + 12.2) * TILE,
+    x: (HABITAT_ORIGIN.tx + 13.8) * TILE,
+    y: (HABITAT_ORIGIN.ty + 11.8) * TILE,
     facing: "left",
     promptLabel: "和轮机检修员说话",
     lines: [
@@ -596,8 +618,8 @@ export const OTHER_CREW: readonly ScenePerson[] = [
     name: "光谱研究员苏博士",
     assetId: "crew_down_idle",
     x: (R2_ORIGIN.tx + 8.5) * TILE,
-    y: (R2_ORIGIN.ty + 8.5) * TILE,
-    facing: "up",
+    y: (R2_ORIGIN.ty + 6.0) * TILE,
+    facing: "right",
     promptLabel: "和光谱研究员说话",
     lines: [
       { speaker: "苏博士", text: "先别急着出 R-2——你看今天早晨的光谱折射测绘台了吗？" },
@@ -608,8 +630,8 @@ export const OTHER_CREW: readonly ScenePerson[] = [
     id: "medic",
     name: "休眠监护员",
     assetId: "crew_down_idle",
-    x: (MEDICAL_ORIGIN.tx + 17) * TILE,
-    y: (MEDICAL_ORIGIN.ty + 10.5) * TILE,
+    x: (MEDICAL_ORIGIN.tx + 17.2) * TILE,
+    y: (MEDICAL_ORIGIN.ty + 9.8) * TILE,
     facing: "left",
     promptLabel: "和休眠监护员说话",
     lines: [

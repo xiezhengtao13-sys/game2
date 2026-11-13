@@ -3,13 +3,15 @@ import { TileMap, type TileType } from "./TileMap";
 /**
  * Central Medical & Cryo-Stasis Bay (中央医疗与休眠监视舱)
  *
- * In docs/设定集.md:
- *   - "12,408 人的休眠系统……休眠舱多层排列，安装在大型结构框架中"
- *   - "每个休眠区域都有独立的环境维持设备、生命体征监测系统和应急维护通道"
- *   - "中央医疗中心负责舰船级紧急救治，外观相对朴素：大量容易清洁的浅色材料"
+ * Strictly follows docs/设定集.md:
+ *   - "12,408 人的休眠系统不是一个巨大的房间——所有休眠舱按模块分散布置，
+ *     每个休眠区域都有独立的环境维持设备、生命体征监测系统和应急维护通道"
+ *   - "中央医疗中心外观相对朴素：大量容易清洁的浅色材料，高度标准化的医疗接口"
  *
- * Dimensions: 30 columns x 22 rows.
- * Scale: 1 tile = 1 person height = 1.8m (54.0m x 39.6m = ~2,138 m2).
+ * Modular clinical partitions (30 x 22):
+ *   - West Vaults Alpha (y 1..10) & Beta (y 12..20) behind wall x=10 (separate doors & divider y=11)
+ *   - Center Sterile Medical Triage & Nursing Core (x 11..18)
+ *   - East Vaults Gamma (y 1..10) & Delta (y 12..20) behind wall x=19 (separate doors & divider y=11)
  */
 
 export const MEDICAL_COLUMNS = 30;
@@ -29,42 +31,49 @@ interface Shape {
 
 const SHAPES: Shape[] = [
   // Outer perimeter bulkheads
-  { x: 0, y: 0, w: MEDICAL_COLUMNS, h: 1, type: "wall", note: "北向气密隔离壁" },
-  { x: 0, y: MEDICAL_ROWS - 1, w: MEDICAL_COLUMNS, h: 1, type: "wall", note: "南向重工业隔离壁" },
-  { x: 0, y: 0, w: 1, h: MEDICAL_ROWS, type: "wall", note: "西向耐压舱壁" },
-  { x: MEDICAL_COLUMNS - 1, y: 0, w: 1, h: MEDICAL_ROWS, type: "wall", note: "东向耐压舱壁" },
+  { x: 0, y: 0, w: MEDICAL_COLUMNS, h: 1, type: "wall", note: "北向医疗区气密壁" },
+  { x: 0, y: MEDICAL_ROWS - 1, w: MEDICAL_COLUMNS, h: 1, type: "wall", note: "南向后部机库重型隔离壁" },
+  { x: 0, y: 0, w: 1, h: MEDICAL_ROWS, type: "wall", note: "西向低温隔热壁" },
+  { x: MEDICAL_COLUMNS - 1, y: 0, w: 1, h: MEDICAL_ROWS, type: "wall", note: "东向低温隔热壁" },
 
   // Doorways
-  { x: MEDICAL_NORTH_DOOR.x, y: MEDICAL_NORTH_DOOR.y, w: MEDICAL_NORTH_DOOR.w, h: MEDICAL_NORTH_DOOR.h, type: "floor_light", note: "北侧医疗入口导引地灯" },
-  { x: MEDICAL_SOUTH_DOOR.x, y: MEDICAL_SOUTH_DOOR.y, w: MEDICAL_SOUTH_DOOR.w, h: MEDICAL_SOUTH_DOOR.h, type: "floor_light", note: "南侧工业重压闸门入口" },
+  { x: MEDICAL_NORTH_DOOR.x, y: MEDICAL_NORTH_DOOR.y, w: MEDICAL_NORTH_DOOR.w, h: MEDICAL_NORTH_DOOR.h, type: "floor_light", note: "北侧通往生活区入口" },
+  { x: MEDICAL_SOUTH_DOOR.x, y: MEDICAL_SOUTH_DOOR.y, w: MEDICAL_SOUTH_DOOR.w, h: MEDICAL_SOUTH_DOOR.h, type: "floor_light", note: "南侧通往机库重水密闸" },
 
-  // Central corridor lighting runner
-  { x: 14, y: 2, w: 2, h: 1, type: "floor_light", note: "医疗区中轴导引灯" },
-  { x: 14, y: 5, w: 2, h: 1, type: "floor_light", note: "医疗区中轴导引灯" },
-  { x: 14, y: 8, w: 2, h: 1, type: "floor_light", note: "医疗区中轴导引灯" },
-  { x: 14, y: 11, w: 2, h: 1, type: "floor_light", note: "医疗区中轴导引灯" },
-  { x: 14, y: 14, w: 2, h: 1, type: "floor_light", note: "医疗区中轴导引灯" },
-  { x: 14, y: 17, w: 2, h: 1, type: "floor_light", note: "医疗区中轴导引灯" },
-  { x: 14, y: 19, w: 2, h: 1, type: "floor_light", note: "医疗区中轴导引灯" },
+  // Distributed Cryo-Stasis Isolation Partition Walls (4 independent Cryo Vaults!)
+  { x: 10, y: 1, w: 1, h: 20, type: "wall", note: "西侧休眠分仓气密隔墙" },
+  { x: 19, y: 1, w: 1, h: 20, type: "wall", note: "东侧休眠分仓气密隔墙" },
+  { x: 1, y: 11, w: 10, h: 1, type: "wall", note: "西甲/乙休眠仓独立环境隔离壁" },
+  { x: 19, y: 11, w: 10, h: 1, type: "wall", note: "东丙/丁休眠仓独立环境隔离壁" },
 
-  // West Flank: Cryo-Stasis Array Alpha (多层冷冻休眠监视阵列甲组)
-  { x: 2, y: 2, w: 8, h: 8, type: "deck_dark", note: "第一休眠监视基座" },
-  { x: 2, y: 12, w: 8, h: 8, type: "deck_dark", note: "第二休眠监视基座" },
-  { x: 2, y: 2, w: 8, h: 1, type: "wall_dark", note: "休眠冷凝管线机架" },
-  { x: 2, y: 12, w: 8, h: 1, type: "wall_dark", note: "休眠冷凝管线机架" },
+  // Pressurized maintenance doors into each of the 4 modular Cryo Vaults
+  { x: 10, y: 5, w: 1, h: 2, type: "floor_light", note: "休眠第 1 分仓检修门" },
+  { x: 10, y: 15, w: 1, h: 2, type: "floor_light", note: "休眠第 2 分仓检修门" },
+  { x: 19, y: 5, w: 1, h: 2, type: "floor_light", note: "休眠第 3 分仓检修门" },
+  { x: 19, y: 15, w: 1, h: 2, type: "floor_light", note: "休眠第 4 分仓检修门" },
 
-  // East Flank: Cryo-Stasis Array Beta (多层冷冻休眠监视阵列乙组)
-  { x: 20, y: 2, w: 8, h: 8, type: "deck_dark", note: "第三休眠监视基座" },
-  { x: 20, y: 12, w: 8, h: 8, type: "deck_dark", note: "第四休眠监视基座" },
-  { x: 20, y: 2, w: 8, h: 1, type: "wall_dark", note: "休眠冷凝管线机架" },
-  { x: 20, y: 12, w: 8, h: 1, type: "wall_dark", note: "休眠冷凝管线机架" },
+  // Cold Cryo-Vault floor decks & dedicated cooling equipment manifolds flush on vault walls
+  { x: 2, y: 2, w: 7, h: 8, type: "deck_dark", note: "第一休眠分仓冷机巡检甲板" },
+  { x: 2, y: 13, w: 7, h: 7, type: "deck_dark", note: "第二休眠分仓冷机巡检甲板" },
+  { x: 21, y: 2, w: 7, h: 8, type: "deck_dark", note: "第三休眠分仓冷机巡检甲板" },
+  { x: 21, y: 13, w: 7, h: 7, type: "deck_dark", note: "第四休眠分仓冷机巡检甲板" },
 
-  // Center: Emergency Medical & Resuscitation Bay (中央急救与生理唤醒平台)
-  { x: 11, y: 7, w: 8, h: 7, type: "deck_rug", note: "急救诊疗与监护区防滑地毯" },
+  { x: 1, y: 1, w: 9, h: 1, type: "wall_dark", note: "休眠分仓 1 独立维生冷机机组" },
+  { x: 1, y: 12, w: 9, h: 1, type: "wall_dark", note: "休眠分仓 2 独立维生冷机机组" },
+  { x: 20, y: 1, w: 9, h: 1, type: "wall_dark", note: "休眠分仓 3 独立维生冷机机组" },
+  { x: 20, y: 12, w: 9, h: 1, type: "wall_dark", note: "休眠分仓 4 独立维生冷机机组" },
 
-  // Wall equipment monitors
-  { x: 0, y: 6, w: 1, h: 3, type: "screen", note: "西舷休眠生命维持状态屏" },
-  { x: MEDICAL_COLUMNS - 1, y: 6, w: 1, h: 3, type: "screen", note: "东舷休眠生命维持状态屏" }
+  // Central Sterile Clinical Diagnostic Floor (clean dark grey/slate medical bay pad, NO bedroom rug!)
+  { x: 12, y: 8, w: 6, h: 9, type: "deck_dark", note: "中央紧急救治与生理监测无菌工作台区" },
+
+  // Wall telemetry screens along center concourse
+  { x: 10, y: 8, w: 1, h: 2, type: "screen", note: "西侧休眠舱生理遥测总览屏" },
+  { x: 19, y: 8, w: 1, h: 2, type: "screen", note: "东侧休眠舱生理遥测总览屏" },
+
+  // Central clinical lighting runner
+  { x: 14, y: 2, w: 2, h: 1, type: "floor_light", note: "医疗中心主通道灯" },
+  { x: 14, y: 5, w: 2, h: 1, type: "floor_light", note: "医疗中心主通道灯" },
+  { x: 14, y: 18, w: 2, h: 1, type: "floor_light", note: "南闸前引导地灯" }
 ];
 
 export function medicalGrid(): TileType[][] {

@@ -90,16 +90,16 @@ export class FalloutHud {
     this.stimBtnEl = document.createElement("button");
     this.stimBtnEl.type = "button";
     this.stimBtnEl.className = "fo-stim-btn";
-    this.stimBtnEl.title = "快捷键 [H]：注射抗辐宁恢复 +40 HP 与 -50 RAD";
+    this.stimBtnEl.title = "快捷键 [H]：使用舰载创伤急救包恢复 +40 HP 并缓解 -50 热应激";
     this.stimQtyEl = document.createElement("span");
     this.stimQtyEl.className = "stim-qty";
-    this.stimBtnEl.innerHTML = `<span class="stim-ico">💉</span><span class="stim-name">抗辐宁 <kbd>H</kbd></span>`;
+    this.stimBtnEl.innerHTML = `<span class="stim-ico">🩹</span><span class="stim-name">急救包 <kbd>H</kbd></span>`;
     this.stimBtnEl.appendChild(this.stimQtyEl);
     this.stimBtnEl.addEventListener("click", () => this.callbacks.onUseItem("med_stim"));
 
     verbPanel.append(verbGrid, this.stimBtnEl);
 
-    // Right: HP / AP / RAD / LV + Character Modal Trigger
+    // Right: HP / AP / Thermal Stress / LV + Character Modal Trigger
     const vitalsPanel = document.createElement("div");
     vitalsPanel.className = "fo-panel fo-vitals-panel";
 
@@ -190,7 +190,7 @@ export class FalloutHud {
     this.modalEl.hidden = true;
   }
 
-  /** Lightweight 60fps update for smooth AP regen pips and HP/RAD readouts without touching modal DOM. */
+  /** Lightweight 60fps update for smooth AP regen pips and HP/thermal-stress readouts without touching modal DOM. */
   syncVitalsOnly(rpg: RpgSystem): void {
     this.latestRpg = rpg;
 
@@ -199,7 +199,8 @@ export class FalloutHud {
     this.hpBarEl.classList.toggle("low", hpPct <= 35);
     this.hpTextEl.textContent = `${Math.round(rpg.hp)} / ${rpg.maxHp}`;
 
-    this.radTextEl.textContent = `RAD ${Math.round(rpg.rad)} mSv`;
+    this.radTextEl.textContent = `热应激 ${Math.round(rpg.rad)}%`;
+    this.radTextEl.title = "反应堆泵房或高温管廊造成的体表热应激指数（穿防热服或按 [H] 用急救包降温）";
     this.radTextEl.classList.toggle("warn", rpg.rad >= 40);
 
     const filledAp = Math.floor(rpg.ap);
@@ -323,7 +324,7 @@ export class FalloutHud {
       .map((it) => {
         const useBtn =
           it.id === "med_stim"
-            ? `<button type="button" class="inv-use-btn" data-use-item="${it.id}">💉 使用</button>`
+            ? `<button type="button" class="inv-use-btn" data-use-item="${it.id}">🩹 使用</button>`
             : it.equipped
             ? `<span class="inv-eq-tag">✓ 已装备</span>`
             : "";
@@ -358,7 +359,7 @@ export class FalloutHud {
               ${portraitUrl ? `<img class="portrait-hd" src="${portraitUrl}" alt="Player" />` : `<div class="avatar-icon-log">🧑‍🔧</div>`}
             </div>
             <div class="char-nameplate">巡检工勤 · 小徐 (Lv.${rpg.level})</div>
-            <div class="char-xp-readout">XP ${rpg.xp} / ${rpg.xpForNextLevel} · HP ${Math.round(rpg.hp)}/${rpg.maxHp} · RAD ${Math.round(rpg.rad)} mSv</div>
+            <div class="char-xp-readout">XP ${rpg.xp} / ${rpg.xpForNextLevel} · HP ${Math.round(rpg.hp)}/${rpg.maxHp}<br/>热应激 ${Math.round(rpg.rad)}%</div>
             <div class="char-section-title">值班履历专精 ${canSwitch ? "(可切换)" : "(已锁定)"}</div>
             <div class="char-arch-list">${archButtons}</div>
             <div class="char-arch-desc">${archDef.traitDesc}</div>

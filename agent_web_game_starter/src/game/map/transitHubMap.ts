@@ -1,16 +1,12 @@
 import { TileMap, type TileType } from "./TileMap";
 
 /**
- * Central Transit Hub (中央交通站 / 前部交通枢纽)
+ * Central Transit Hub (中央交通站 / 前部交通枢纽, 550-1050m)
  *
- * Sits directly aft of the command section (300-950m mark of the Yuanwang).
- * In docs/设定集.md:
- *   - "每隔一定距离设置一个大型交通节点，与各殖民模块通过密封连接廊桥相连。"
- *   - "人员交通干线布置在中央区域"
- *   - "拥有换乘轨道、重力换区指示标、工程检修通道、气闸门、生活区导引牌"
- *
- * Dimensions: 34 columns x 24 rows.
- * Scale: 1 tile = 1 person height = 1.8m (61.2m x 43.2m = ~2,640 m2).
+ * Designed as an authentic massive orbital rail station:
+ *   - Depressed maglev rail pit (rows 11..13) with safe central pedestrian level crossing (cols 15..18)
+ *   - Enclosed East & West Airlock Boarding Vestibules for L-1 & R-1 bridge gangways
+ *   - Enclosed NE Dispatch Kiosk Office + NW Bench Waiting Area + South Checkpoint
  */
 
 export const TRANSIT_COLUMNS = 34;
@@ -37,44 +33,47 @@ const SHAPES: Shape[] = [
   { x: 0, y: 0, w: 1, h: TRANSIT_ROWS, type: "wall", note: "西向舱壁" },
   { x: TRANSIT_COLUMNS - 1, y: 0, w: 1, h: TRANSIT_ROWS, type: "wall", note: "东向舱壁" },
 
-  // Doorway openings
-  { x: TRANSIT_NORTH_DOOR.x, y: TRANSIT_NORTH_DOOR.y, w: TRANSIT_NORTH_DOOR.w, h: TRANSIT_NORTH_DOOR.h, type: "floor_light", note: "北侧主入口" },
-  { x: TRANSIT_SOUTH_DOOR.x, y: TRANSIT_SOUTH_DOOR.y, w: TRANSIT_SOUTH_DOOR.w, h: TRANSIT_SOUTH_DOOR.h, type: "floor_light", note: "南侧通往生活区入口" },
+  // Main exterior doorways
+  { x: TRANSIT_NORTH_DOOR.x, y: TRANSIT_NORTH_DOOR.y, w: TRANSIT_NORTH_DOOR.w, h: TRANSIT_NORTH_DOOR.h, type: "floor_light", note: "北侧通往舰桥指挥防暴门" },
+  { x: TRANSIT_SOUTH_DOOR.x, y: TRANSIT_SOUTH_DOOR.y, w: TRANSIT_SOUTH_DOOR.w, h: TRANSIT_SOUTH_DOOR.h, type: "floor_light", note: "南侧通往船员生活区入口" },
   { x: TRANSIT_WEST_GATE.x, y: TRANSIT_WEST_GATE.y, w: TRANSIT_WEST_GATE.w, h: TRANSIT_WEST_GATE.h, type: "floor_light", note: "西侧气闸连廊（通往 L-1 农业生态模块）" },
   { x: TRANSIT_EAST_GATE.x, y: TRANSIT_EAST_GATE.y, w: TRANSIT_EAST_GATE.w, h: TRANSIT_EAST_GATE.h, type: "floor_light", note: "东侧气闸连廊（通往 R-1 旋转生活环大厅）" },
 
-  // Observation slits / windows along north wall
-  { x: 4, y: 0, w: 3, h: 1, type: "window", note: "站台外部采光观测视窗" },
-  { x: 27, y: 0, w: 3, h: 1, type: "window", note: "站台外部采光观测视窗" },
+  // Observation slits looking north onto exterior structural trusses & deep space
+  { x: 5, y: 0, w: 4, h: 1, type: "window", note: "站台北侧桁架深空视窗" },
+  { x: 27, y: 0, w: 2, h: 1, type: "window", note: "站台北侧生活环深空视窗" },
 
-  // Maglev rail track zone in rows 11..13 (across the hall)
-  { x: 1, y: 11, w: TRANSIT_COLUMNS - 2, h: 3, type: "deck_dark", note: "中央穿梭轨道运行区" },
-  // Safe passenger level-crossing in columns 15..18
-  { x: 15, y: 11, w: 4, h: 3, type: "floor_light", note: "站台中央安全人行平交道" },
+  // Depressed maglev cross-track channel + pedestrian crossing bridge
+  { x: 1, y: 11, w: TRANSIT_COLUMNS - 2, h: 3, type: "deck_dark", note: "中央磁悬浮穿梭轨道槽" },
+  { x: 15, y: 11, w: 4, h: 3, type: "floor_light", note: "站台中央平交人行通道" },
 
-  // Platform guide lighting lines
-  { x: 16, y: 1, w: 2, h: 1, type: "floor_light", note: "北站台主导引灯" },
-  { x: 16, y: 3, w: 2, h: 1, type: "floor_light", note: "北站台主导引灯" },
+  // West & East Pressurized Bridge Airlock Frame Walls
+  { x: 3, y: 1, w: 1, h: 9, type: "wall", note: "西站台候车与气压过渡隔墙" },
+  { x: 3, y: 15, w: 1, h: 8, type: "wall", note: "西站台检修间气密隔墙" },
+  { x: 30, y: 1, w: 1, h: 9, type: "wall", note: "东站台气压过渡隔墙" },
+  { x: 30, y: 15, w: 1, h: 8, type: "wall", note: "东站台检修间气密隔墙" },
+
+  // Enclosed NE Dispatch Control Booth (x 20..29, y 1..8) with entrance gap
+  { x: 20, y: 1, w: 1, h: 7, type: "wall", note: "调度值班台西隔墙" },
+  { x: 20, y: 8, w: 10, h: 1, type: "wall", note: "调度值班台前窗台墙" },
+  { x: 22, y: 8, w: 2, h: 1, type: "floor_light", note: "调度台入口" },
+  { x: 21, y: 2, w: 8, h: 5, type: "deck_dark", note: "调度室内防静电地坪" },
+  { x: 24, y: 0, w: 3, h: 1, type: "screen", note: "全舰拓扑图大屏" },
+
+  // Compact Northwest bench platform pad & South locker check-in pads
+  { x: 6, y: 3, w: 5, h: 3, type: "deck_rug", note: "北站台旅客候车地垫" },
+  { x: 6, y: 16, w: 6, h: 4, type: "deck_dark", note: "勤务检修与接触网配电区" },
+  { x: 22, y: 16, w: 6, h: 4, type: "deck_dark", note: "应急备品登记区" },
+
+  // Concourse guide lights
+  { x: 16, y: 2, w: 2, h: 1, type: "floor_light", note: "北站台主导引灯" },
   { x: 16, y: 5, w: 2, h: 1, type: "floor_light", note: "北站台主导引灯" },
-  { x: 16, y: 7, w: 2, h: 1, type: "floor_light", note: "北站台主导引灯" },
-  { x: 16, y: 9, w: 2, h: 1, type: "floor_light", note: "北站台主导引灯" },
-
+  { x: 16, y: 8, w: 2, h: 1, type: "floor_light", note: "北站台主导引灯" },
   { x: 16, y: 15, w: 2, h: 1, type: "floor_light", note: "南站台主导引灯" },
-  { x: 16, y: 17, w: 2, h: 1, type: "floor_light", note: "南站台主导引灯" },
-  { x: 16, y: 19, w: 2, h: 1, type: "floor_light", note: "南站台主导引灯" },
+  { x: 16, y: 18, w: 2, h: 1, type: "floor_light", note: "南站台主导引灯" },
   { x: 16, y: 21, w: 2, h: 1, type: "floor_light", note: "南站台主导引灯" },
-
-  // Lateral wings guide lights to gates
-  { x: 2, y: 12, w: 12, h: 1, type: "floor_light", note: "西向登乘通道导引灯" },
-  { x: 20, y: 12, w: 12, h: 1, type: "floor_light", note: "东向登乘通道导引灯" },
-
-  // North waiting area rug
-  { x: 5, y: 3, w: 7, h: 5, type: "deck_rug", note: "北站台候车休息地毯" },
-  { x: 22, y: 3, w: 7, h: 5, type: "deck_rug", note: "调度与值班综合地毯" },
-
-  // South checkpoint safety perimeter
-  { x: 6, y: 16, w: 6, h: 5, type: "deck_rug", note: "勤务换装与检修区地毯" },
-  { x: 22, y: 16, w: 6, h: 5, type: "deck_rug", note: "应急物资保障区地毯" }
+  { x: 2, y: 12, w: 12, h: 1, type: "floor_light", note: "西向廊桥登乘导引线" },
+  { x: 20, y: 12, w: 12, h: 1, type: "floor_light", note: "东向廊桥登乘导引线" }
 ];
 
 export function transitHubGrid(): TileType[][] {

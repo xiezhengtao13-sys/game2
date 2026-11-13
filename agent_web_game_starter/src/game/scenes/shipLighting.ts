@@ -1,6 +1,6 @@
 import type { Renderer } from "../../engine/graphics/Renderer";
 import type { TileMap, TileType } from "../map/TileMap";
-import type { Place } from "../map/shipMap";
+import { exteriorKindAt, type Place } from "../map/shipMap";
 import type { SceneProp } from "./shipProps";
 
 interface AmbientParticle {
@@ -246,7 +246,7 @@ export class ShipAtmosphere {
       renderer.punchLightHole(playerX, playerY - 14, 18, 128);
       renderer.punchLightHole(playerX, playerY - 14, 24, 245, beamAngleRad, Math.PI * 0.42);
 
-      // Visible floor light strips & screens carve pools of light
+      // Visible floor light strips, telemetry screens, viewports, and open vacuum outside hull
       for (const tile of map.visibleTiles(view)) {
         const cx = tile.tx * size + size / 2;
         const cy = tile.ty * size + size / 2;
@@ -254,6 +254,15 @@ export class ShipAtmosphere {
           renderer.punchLightHole(cx, cy, 12, 118);
         } else if (tile.type === "screen") {
           renderer.punchLightHole(cx, cy + 16, 16, 145);
+        } else if (tile.type === "window") {
+          renderer.punchLightHole(cx, cy, 24, 112);
+        } else if (
+          tile.type === "hull" &&
+          tile.tx % 2 === 0 &&
+          tile.ty % 2 === 0 &&
+          exteriorKindAt(map, tile.tx, tile.ty) !== "shield"
+        ) {
+          renderer.punchLightHole(cx, cy, 36, 98);
         }
       }
 

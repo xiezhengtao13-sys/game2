@@ -28,7 +28,7 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
     id: "veteran",
     name: "二班老手 · 铁钳技工",
     traitName: "【特质：老茧机修】",
-    traitDesc: "三十年老船上的硬派工勤。机械工程 +14%，耐热抗压体质（最大HP +20），自带额外急救针。",
+    traitDesc: "三十年老船上的硬派工勤。机械工程 +14%，耐热抗压体质（最大HP +12），随身多备一套急救包。",
     stats: { str: 7, per: 6, end: 7, cha: 4, int: 6, agi: 5, lck: 5 },
     skillBonuses: { repair: 14 }
   },
@@ -96,7 +96,7 @@ export const SKILL_LABELS: Record<SkillKey, string> = {
 export const SPECIAL_LABELS: Record<SpecialKey, { code: string; name: string; desc: string }> = {
   str: { code: "ST", name: "力量", desc: "影响机械扳动蛮力与机械技能" },
   per: { code: "PE", name: "感知", desc: "决定警觉洞察与细微异响侦测" },
-  end: { code: "EN", name: "耐力", desc: "决定最大生命值与高温/辐射抗性" },
+  end: { code: "EN", name: "耐力", desc: "决定最大生命值与高温脱水/热应激耐受" },
   cha: { code: "CH", name: "魅力", desc: "决定话术说服舰桥与人员效率" },
   int: { code: "IN", name: "智力", desc: "大幅影响科学解码与升级技能点" },
   agi: { code: "AG", name: "敏捷", desc: "决定最大行动点数 AP 与应急身手" },
@@ -121,7 +121,7 @@ export class RpgSystem {
   maxHp = 120;
   ap = 10;
   maxAp = 10;
-  rad = 0; // mSv exposure (0..1000)
+  rad = 0; // Internal thermal strain index (0..100%)
 
   activeMode: ActionMode = "interact";
 
@@ -162,11 +162,11 @@ export class RpgSystem {
     });
     this.addItem({
       id: "med_stim",
-      name: "抗辐宁急救注射剂",
-      icon: "💉",
+      name: "舰载创伤急救包",
+      icon: "🩹",
       category: "consumable",
-      desc: "舰载损管急救剂，可快速缓解高温热灼伤并清除累积电离辐射。",
-      bonusDesc: "使用恢复 +40 HP / 清除 -50 RAD",
+      desc: "远望号工勤标准应急医疗包，内含低温水凝胶烫伤敷料与口服补液盐，用于处理高温灼伤与热应激。",
+      bonusDesc: "使用恢复 +40 HP / 缓解 -50 热应激",
       quantity: 2
     });
   }
@@ -335,9 +335,9 @@ export class RpgSystem {
       this.rad = Math.max(0, this.rad - 50);
       const healed = this.hp - prevHp;
       const purged = prevRad - this.rad;
-      this.pushLog("loot", `注射【抗辐宁急救针】：生命 +${healed} (${this.hp}/${this.maxHp})，辐射污染 -${purged} mSv (余 ${item.quantity} 支)`);
+      this.pushLog("loot", `使用【舰载创伤急救包】：生命 +${healed} (${this.hp}/${this.maxHp})，热应激降温 -${purged} (余 ${item.quantity} 份)`);
       if (anchorX !== undefined && anchorY !== undefined) {
-        this.spawnFloatingText(anchorX, anchorY - 40, `+${healed} HP / -${purged} RAD`, "#34d399");
+        this.spawnFloatingText(anchorX, anchorY - 40, `+${healed} HP / -${purged} 热应激`, "#34d399");
       }
       return true;
     }
@@ -348,7 +348,7 @@ export class RpgSystem {
     const actualHp = Math.max(1, hpLoss);
     this.hp = Math.max(5, this.hp - actualHp);
     this.rad = Math.min(1000, this.rad + radGain);
-    this.pushLog("warn", `${reason ?? "受到环境伤害"}：HP -${actualHp}${radGain > 0 ? `, RAD +${radGain} mSv` : ""}`);
+    this.pushLog("warn", `${reason ?? "受到环境伤害"}：HP -${actualHp}${radGain > 0 ? `, 热应激 +${radGain}` : ""}`);
     if (anchorX !== undefined && anchorY !== undefined) {
       this.spawnFloatingText(anchorX, anchorY - 40, `-${actualHp} HP`, "#ef4444");
     }
@@ -374,7 +374,7 @@ export class RpgSystem {
       }
     }
 
-    // Fallout environmental thermal & radiation hazard in unshielded reactor bay
+    // Environmental high-heat hazard in unshielded reactor pump room
     if (inHotZone) {
       this.hazardCooldown -= dt;
       if (this.hazardCooldown <= 0) {
@@ -383,7 +383,7 @@ export class RpgSystem {
         const radDelta = Math.max(1, Math.round(14 * (1 - resist)));
         const heatDmg = isSuitEquipped ? 0 : Math.max(2, Math.round(7 * (1 - resist)));
         if (!isSuitEquipped) {
-          this.damage(heatDmg, radDelta, "【高温/聚变余热灼伤】未穿戴防热工程服", playerX, playerY);
+          this.damage(heatDmg, radDelta, "【高温蒸汽/聚变余热灼伤】未穿戴防热工程服", playerX, playerY);
         } else {
           this.rad = Math.min(1000, this.rad + radDelta);
         }

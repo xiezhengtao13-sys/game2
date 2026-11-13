@@ -432,3 +432,76 @@ export const HANGAR_BOUNDS = { ...HANGAR_ORIGIN, columns: HANGAR_COLUMNS, rows: 
 export const REACTOR_BOUNDS = { ...REACTOR_ORIGIN, columns: REACTOR_COLUMNS, rows: REACTOR_ROWS };
 export const PROPULSION_BOUNDS = { ...PROPULSION_ORIGIN, columns: PROPULSION_COLUMNS, rows: PROPULSION_ROWS };
 export const PASSAGE_BOUNDS = { ...PASSAGE, width: PASSAGE_WIDTH };
+
+/** Architectural classification of `"hull"` tiles outside playable rooms. */
+export type ExteriorKind = "space" | "hull_plate" | "truss" | "shield";
+
+/**
+ * Classifies any `"hull"` tile outside the ship's interiors into:
+ *   - `"shield"`: Layered forward silicon-carbide ablation discs ahead of Fore Sensors (0-300m)
+ *   - `"truss"` : Exposed triangular steel load-bearing box-trusses & conduit bridges across vacuum
+ *   - `"hull_plate"`: 1-tile armored outer skin directly cladding pressurized walls (excluding windows)
+ *   - `"space"` : Deep starry outer vacuum
+ */
+export function exteriorKindAt(
+  map: Pick<TileMap, "tileAt" | "inBounds">,
+  tx: number,
+  ty: number
+): ExteriorKind {
+  // 1. Bow multi-layer ablation shield discs (wide forward arcs ahead of Fore Sensors)
+  if ((ty <= 1 && tx >= 23 && tx <= 60) || (ty <= 5 && ((tx >= 25 && tx <= 26) || (tx >= 57 && tx <= 58)))) {
+    return "shield";
+  }
+
+  // Never block outside line-of-sight right in front of an exterior viewport window
+  for (let dy = -1; dy <= 1; dy++) {
+    for (let dx = -1; dx <= 1; dx++) {
+      if (dx === 0 && dy === 0) continue;
+      if (map.tileAt(tx + dx, ty + dy) === "window") {
+        return "space";
+      }
+    }
+  }
+
+  // 2. Exposed structural load-bearing trusses between modules & central spine
+  const inLateralTrussY =
+    ((ty === 68 || ty === 69 || ty === 81 || ty === 82) &&
+      ((tx >= 21 && tx <= 25) || (tx >= 58 && tx <= 62))) ||
+    ((ty === 95 || ty === 96 || ty === 108 || ty === 109) &&
+      ((tx >= 22 && tx <= 26) || (tx >= 57 && tx <= 61)));
+  if (inLateralTrussY) return "truss";
+
+  // Longitudinal keel truss flanking central spine neck & between spine modules
+  const inSpineCol = tx === 35 || tx === 36 || tx === 47 || tx === 48;
+  const inSpineGapY =
+    (ty >= 15 && ty <= 18 && (tx >= 36 && tx <= 47)) ||
+    (ty >= 38 && ty <= 43 && (tx === 36 || tx === 37 || tx === 46 || tx === 47)) ||
+    (ty >= 58 && ty <= 63 && (tx === 36 || tx === 37 || tx === 46 || tx === 47)) ||
+    (inSpineCol &&
+      ((ty >= 87 && ty <= 90) ||
+        (ty >= 114 && ty <= 117) ||
+        (ty >= 140 && ty <= 143) ||
+        (ty >= 162 && ty <= 165) ||
+        (ty >= 184 && ty <= 186)));
+  if (inSpineGapY) return "truss";
+
+  // Lateral aft structural root girders holding Propulsion Wings to Spine
+  if (ty === 185 && ((tx >= 20 && tx <= 39) || (tx >= 44 && tx <= 63))) {
+    return "truss";
+  }
+
+  // 3. Outer armored hull skin directly adjacent to solid compartment bulkheads
+  for (const [ox, oy] of [
+    [1, 0],
+    [-1, 0],
+    [0, 1],
+    [0, -1]
+  ]) {
+    const nt = map.tileAt(tx + ox, ty + oy);
+    if (nt === "wall" || nt === "wall_dark" || nt === "screen") {
+      return "hull_plate";
+    }
+  }
+
+  return "space";
+}

@@ -3,18 +3,13 @@ import { TileMap, type TileType } from "./TileMap";
 /**
  * Reactor Auxiliary Heat-Sink Station (聚变动力与应急散热排险泵房)
  *
- * Located at the aft boundary (rows 122..139), adjacent to the main fusion reactors.
- * In docs/设定集.md:
- *   - "后部主要容纳聚变反应堆、燃料处理设备、能源转换系统和大型推进设备"
- *   - "散热翼由大量高温辐射板、循环管线和支撑结构组成，表面采用特殊耐热材料"
- *   - "低功率巡航时散热翼可调整角度，但散热设备不能完全关闭——即使在深空中也会持续产生废热"
+ * Strictly follows docs/设定集.md:
+ *   - "两座主反应堆采用物理隔离设计，每座安装在独立防护结构中，周围设置复杂的冷却管线和维护通道。"
  *
- * This is the climax location of Chapter 1: where the crew manually resolves
- * the thermal runaway crisis by clearing the hydraulic lock and forcing open
- * the secondary heat-sink wings.
- *
- * Dimensions: 32 columns x 18 rows.
- * Scale: 1 tile = 1.8 m (57.6 m x 32.4 m = ~1,866 m2).
+ * Partitioned Radiation-Shielded Architecture (32 x 18):
+ *   - West Isolated Primary Loop Bay (x 1..10): walled inside heavy blast divider x=11 w/ chicane door y 7..9
+ *   - Central Shielded Control Gallery (x 12..19): core telemetry & dual gauge post
+ *   - East Isolated Radiator Servo Bay (x 21..30): walled inside heavy blast divider x=20 w/ chicane door y 7..9
  */
 
 export const REACTOR_COLUMNS = 32;
@@ -35,39 +30,39 @@ interface Shape {
 const SHAPES: Shape[] = [
   // Outer heavy bulkheads
   { x: 0, y: 0, w: REACTOR_COLUMNS, h: 1, type: "wall", note: "北向防护舱壁" },
-  { x: 0, y: REACTOR_ROWS - 1, w: REACTOR_COLUMNS, h: 1, type: "wall_dark", note: "南向反应堆主辐射屏蔽屏障" },
+  { x: 0, y: REACTOR_ROWS - 1, w: REACTOR_COLUMNS, h: 1, type: "wall_dark", note: "南向反应堆主屏蔽屏障" },
   { x: 0, y: 0, w: 1, h: REACTOR_ROWS, type: "wall_dark", note: "西向耐热承力壁" },
   { x: REACTOR_COLUMNS - 1, y: 0, w: 1, h: REACTOR_ROWS, type: "wall_dark", note: "东向耐热承力壁" },
 
   // North & South entrance doorways
-  { x: REACTOR_NORTH_DOOR.x, y: REACTOR_NORTH_DOOR.y, w: REACTOR_NORTH_DOOR.w, h: REACTOR_NORTH_DOOR.h, type: "floor_light", note: "入口安全引道" },
-  { x: REACTOR_SOUTH_DOOR.x, y: REACTOR_SOUTH_DOOR.y, w: REACTOR_SOUTH_DOOR.w, h: REACTOR_SOUTH_DOOR.h, type: "floor_light", note: "南侧通往尾部主推进阵列走廊" },
+  { x: REACTOR_NORTH_DOOR.x, y: REACTOR_NORTH_DOOR.y, w: REACTOR_NORTH_DOOR.w, h: REACTOR_NORTH_DOOR.h, type: "floor_light", note: "北侧通往机库引道" },
+  { x: REACTOR_SOUTH_DOOR.x, y: REACTOR_SOUTH_DOOR.y, w: REACTOR_SOUTH_DOOR.w, h: REACTOR_SOUTH_DOOR.h, type: "floor_light", note: "南侧通往尾部主推进阵列" },
 
-  // Central runway guide lights
-  { x: 15, y: 2, w: 2, h: 1, type: "floor_light", note: "中心作业导引灯" },
-  { x: 15, y: 5, w: 2, h: 1, type: "floor_light", note: "中心作业导引灯" },
-  { x: 15, y: 8, w: 2, h: 1, type: "floor_light", note: "中心作业导引灯" },
-  { x: 15, y: 11, w: 2, h: 1, type: "floor_light", note: "中心作业导引灯" },
-  { x: 15, y: 14, w: 2, h: 1, type: "floor_light", note: "中心作业导引灯" },
-  { x: 15, y: 16, w: 2, h: 1, type: "floor_light", note: "南侧门岗导引灯" },
+  // Dual Physically Isolated Loop Containment Partitions (wall_dark blast bulkheads)
+  { x: 11, y: 1, w: 1, h: 16, type: "wall_dark", note: "一回路物理隔离重防护壁" },
+  { x: 20, y: 1, w: 1, h: 16, type: "wall_dark", note: "副散热回路物理隔离重防护壁" },
+  { x: 11, y: 7, w: 1, h: 3, type: "floor_light", note: "西侧泄压间防护闸门" },
+  { x: 20, y: 7, w: 1, h: 3, type: "floor_light", note: "东侧散热作动间防护闸门" },
 
-  // High-heat industrial deck zones (deck_dark)
-  { x: 2, y: 2, w: 11, h: 14, type: "deck_dark", note: "第一回路冷却主管网作业区" },
-  { x: 19, y: 2, w: 11, h: 14, type: "deck_dark", note: "第二回路应急散热旁路区" },
+  // High-heat industrial deck zones inside each isolated chamber
+  { x: 2, y: 3, w: 8, h: 12, type: "deck_dark", note: "第一回路冷却主管网防烫地坪" },
+  { x: 22, y: 3, w: 8, h: 12, type: "deck_dark", note: "第二回路应急散热作动防烫地坪" },
 
-  // Massive heat pipe trunk channels
-  { x: 2, y: 4, w: 11, h: 2, type: "wall_dark", note: "主反应堆高温导热主梁" },
-  { x: 2, y: 11, w: 11, h: 2, type: "wall_dark", note: "液氮循环降温母管" },
-  { x: 19, y: 4, w: 11, h: 2, type: "wall_dark", note: "副散热翼机械伺服传动梁" },
-  { x: 19, y: 11, w: 11, h: 2, type: "wall_dark", note: "气动应急释放高压储气罐群" },
+  // Heavy coolant pipe & actuator banks mounted flush against north/south bulkheads
+  { x: 1, y: 1, w: 10, h: 2, type: "wall_dark", note: "主反应堆高温导热母管群" },
+  { x: 1, y: 15, w: 10, h: 2, type: "wall_dark", note: "液氮循环主泵机组" },
+  { x: 21, y: 1, w: 10, h: 2, type: "wall_dark", note: "副散热翼液压伺服动力群" },
+  { x: 21, y: 15, w: 10, h: 2, type: "wall_dark", note: "紧急爆破释放高压储气罐" },
 
-  // Warning thresholds / safety markings
-  { x: 13, y: 3, w: 1, h: 12, type: "floor_light", note: "西侧耐热作业警示线" },
-  { x: 18, y: 3, w: 1, h: 12, type: "floor_light", note: "东侧高压旁路警示线" },
+  // Central control corridor runner & safety warning lines
+  { x: 15, y: 2, w: 2, h: 1, type: "floor_light", note: "控制廊北端地灯" },
+  { x: 15, y: 8, w: 2, h: 1, type: "floor_light", note: "中控主通道地灯" },
+  { x: 15, y: 11, w: 2, h: 1, type: "floor_light", note: "中控主通道地灯" },
+  { x: 15, y: 15, w: 2, h: 1, type: "floor_light", note: "南向通道地灯" },
 
-  // Status monitor banks along south radiation shield
-  { x: 10, y: REACTOR_ROWS - 1, w: 4, h: 1, type: "screen", note: "反应堆热芯实时热成像大屏" },
-  { x: 18, y: REACTOR_ROWS - 1, w: 4, h: 1, type: "screen", note: "副散热翼角度伺服反馈屏" }
+  // Thermal imaging monitor banks flanking south door inside Central Control Gallery
+  { x: 12, y: REACTOR_ROWS - 1, w: 2, h: 1, type: "screen", note: "一回路热芯实时热成像幕" },
+  { x: 18, y: REACTOR_ROWS - 1, w: 2, h: 1, type: "screen", note: "散热翼作动伺服反馈幕" }
 ];
 
 export function reactorBayGrid(): TileType[][] {

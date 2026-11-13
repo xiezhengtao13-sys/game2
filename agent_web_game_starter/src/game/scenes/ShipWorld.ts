@@ -8,6 +8,8 @@ import { findInteractable, reachPoint, type Interactable } from "../systems/Inte
 import { Dialogue, type DialogueChoice, type DialogueLine } from "../systems/Dialogue";
 import { PLAYER_INTERACT_REACH } from "../config";
 import {
+  exteriorKindAt,
+  isFloor,
   placeAt,
   shipSpawn,
   FORE_ORIGIN,
@@ -15,9 +17,13 @@ import {
   CABIN_ORIGIN,
   TRANSIT_ORIGIN,
   L1_ORIGIN,
+  R1_ORIGIN,
   HABITAT_ORIGIN,
+  L2_ORIGIN,
+  MEDICAL_ORIGIN,
   HANGAR_ORIGIN,
   REACTOR_ORIGIN,
+  PROPULSION_ORIGIN,
   type Place
 } from "../map/shipMap";
 import {
@@ -723,15 +729,15 @@ export class ShipWorld implements GameWorld {
       if (check.ok && !this.rpg.hasItem("med_stim")) {
         this.rpg.addItem({
           id: "med_stim",
-          name: "抗辐宁急救注射剂",
-          icon: "💉",
+          name: "舰载创伤急救包",
+          icon: "🩹",
           category: "consumable",
-          desc: "应急储备注射剂，可回复生命与清除辐射。",
-          bonusDesc: "+40 HP / -50 RAD"
+          desc: "工勤标准应急医疗包，可处理烫伤外伤并缓解热应激。",
+          bonusDesc: "+40 HP / -50 热应激"
         }, anchor.x, anchor.y);
       }
       const text = check.ok
-        ? `【交涉成功】[魅力/话术生效] ${person.name}神色明显缓和下来，拍了拍你的肩膀：「还是你们基层干活稳重，这支备用【抗辐宁注射剂】拿好，深空轮班别硬撑。」`
+        ? `【交涉成功】[魅力/话术生效] ${person.name}神色明显缓和下来，拍了拍你的肩膀：「还是你们基层干活稳重，这盒备用【舰载创伤急救包】拿好，深空轮班别硬撑。」`
         : `【交涉受挫】${person.name}摆了摆手：「现在当班呢，别扯那些有的没的，抓紧把手头活干完吧。」`;
       this.dialogue.open([{ speaker: person.name, text, portraitId: this.portraitForPerson(person.id) }]);
       this.onDialogueChange?.(this.dialogue);
@@ -835,7 +841,7 @@ export class ShipWorld implements GameWorld {
             icon: "🦺",
             category: "gear",
             desc: "加厚陶瓷胸甲与独立加压闭路呼吸循环系统，专为高温聚变泵房抢险设计。",
-            bonusDesc: "热辐射减免 +85%",
+            bonusDesc: "高温热应激减免 +85%",
             equipped: true
           }, prop.x, prop.y);
           this.rpg.grantXp(100, "整备防热装备", prop.x, prop.y);
@@ -1064,11 +1070,11 @@ export class ShipWorld implements GameWorld {
                 this.rpg.completedChecks.add("medic_stim_gift");
                 this.rpg.addItem({
                   id: "med_stim",
-                  name: "抗辐宁急救注射剂",
-                  icon: "💉",
+                  name: "舰载创伤急救包",
+                  icon: "🩹",
                   category: "consumable",
-                  desc: "舰载损管急救剂，可快速缓解热灼伤与清除辐射。",
-                  bonusDesc: "+40 HP / -50 RAD",
+                  desc: "医务室冷敷急救包，配备水凝胶烫伤敷料与口服补液盐。",
+                  bonusDesc: "+40 HP / -50 热应激",
                   quantity: 1
                 }, person.x, person.y);
               }
@@ -1077,7 +1083,7 @@ export class ShipWorld implements GameWorld {
                   speaker: "陈医生",
                   portraitId: "portrait_medic",
                   text: r.ok
-                    ? "「天哪，零点零二赫兹的微弱杂波让你找出来了！难怪 407 号冷机老是虚警。这支库存的【抗辐宁急救针】请收下，下面炉房热毒重，随时保命。」"
+                    ? "「天哪，零点零二赫兹的微弱杂波让你找出来了！难怪 407 号冷机老是虚警。这盒库存的【舰载创伤急救包】请收下，下面炉房又闷又烫，防中暑防烫伤随时保命。」"
                     : "「谢谢你的好意，不过休眠母线的精密信号校准最好还是留给专职医工电脑自动扫频吧。」"
                 }
               ];
@@ -1573,8 +1579,10 @@ export class ShipWorld implements GameWorld {
     }
 
     this.renderBackdrop(renderer);
+    this.renderExteriorMegastructures(renderer);
     this.renderDeck(renderer);
     this.atmosphere.renderWallDepthAndAO(renderer, this.map);
+    this.renderArchitecturalDetails(renderer);
     this.renderSecurityGates(renderer);
     this.renderShadowsAndPaths(renderer);
     this.renderProps(renderer);
@@ -1771,7 +1779,267 @@ export class ShipWorld implements GameWorld {
   }
 
   private renderBackdrop(renderer: Renderer): void {
-    renderer.drawRect(0, 0, renderer.width, renderer.height, { color: "#06090e" });
+    const cam = renderer.camera;
+    const vx = cam.worldX;
+    const vy = cam.worldY;
+    const vw = cam.viewportWidth;
+    const vh = cam.viewportHeight;
+
+    // Restrained, near-pure obsidian void per docs/设定集.md ("几乎全是黑的。星星很小、很锐利")
+    renderer.drawRect(vx, vy, vw, vh, { color: "#03060c" });
+
+    // Subtle deep-space cosmic dust veil on the starboard horizon
+    if (renderer.drawGradientRect) {
+      renderer.drawGradientRect(
+        vx + vw * 0.55,
+        vy,
+        vw * 0.45,
+        vh,
+        [
+          { offset: 0, color: "rgba(15, 29, 54, 0)" },
+          { offset: 0.65, color: "rgba(18, 34, 62, 0.14)" },
+          { offset: 1, color: "rgba(12, 22, 44, 0.05)" }
+        ],
+        false
+      );
+    }
+
+    // Sharp pinpoint stars across fixed world cells (zero motion streaks)
+    const cell = 110;
+    const gx0 = Math.floor(vx / cell) - 1;
+    const gy0 = Math.floor(vy / cell) - 1;
+    const gx1 = Math.ceil((vx + vw) / cell) + 1;
+    const gy1 = Math.ceil((vy + vh) / cell) + 1;
+
+    for (let gy = gy0; gy <= gy1; gy++) {
+      for (let gx = gx0; gx <= gx1; gx++) {
+        let h = ((gx * 73856093) ^ (gy * 19349663)) >>> 0;
+        for (let k = 0; k < 3; k++) {
+          h = (h * 1664525 + 1013904223) >>> 0;
+          const sx = gx * cell + (h % cell);
+          h = (h * 1664525 + 1013904223) >>> 0;
+          const sy = gy * cell + (h % cell);
+          h = (h * 1664525 + 1013904223) >>> 0;
+          const tier = h % 12;
+          const size = tier === 0 ? 2 : 1.25;
+          const color =
+            tier === 0
+              ? "#e0f2fe"
+              : tier < 4
+              ? "rgba(226, 232, 240, 0.85)"
+              : tier < 8
+              ? "rgba(148, 163, 184, 0.55)"
+              : "rgba(253, 230, 138, 0.48)";
+          renderer.drawRect(sx, sy, size, size, { color });
+        }
+      }
+    }
+  }
+
+  /**
+   * Renders external industrial & megastructure assemblies hovering out in deep vacuum:
+   * bow ablation discs, L-2 orbital foundry gantry cranes, hangar magnetic recovery arms,
+   * R-1 counter-rotating 440m double rings, 1,200m crimson aft radiator wings, and 4 stern thruster bells.
+   */
+  private renderExteriorMegastructures(renderer: Renderer): void {
+    const s = this.map.tileSize;
+    const vx0 = renderer.camera.worldX;
+    const vy0 = renderer.camera.worldY;
+    const vx1 = vx0 + renderer.camera.viewportWidth;
+    const vy1 = vy0 + renderer.camera.viewportHeight;
+    const t = this.elapsedTime;
+
+    // 1. Fore Bow Multi-Layer Carbon-Silicon Ablation Shield Arcs (0-300m)
+    if (vy0 < (FORE_ORIGIN.ty + 6) * s && vy1 > 0) {
+      const cx = (FORE_ORIGIN.tx + 15) * s;
+      // Forward broad shield bumper plate bridging cols 23..60
+      renderer.drawRect(23 * s, 6, 38 * s, 26, {
+        color: "#222936",
+        stroke: { width: 2, color: "#475569" },
+        radius: 6
+      });
+      renderer.drawRect(cx - 12 * s, 32, 24 * s, 22, {
+        color: "#1a202c",
+        stroke: { width: 2, color: "#334155" },
+        radius: 3
+      });
+      for (let x = 25; x <= 58; x += 4) {
+        renderer.drawLine?.(x * s, 32, x * s, 2 * s, "#475569", 3);
+      }
+    }
+
+    // 2. L-2 External Open-Vacuum Foundry Platform & Articulated Welding Cranes
+    const l2WestEdge = L2_ORIGIN.tx * s;
+    const l2Top = L2_ORIGIN.ty * s;
+    const l2Bot = (L2_ORIGIN.ty + 23) * s;
+    if (vx0 < l2WestEdge + 32 && vy1 > l2Top - 40 && vy0 < l2Bot + 40) {
+      const craneArmY = l2Top + 10.5 * s + Math.sin(t * 0.45) * 42;
+      // Cantilevered steel vacuum work platform projecting into space west of L-2
+      renderer.drawRect(8, l2Top + 2 * s, l2WestEdge - 8, 5 * s, {
+        color: "rgba(22, 28, 38, 0.85)",
+        stroke: { width: 2, color: "#475569" },
+        radius: 3
+      });
+      renderer.drawRect(8, l2Top + 14 * s, l2WestEdge - 8, 5 * s, {
+        color: "rgba(22, 28, 38, 0.85)",
+        stroke: { width: 2, color: "#475569" },
+        radius: 3
+      });
+      // Truss cross-girders & OSHA yellow gantry crane boom
+      for (let py = l2Top + 2.5 * s; py < l2Top + 19 * s; py += s) {
+        renderer.drawLine?.(12, py, l2WestEdge - 2, py + s * 0.65, "rgba(71, 85, 105, 0.65)", 2);
+      }
+      renderer.drawRect(18, craneArmY - 6, l2WestEdge - 14, 12, {
+        color: "#b45309",
+        stroke: { width: 1.5, color: "#fbbf24" },
+        radius: 2
+      });
+      // Slow beacon strobe on external foundry crane tip
+      const strobe = Math.sin(t * 3.5) > 0.35;
+      renderer.drawRect(22, craneArmY - 3, 6, 6, {
+        color: strobe ? "#f59e0b" : "#78350f",
+        radius: 3
+      });
+      if (strobe) {
+        renderer.drawRadialLight?.(25, craneArmY, 34, "rgba(245, 158, 11, 0.35)", "rgba(0,0,0,0)", true);
+      }
+    }
+
+    // 3. R-1 440m Twin Counter-Rotating Habitat Rings outside East Panoramic Windows
+    const r1EastX = (R1_ORIGIN.tx + 20) * s;
+    const r1MidY = (R1_ORIGIN.ty + 11) * s;
+    if (vx1 > r1EastX - 180 && vy1 > r1MidY - 760 && vy0 < r1MidY + 760) {
+      // Twin radial bearing spoke bridges reaching right from R-1 atrium
+      renderer.drawRect(r1EastX, r1MidY - 1.4 * s, 120, 2.8 * s, {
+        color: "#2b3444",
+        stroke: { width: 2, color: "#64748b" }
+      });
+      // Counter-rotating vertical ring arcs gliding outside the viewport windows!
+      const ringAx = r1EastX + 26;
+      const ringBx = r1EastX + 66;
+      const bandTop = (R1_ORIGIN.ty - 3) * s;
+      const bandH = 28 * s;
+
+      // Ring A hull ribbon moving slowly down (+1.35 rpm rim motion)
+      renderer.drawRect(ringAx, bandTop, 28, bandH, {
+        color: "#263040",
+        stroke: { width: 1.5, color: "#64748b" }
+      });
+      // Ring B counter-rotating outer hull ribbon moving up (-1.35 rpm)
+      renderer.drawRect(ringBx, bandTop, 24, bandH, {
+        color: "#1e2736",
+        stroke: { width: 1.5, color: "#475569" }
+      });
+
+      const scrollA = (t * 28) % 64;
+      const scrollB = (t * 28) % 64;
+      for (let wy = bandTop - 64; wy < bandTop + bandH; wy += 64) {
+        const ya = wy + scrollA;
+        if (ya >= bandTop && ya <= bandTop + bandH - 12) {
+          renderer.drawRect(ringAx + 6, ya, 14, 7, { color: "rgba(253, 224, 155, 0.82)", radius: 1 });
+          renderer.drawLine?.(ringAx, ya + 22, ringAx + 28, ya + 22, "#475569", 1.5);
+        }
+        const yb = wy + (64 - scrollB);
+        if (yb >= bandTop && yb <= bandTop + bandH - 12) {
+          renderer.drawRect(ringBx + 5, yb, 12, 6, { color: "rgba(186, 230, 253, 0.72)", radius: 1 });
+          renderer.drawLine?.(ringBx, yb + 20, ringBx + 24, yb + 20, "#334155", 1.5);
+        }
+      }
+    }
+
+    // 4. Hangar West External Magnetic Shuttle Recovery Booms
+    const hWestX = HANGAR_ORIGIN.tx * s;
+    const hTopY = HANGAR_ORIGIN.ty * s;
+    if (vx0 < hWestX + 64 && vx1 > hWestX - 420 && vy1 > hTopY && vy0 < hTopY + 18 * s) {
+      for (const railRow of [4.2, 12.2]) {
+        const ry = hTopY + railRow * s;
+        renderer.drawRect(hWestX - 280, ry, 280, s * 1.4, {
+          color: "#1a2230",
+          stroke: { width: 2, color: "#475569" },
+          radius: 3
+        });
+        for (let k = 0; k < 5; k++) {
+          const lit = Math.floor(t * 3 + k) % 5 === 0;
+          const bx = hWestX - 48 - k * 52;
+          renderer.drawRect(bx, ry + s * 0.55, 10, 6, {
+            color: lit ? "#38bdf8" : "#1e3a5f",
+            radius: 2
+          });
+        }
+      }
+    }
+
+    // 5. Aft Propulsion 1,200m Deployable Crimson Radiator Wings & 4 Fusion Thruster Bells
+    const propTopY = PROPULSION_ORIGIN.ty * s;
+    const propPortX = PROPULSION_ORIGIN.tx * s; // 14 * s = 672
+    const propStbdX = (PROPULSION_ORIGIN.tx + 56) * s; // 70 * s = 3360
+    const propBotY = (PROPULSION_ORIGIN.ty + 15) * s;
+    if (vy1 > propTopY - 80 && vy0 < propBotY + 140) {
+      const heatPulse = this.crisis.isAlarmActive
+        ? 0.55 + Math.sin(t * 7) * 0.25
+        : 0.28 + Math.sin(t * 1.6) * 0.05;
+      const finColor = this.crisis.isAlarmActive ? "#7f1d1d" : "#451216";
+      const finEdge = this.crisis.isAlarmActive
+        ? `rgba(249, 115, 22, ${heatPulse.toFixed(2)})`
+        : `rgba(220, 38, 38, ${heatPulse.toFixed(2)})`;
+
+      // Port & Starboard 600m Radiator Wing Spines + Fin Banks spanning across space
+      for (const wing of [
+        { x: 16, w: propPortX - 18 },
+        { x: propStbdX + 2, w: this.map.pixelWidth - propStbdX - 18 }
+      ]) {
+        if (vx1 < wing.x || vx0 > wing.x + wing.w) continue;
+        // Central deployment titanium boom
+        renderer.drawRect(wing.x, propTopY + 7 * s - 8, wing.w, 16, {
+          color: "#2b323d",
+          stroke: { width: 2, color: "#64748b" }
+        });
+        // Ribbed high-temperature dark-crimson radiator fins fanning up & down
+        for (let fx = wing.x + 14; fx < wing.x + wing.w - 28; fx += 44) {
+          renderer.drawRect(fx, propTopY + 1.5 * s, 28, 5 * s - 6, {
+            color: finColor,
+            stroke: { width: 1.5, color: finEdge },
+            radius: 2
+          });
+          renderer.drawRect(fx, propTopY + 7.5 * s + 6, 28, 5.5 * s, {
+            color: finColor,
+            stroke: { width: 1.5, color: finEdge },
+            radius: 2
+          });
+        }
+      }
+
+      // 4 Giant Magnetic-Confinement Fusion Thruster Bells on Stern
+      for (const localCol of [8.5, 22.0, 33.5, 46.5]) {
+        const nx = (PROPULSION_ORIGIN.tx + localCol) * s;
+        if (nx + 120 < vx0 || nx - 120 > vx1) continue;
+        renderer.drawRect(nx - 68, propBotY, 136, 24, {
+          color: "#252b36",
+          stroke: { width: 2, color: "#64748b" }
+        });
+        renderer.drawRect(nx - 88, propBotY + 24, 176, 46, {
+          color: "#151a24",
+          stroke: { width: 2, color: "#475569" },
+          radius: 5
+        });
+        renderer.drawEllipse?.(nx, propBotY + 70, 62, 16, "rgba(56, 189, 248, 0.24)", true);
+      }
+    }
+
+    // 6. Autonomous Hull Surface Maintenance Rail Crawler Bot cruising central exterior spine
+    const botY = ((65 + ((Math.sin(t * 0.08) + 1) / 2) * 116) * s);
+    const botX = 36 * s + 16;
+    if (botX > vx0 - 40 && botX < vx1 + 40 && botY > vy0 - 40 && botY < vy1 + 40) {
+      renderer.drawRect(botX - 8, botY - 10, 16, 20, {
+        color: "#d97706",
+        stroke: { width: 1.5, color: "#1e293b" },
+        radius: 3
+      });
+      renderer.drawRect(botX - 2, botY - 2, 4, 4, {
+        color: Math.sin(t * 6) > 0 ? "#fef08a" : "#78350f",
+        radius: 2
+      });
+    }
   }
 
   private renderDeck(renderer: Renderer): void {
@@ -1785,12 +2053,231 @@ export class ShipWorld implements GameWorld {
     };
 
     for (const tile of this.map.visibleTiles(view)) {
+      const wx = tile.tx * size;
+      const wy = tile.ty * size;
+
+      if (tile.type === "hull") {
+        const kind = exteriorKindAt(this.map, tile.tx, tile.ty);
+        if (kind === "space") continue;
+
+        if (kind === "truss") {
+          // Open triangular steel girder framework with cosmic stars visible behind!
+          renderer.drawRect(wx + 2, wy + 2, size - 4, size - 4, {
+            stroke: { width: 3, color: "#475569" }
+          });
+          renderer.drawLine?.(wx + 2, wy + 2, wx + size - 2, wy + size - 2, "#3b4454", 2.2);
+          renderer.drawLine?.(wx + size - 2, wy + 2, wx + 2, wy + size - 2, "#3b4454", 2.2);
+          // Insulated cryo/copper power conduit running vertically along spine girders
+          renderer.drawLine?.(wx + size / 2, wy, wx + size / 2, wy + size, "rgba(217, 119, 6, 0.45)", 3);
+          renderer.drawRect(wx + size / 2 - 4, wy + size / 2 - 4, 8, 8, {
+            color: "#64748b",
+            stroke: { width: 1, color: "#1e293b" }
+          });
+          continue;
+        }
+
+        if (kind === "shield") {
+          // Fore Bow Carbon-Silicon Ablation Armor Disc Plating
+          renderer.drawRect(wx, wy, size, size, {
+            color: "#1f242f",
+            stroke: { width: 1.5, color: "#3b4354" }
+          });
+          renderer.drawLine?.(wx, wy + 12, wx + size, wy + 12, "#475569", 1.5);
+          renderer.drawLine?.(wx, wy + 34, wx + size, wy + 34, "#334155", 1.5);
+          if ((tile.tx + tile.ty) % 5 === 0) {
+            renderer.drawRect(wx + 18, wy + 18, 6, 6, { color: "rgba(180, 83, 9, 0.38)", radius: 2 });
+          }
+          continue;
+        }
+
+        // Sleek contoured exterior spacecraft titanium hull fairing hugging solid walls
+        const isSolidShip = (nx: number, ny: number) => {
+          const nt = this.map.tileAt(nx, ny);
+          return nt === "wall" || nt === "wall_dark" || nt === "screen";
+        };
+        const touchesS = isSolidShip(tile.tx, tile.ty + 1);
+        const touchesN = isSolidShip(tile.tx, tile.ty - 1);
+        const touchesE = isSolidShip(tile.tx + 1, tile.ty);
+        const touchesW = isSolidShip(tile.tx - 1, tile.ty);
+
+        if (touchesS) {
+          renderer.drawRect(wx, wy + size - 13, size, 13, {
+            color: "#222936",
+            stroke: { width: 1, color: "#151a23" }
+          });
+          renderer.drawLine?.(wx, wy + size - 13, wx + size, wy + size - 13, "#475569", 1.5);
+          renderer.drawLine?.(wx + 6, wy + size - 6, wx + size - 6, wy + size - 6, "#334155", 1);
+        }
+        if (touchesN) {
+          renderer.drawRect(wx, wy, size, 13, {
+            color: "#222936",
+            stroke: { width: 1, color: "#151a23" }
+          });
+          renderer.drawLine?.(wx, wy + 13, wx + size, wy + 13, "#475569", 1.5);
+        }
+        if (touchesE) {
+          renderer.drawRect(wx + size - 13, wy, 13, size, {
+            color: "#222936",
+            stroke: { width: 1, color: "#151a23" }
+          });
+          renderer.drawLine?.(wx + size - 13, wy, wx + size - 13, wy + size, "#475569", 1.5);
+        }
+        if (touchesW) {
+          renderer.drawRect(wx, wy, 13, size, {
+            color: "#222936",
+            stroke: { width: 1, color: "#151a23" }
+          });
+          renderer.drawLine?.(wx + 13, wy, wx + 13, wy + size, "#475569", 1.5);
+        }
+        if ((tile.tx * 7 + tile.ty * 13) % 19 === 0 && (touchesS || touchesN || touchesE || touchesW)) {
+          const bx = touchesE ? wx + size - 8 : touchesW ? wx + 4 : wx + size / 2 - 2;
+          const by = touchesS ? wy + size - 8 : touchesN ? wy + 4 : wy + size / 2 - 2;
+          renderer.drawRect(bx, by, 4, 4, {
+            color: "rgba(245, 158, 11, 0.72)",
+            radius: 2
+          });
+        }
+        continue;
+      }
+
+      if (tile.type === "window") {
+        // Transparent armored spacecraft viewport looking directly into real stars, cranes & rings!
+        renderer.drawRect(wx, wy, size, size, {
+          color: "rgba(12, 24, 42, 0.28)",
+          stroke: { width: 4, color: "#475569" }
+        });
+        renderer.drawRect(wx + 4, wy + 4, size - 8, size - 8, {
+          stroke: { width: 1.5, color: "#94a3b8" }
+        });
+        renderer.drawLine?.(wx + 10, wy + size - 10, wx + 22, wy + 12, "rgba(186, 230, 253, 0.22)", 2);
+        renderer.drawLine?.(wx + 22, wy + size - 8, wx + 34, wy + 18, "rgba(186, 230, 253, 0.14)", 1.5);
+        continue;
+      }
+
       const image = this.assets?.image(`tile_${tile.type}`) ?? null;
-      renderer.drawSprite(image, tile.tx * size + size / 2, tile.ty * size + size / 2, {
+      renderer.drawSprite(image, wx + size / 2, wy + size / 2, {
         anchor: "center",
         size: { w: size, h: size },
         fallbackColor: "#ff00ff"
       });
+    }
+  }
+
+  /**
+   * Renders grounded architectural craft inside the ship:
+   * sliding pocket doorway tracks & metallic jambs, maglev steel rails,
+   * shuttle pad tie-downs, industrial bridge crane stripes, wet-room floor drains, and cryo labels.
+   */
+  private renderArchitecturalDetails(renderer: Renderer): void {
+    const s = this.map.tileSize;
+    const view = {
+      x: renderer.camera.worldX,
+      y: renderer.camera.worldY,
+      width: renderer.camera.viewportWidth,
+      height: renderer.camera.viewportHeight
+    };
+    const isSolidBulkhead = (tx: number, ty: number) => {
+      const t = this.map.tileAt(tx, ty);
+      return t === "wall" || t === "wall_dark" || t === "screen";
+    };
+    const floorAt = (tx: number, ty: number) => isFloor(this.map.tileAt(tx, ty) ?? undefined);
+
+    for (const tile of this.map.visibleTiles(view)) {
+      const { tx, ty, type } = tile;
+      const wx = tx * s;
+      const wy = ty * s;
+
+      // 1. Sliding bulkhead pocket doorways & sill plates
+      if (isFloor(type)) {
+        const hLeftWall = isSolidBulkhead(tx - 1, ty) && floorAt(tx - 1, ty - 1) && floorAt(tx - 1, ty + 1);
+        const hRightWall = isSolidBulkhead(tx + 1, ty) && floorAt(tx + 1, ty - 1) && floorAt(tx + 1, ty + 1);
+        if ((hLeftWall || hRightWall) && floorAt(tx, ty - 1) && floorAt(tx, ty + 1)) {
+          renderer.drawRect(wx, wy + s / 2 - 4, s, 8, { color: "rgba(30, 41, 59, 0.65)" });
+          renderer.drawLine?.(wx, wy + s / 2, wx + s, wy + s / 2, "rgba(148, 163, 184, 0.55)", 1.5);
+          if (hLeftWall) {
+            renderer.drawRect(wx, wy + 8, 6, s - 16, { color: "#64748b", stroke: { width: 1, color: "#0f172a" } });
+            renderer.drawRect(wx + 1, wy + s / 2 - 2, 3, 4, { color: "#34d399" });
+          }
+          if (hRightWall) {
+            renderer.drawRect(wx + s - 6, wy + 8, 6, s - 16, { color: "#64748b", stroke: { width: 1, color: "#0f172a" } });
+            renderer.drawRect(wx + s - 4, wy + s / 2 - 2, 3, 4, { color: "#34d399" });
+          }
+        }
+
+        const vTopWall = isSolidBulkhead(tx, ty - 1) && floorAt(tx - 1, ty - 1) && floorAt(tx + 1, ty - 1);
+        const vBotWall = isSolidBulkhead(tx, ty + 1) && floorAt(tx - 1, ty + 1) && floorAt(tx + 1, ty + 1);
+        if ((vTopWall || vBotWall) && floorAt(tx - 1, ty) && floorAt(tx + 1, ty)) {
+          renderer.drawRect(wx + s / 2 - 4, wy, 8, s, { color: "rgba(30, 41, 59, 0.65)" });
+          renderer.drawLine?.(wx + s / 2, wy, wx + s / 2, wy + s, "rgba(148, 163, 184, 0.55)", 1.5);
+          if (vTopWall) {
+            renderer.drawRect(wx + 8, wy, s - 16, 6, { color: "#64748b", stroke: { width: 1, color: "#0f172a" } });
+            renderer.drawRect(wx + s / 2 - 2, wy + 1, 4, 3, { color: "#34d399" });
+          }
+          if (vBotWall) {
+            renderer.drawRect(wx + 8, wy + s - 6, s - 16, 6, { color: "#64748b", stroke: { width: 1, color: "#0f172a" } });
+            renderer.drawRect(wx + s / 2 - 2, wy + s - 4, 4, 3, { color: "#34d399" });
+          }
+        }
+      }
+
+      // 2. Transit Hub physical maglev guide rails & yellow platform warning lips
+      const trRelX = tx - TRANSIT_ORIGIN.tx;
+      const trRelY = ty - TRANSIT_ORIGIN.ty;
+      if (trRelX >= 1 && trRelX <= 32 && (trRelY === 11 || trRelY === 13) && (trRelX < 15 || trRelX > 18)) {
+        renderer.drawRect(wx + 8, wy + 4, 6, s - 8, { color: "rgba(15, 23, 42, 0.65)" });
+        renderer.drawRect(wx + 32, wy + 4, 6, s - 8, { color: "rgba(15, 23, 42, 0.65)" });
+        renderer.drawLine?.(wx, wy + s * 0.3, wx + s, wy + s * 0.3, "#94a3b8", 2.5);
+        renderer.drawLine?.(wx, wy + s * 0.7, wx + s, wy + s * 0.7, "#94a3b8", 2.5);
+      }
+      if (trRelX >= 1 && trRelX <= 32 && (trRelY === 10 || trRelY === 14) && (trRelX < 15 || trRelX > 18)) {
+        const curbY = trRelY === 10 ? wy + s - 4 : wy;
+        renderer.drawRect(wx, curbY, s, 4, { color: "rgba(245, 158, 11, 0.55)" });
+      }
+
+      // 3. Crew Habitat Water-Recycling Utility Wet-Room Drainage Grates & Dorm Trim
+      const habX = tx - HABITAT_ORIGIN.tx;
+      const habY = ty - HABITAT_ORIGIN.ty;
+      if ((habX === 28 && habY === 16) || (habX === 28 && habY === 19)) {
+        renderer.drawRect(wx + 10, wy + 10, s - 20, s - 20, {
+          color: "#0f172a",
+          stroke: { width: 1.5, color: "#64748b" },
+          radius: 3
+        });
+        for (let gy = wy + 16; gy < wy + s - 12; gy += 6) {
+          renderer.drawLine?.(wx + 14, gy, wx + s - 14, gy, "#94a3b8", 1.5);
+        }
+      }
+
+      // 4. Hangar Bay Shuttle Tie-Down Rings & Magnetic Clamp Apron
+      const hanX = tx - HANGAR_ORIGIN.tx;
+      const hanY = ty - HANGAR_ORIGIN.ty;
+      if ((hanX === 3 || hanX === 9) && (hanY === 5 || hanY === 13)) {
+        renderer.drawRect(wx + 14, wy + 14, 20, 20, {
+          color: "rgba(30, 41, 59, 0.85)",
+          stroke: { width: 2, color: "#f59e0b" },
+          radius: 10
+        });
+      }
+
+      // 5. Medical Cryo-Vault Identification Plates (Vault I..IV)
+      const medX = tx - MEDICAL_ORIGIN.tx;
+      const medY = ty - MEDICAL_ORIGIN.ty;
+      if (medX === 5 && medY === 3) {
+        renderer.drawWorldText("VAULT-I  -135°C", wx + 24, wy + 18, { color: "rgba(103, 232, 249, 0.55)", size: 10, align: "center" });
+      } else if (medX === 5 && medY === 14) {
+        renderer.drawWorldText("VAULT-II  -135°C", wx + 24, wy + 18, { color: "rgba(103, 232, 249, 0.55)", size: 10, align: "center" });
+      } else if (medX === 24 && medY === 3) {
+        renderer.drawWorldText("VAULT-III  -135°C", wx + 24, wy + 18, { color: "rgba(103, 232, 249, 0.55)", size: 10, align: "center" });
+      } else if (medX === 24 && medY === 14) {
+        renderer.drawWorldText("VAULT-IV  -135°C", wx + 24, wy + 18, { color: "rgba(103, 232, 249, 0.55)", size: 10, align: "center" });
+      }
+
+      // 6. Reactor Heat-Sink Blast Partition Chevrons
+      const rctX = tx - REACTOR_ORIGIN.tx;
+      const rctY = ty - REACTOR_ORIGIN.ty;
+      if ((rctX === 11 || rctX === 20) && (rctY === 7 || rctY === 9)) {
+        renderer.drawRect(wx + 4, wy + 4, s - 8, 5, { color: "rgba(249, 115, 22, 0.45)" });
+      }
     }
   }
 
