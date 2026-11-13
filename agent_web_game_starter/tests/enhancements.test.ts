@@ -49,25 +49,37 @@ describe("Camera Screen Shake mechanics", () => {
 });
 
 describe("Central Transit Maglev Fast-Travel", () => {
-  test("interacts with transit terminal to cycle across the 4 major ship hubs", () => {
+  test("blocks locked destinations at game start and cycles across unlocked stations progressively", () => {
     const world = ship();
     const initialY = world.player.y;
 
-    // Cycle to station 2 (transit station)
+    // 1. At start without midship_pass, transit refuses to depart Crew Habitat
     world.cycleTransitHub();
-    assert.notEqual(world.player.y, initialY);
-    assert.match(world.placeLabel, /主交通干线|生活区|中央交通站/);
+    assert.equal(world.player.y, initialY);
+    assert.equal(world.placeLabel, "远望号 · 船员生活区");
 
-    // Cycle to station 3 (hangar bay)
+    // 2. Grant all sector clearances -> cycles smoothly through all 6 ship stations
+    world.security.grant("midship_pass");
+    world.security.grant("crisis_override");
+    world.security.grant("bridge_pass");
+
+    world.cycleTransitHub();
+    assert.match(world.placeLabel, /中央交通枢纽/);
+
+    world.cycleTransitHub();
+    assert.match(world.placeLabel, /L-1 生态农业模块/);
+
     world.cycleTransitHub();
     assert.match(world.placeLabel, /机库/);
 
-    // Cycle to station 4 (reactor bay)
     world.cycleTransitHub();
     assert.match(world.placeLabel, /动力|反应堆/);
 
-    // Cycle wraps back to station 1 (bridge)
     world.cycleTransitHub();
     assert.match(world.placeLabel, /舰桥/);
+
+    // Wraps back to Crew Habitat start station
+    world.cycleTransitHub();
+    assert.match(world.placeLabel, /船员生活区/);
   });
 });

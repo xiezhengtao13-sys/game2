@@ -72,7 +72,9 @@ if (app && stage) {
 
   const renderDuty = () => {
     const duty = ship.duty;
-    const items = duty.tasks
+    const tasks = duty.visibleTasks;
+    const done = tasks.filter((t) => t.completed).length;
+    const items = tasks
       .map(
         (t) => `
         <div class="duty-item ${t.completed ? "done" : ""}">
@@ -84,8 +86,8 @@ if (app && stage) {
 
     tracker.innerHTML = `
       <div class="duty-header">
-        <span>二班例行巡检日志</span>
-        <span>${duty.completedCount}/${duty.totalCount}</span>
+        <span>${duty.phaseTitle}</span>
+        <span>${done}/${tasks.length}</span>
       </div>
       ${items}
     `;
@@ -146,9 +148,11 @@ if (app && stage) {
   renderExploration();
   ship.onExplorationChange = () => renderExploration();
 
-  // Holographic Ship Blueprint Minimap (M Key)
+  // Holographic 2D Ship Blueprint Minimap (M Key)
   const minimap = new ShipMinimap(app);
   const getMinimapState = () => ({
+    playerCol: Math.floor(ship.player.centerX / TILE),
+    totalCols: map.width,
     playerRow: Math.floor(ship.player.y / TILE),
     totalRows: map.height,
     placeLabel: ship.placeLabel,
@@ -156,9 +160,23 @@ if (app && stage) {
       ? ship.crisis.currentObjective?.title ?? ""
       : ship.crisis.isResolved
       ? ship.exploration.currentObjective.title
-      : ship.duty.tasks.find((t) => !t.completed)?.title ?? "完成当班巡检",
-    isCrisisActive: ship.crisis.isAlarmActive
+      : ship.duty.visibleTasks.find((t) => !t.completed)?.title ?? "找轮机长老周汇报进度",
+    isCrisisActive: ship.crisis.isAlarmActive,
+    clearances: {
+      midship: ship.security.hasClearance("midship_pass"),
+      crisis: ship.security.hasClearance("crisis_override"),
+      bridge: ship.security.hasClearance("bridge_pass"),
+      cabin: ship.security.hasClearance("captain_auth")
+    }
   });
+
+  ship.onSecurityChange = () => {
+    renderDuty();
+    falloutHud?.sync(ship.rpg);
+    if (minimap.visible) {
+      minimap.render(getMinimapState());
+    }
+  };
 
   // Classic Fallout Docked Bottom Console & Character Sheet (Tab / C)
   falloutHud = new FalloutHud(app, assets, {
@@ -336,6 +354,8 @@ interface Probe {
   rpgLevel: number;
   rpgHp: number;
   rpgRad: number;
+  waypointCount: number;
+  securityClearances: string[];
   artMissingCount: number;
   artFailureCount: number;
 }
@@ -373,6 +393,8 @@ function readProbe(): Probe {
     rpgLevel: ship.rpg.level,
     rpgHp: Math.round(ship.rpg.hp),
     rpgRad: Math.round(ship.rpg.rad),
+    waypointCount: ship.player.waypoints.length,
+    securityClearances: ship.security.grantedList(),
     artMissingCount: assets.missing().length,
     artFailureCount: assets.failures().length
   };

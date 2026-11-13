@@ -40,8 +40,8 @@ const SHAPES: Shape[] = [
   // Doorway openings
   { x: TRANSIT_NORTH_DOOR.x, y: TRANSIT_NORTH_DOOR.y, w: TRANSIT_NORTH_DOOR.w, h: TRANSIT_NORTH_DOOR.h, type: "floor_light", note: "北侧主入口" },
   { x: TRANSIT_SOUTH_DOOR.x, y: TRANSIT_SOUTH_DOOR.y, w: TRANSIT_SOUTH_DOOR.w, h: TRANSIT_SOUTH_DOOR.h, type: "floor_light", note: "南侧通往生活区入口" },
-  { x: TRANSIT_WEST_GATE.x, y: TRANSIT_WEST_GATE.y, w: TRANSIT_WEST_GATE.w, h: TRANSIT_WEST_GATE.h, type: "wall_dark", note: "西侧气闸门面板（L-1）" },
-  { x: TRANSIT_EAST_GATE.x, y: TRANSIT_EAST_GATE.y, w: TRANSIT_EAST_GATE.w, h: TRANSIT_EAST_GATE.h, type: "wall_dark", note: "东侧气闸门面板（R-1）" },
+  { x: TRANSIT_WEST_GATE.x, y: TRANSIT_WEST_GATE.y, w: TRANSIT_WEST_GATE.w, h: TRANSIT_WEST_GATE.h, type: "floor_light", note: "西侧气闸连廊（通往 L-1 农业生态模块）" },
+  { x: TRANSIT_EAST_GATE.x, y: TRANSIT_EAST_GATE.y, w: TRANSIT_EAST_GATE.w, h: TRANSIT_EAST_GATE.h, type: "floor_light", note: "东侧气闸连廊（通往 R-1 旋转生活环大厅）" },
 
   // Observation slits / windows along north wall
   { x: 4, y: 0, w: 3, h: 1, type: "window", note: "站台外部采光观测视窗" },

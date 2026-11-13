@@ -83,3 +83,51 @@ export function standableTiles(world: ShipWorld): Set<string> {
 
   return seen;
 }
+
+/**
+ * Every tile the player can actually walk onto from their current position under
+ * the active SecuritySystem bulkhead locks.
+ */
+export function unlockedTiles(world: ShipWorld): Set<string> {
+  const map = world.tileMap;
+  const size = map.tileSize;
+  const collider = { width: 22, height: 16 };
+
+  const blockedTile = (tx: number, ty: number) => world.security.isTileBlocked(tx, ty);
+  const free = (tx: number, ty: number) =>
+    !isBoxBlocked(
+      map,
+      {
+        x: tx * size + (size - collider.width) / 2,
+        y: ty * size + (size - collider.height) / 2,
+        ...collider
+      },
+      blockedTile
+    );
+
+  const start = feetTile(map, world.player.x, world.player.y);
+  const seen = new Set<string>();
+  if (!free(start.tx, start.ty)) return seen;
+
+  const queue = [{ tx: start.tx, ty: start.ty }];
+  seen.add(`${start.tx},${start.ty}`);
+
+  while (queue.length > 0) {
+    const { tx, ty } = queue.shift()!;
+    for (const [ox, oy] of [
+      [1, 0],
+      [-1, 0],
+      [0, 1],
+      [0, -1]
+    ]) {
+      const nx = tx + ox;
+      const ny = ty + oy;
+      const key = `${nx},${ny}`;
+      if (seen.has(key) || !map.inBounds(nx, ny) || !free(nx, ny)) continue;
+      seen.add(key);
+      queue.push({ tx: nx, ty: ny });
+    }
+  }
+
+  return seen;
+}

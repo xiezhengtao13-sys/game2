@@ -17,6 +17,8 @@ export const HABITAT_ROWS = 23;
 
 export const HABITAT_NORTH_DOOR = { x: 14, y: 0, w: 4, h: 1 };
 export const HABITAT_SOUTH_DOOR = { x: 14, y: HABITAT_ROWS - 1, w: 4, h: 1 };
+export const HABITAT_WEST_DOOR = { x: 0, y: 10, w: 1, h: 3 };
+export const HABITAT_EAST_DOOR = { x: HABITAT_COLUMNS - 1, y: 10, w: 1, h: 3 };
 
 interface Shape {
   x: number;
@@ -37,6 +39,12 @@ const SHAPES: Shape[] = [
   // Doorway openings
   { x: HABITAT_NORTH_DOOR.x, y: HABITAT_NORTH_DOOR.y, w: HABITAT_NORTH_DOOR.w, h: HABITAT_NORTH_DOOR.h, type: "floor_light", note: "北侧主入口导引地灯" },
   { x: HABITAT_SOUTH_DOOR.x, y: HABITAT_SOUTH_DOOR.y, w: HABITAT_SOUTH_DOOR.w, h: HABITAT_SOUTH_DOOR.h, type: "floor_light", note: "南侧主入口导引地灯" },
+  { x: HABITAT_WEST_DOOR.x, y: HABITAT_WEST_DOOR.y, w: HABITAT_WEST_DOOR.w, h: HABITAT_WEST_DOOR.h, type: "floor_light", note: "西侧通往 L-2 重工业车间入口" },
+  { x: HABITAT_EAST_DOOR.x, y: HABITAT_EAST_DOOR.y, w: HABITAT_EAST_DOOR.w, h: HABITAT_EAST_DOOR.h, type: "floor_light", note: "东侧通往 R-2 科研实验舱入口" },
+
+  // Lateral wing guide runner
+  { x: 2, y: 11, w: 11, h: 1, type: "floor_light", note: "西向 L-2 车间通道导引灯" },
+  { x: 19, y: 11, w: 11, h: 1, type: "floor_light", note: "东向 R-2 实验舱通道导引灯" },
 
   // Central corridor spine
   { x: 15, y: 2, w: 2, h: 1, type: "floor_light", note: "中轴步道导引灯" },

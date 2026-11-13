@@ -7,15 +7,32 @@ import type { GameAssets } from "../assets";
 import { findInteractable, reachPoint, type Interactable } from "../systems/Interaction";
 import { Dialogue, type DialogueChoice, type DialogueLine } from "../systems/Dialogue";
 import { PLAYER_INTERACT_REACH } from "../config";
-import { placeAt, shipSpawn } from "../map/shipMap";
+import {
+  placeAt,
+  shipSpawn,
+  FORE_ORIGIN,
+  BRIDGE_ORIGIN,
+  CABIN_ORIGIN,
+  TRANSIT_ORIGIN,
+  L1_ORIGIN,
+  HABITAT_ORIGIN,
+  HANGAR_ORIGIN,
+  REACTOR_ORIGIN,
+  type Place
+} from "../map/shipMap";
+import {
+  findSmartPath,
+  findBestInteractStandPoint,
+  type PathResult
+} from "../map/pathfinding";
 import { DutySystem } from "../systems/DutySystem";
 import { CrisisSystem } from "../systems/CrisisSystem";
 import { ExplorationSystem } from "../systems/ExplorationSystem";
 import { RpgSystem } from "../systems/RpgSystem";
+import { SecuritySystem, type SecurityGate } from "../systems/SecuritySystem";
 import { SpaceFlight } from "./SpaceFlight";
 import { PlanetSurface } from "./PlanetSurface";
 import { ShipAtmosphere } from "./shipLighting";
-import { HANGAR_ORIGIN } from "../map/shipMap";
 import {
   SHIP_PROPS,
   ALL_SHIP_PEOPLE,
@@ -26,8 +43,11 @@ import {
 import { sounds } from "../../engine/audio/SoundEffects";
 
 /**
- * The ship, as one continuous world, rendered with Baldur's Gate 3 / Diablo-grade
- * atmospheric lighting and driven by Classic Fallout CRPG mechanics.
+ * The full 2,800m Yuanwang colony ship as one continuous CRPG world:
+ *   - Intelligent A* pathfinding across 13 compartments + prop/corner smoothing
+ *   - Physical security bulkhead clearances isolating lower crewman zones at game start
+ *   - Three-phase crewman storyline leading from restricted Habitat/Workshop duties
+ *     -> Crisis Damage Control -> Command Commendation -> Planetary Exploration -> Captain's Quarters
  */
 export class ShipWorld implements GameWorld {
   readonly player: Player;
@@ -37,6 +57,7 @@ export class ShipWorld implements GameWorld {
   readonly crisis = new CrisisSystem();
   readonly exploration = new ExplorationSystem();
   readonly rpg = new RpgSystem();
+  readonly security = new SecuritySystem();
   readonly spaceFlight = new SpaceFlight();
   readonly planetSurface: PlanetSurface;
   readonly atmosphere = new ShipAtmosphere();
@@ -46,9 +67,11 @@ export class ShipWorld implements GameWorld {
   private readonly assets: GameAssets | null;
   private readonly props: readonly SceneProp[];
   private readonly people: readonly ScenePerson[];
-  private readonly interactables: readonly Interactable[];
+  private readonly baseInteractables: readonly Interactable[];
+  private readonly gateEntries: ReadonlyArray<{ gate: SecurityGate; item: Interactable }>;
   private readonly propById = new Map<string, SceneProp>();
   private readonly personById = new Map<string, ScenePerson>();
+  private readonly propFootprintTiles = new Set<string>();
 
   /** Dynamic screen shake mechanics. */
   private shakeIntensity = 0;
@@ -57,6 +80,7 @@ export class ShipWorld implements GameWorld {
   /** Mouse hover & click-to-interact state (Fallout style). */
   hoveredTarget: Interactable | null = null;
   private pendingClickTarget: { target: Interactable; rightClick: boolean } | null = null;
+  private pendingBlockedGate: SecurityGate | null = null;
   private mouseWorldX: number | null = null;
   private mouseWorldY: number | null = null;
   private lastCameraWorldX = 0;
@@ -64,37 +88,32 @@ export class ShipWorld implements GameWorld {
   private lastViewportWidth = 1280;
   private lastViewportHeight = 720;
 
-  /** Central transit maglev hub stations. */
+  /** Central transit maglev hub stations across the 84x204 hull. */
   private transitHubIndex = 0;
-  private readonly transitHubs = [
-    { name: "舰桥指挥区站台", tx: 20, ty: 14 },
-    { name: "中央穿梭站平台", tx: 20, ty: 48 },
-    { name: "穿梭机库备勤站台", tx: 10, ty: 78 },
-    { name: "后部主聚变动力机房", tx: 20, ty: 152 }
+  private readonly transitHubs: ReadonlyArray<{ name: string; place: Place; tx: number; ty: number }> = [
+    { name: "生活区中央站台", place: "crew_habitat", tx: HABITAT_ORIGIN.tx + 15, ty: HABITAT_ORIGIN.ty + 3 },
+    { name: "中央穿梭枢纽平台", place: "transit_hub", tx: TRANSIT_ORIGIN.tx + 16, ty: TRANSIT_ORIGIN.ty + 15 },
+    { name: "L-1 生态农业连廊", place: "agri_module", tx: L1_ORIGIN.tx + 16, ty: L1_ORIGIN.ty + 10 },
+    { name: "穿梭机机库备勤台", place: "hangar_bay", tx: HANGAR_ORIGIN.tx + 15, ty: HANGAR_ORIGIN.ty + 5 },
+    { name: "聚变排险反应堆泵房", place: "reactor_bay", tx: REACTOR_ORIGIN.tx + 15, ty: REACTOR_ORIGIN.ty + 4 },
+    { name: "舰桥核心指挥入口", place: "bridge", tx: BRIDGE_ORIGIN.tx + 20, ty: BRIDGE_ORIGIN.ty + 14 }
   ];
 
   /** What the player is being prompted about right now, or null. */
   private target: Interactable | null = null;
 
-  /** Ids of props already examined, so a person can react to what you have seen. */
+  /** Ids of props already examined, so people react to what you have seen. */
   private readonly seen = new Set<string>();
 
   /** True once the captain has spoken, so his remark about your looking occurs once. */
   private captainGreeted = false;
 
-  /** Told whenever the open dialogue changes, so the DOM box can redraw. */
+  /** Event listeners for DOM HUD sync. */
   onDialogueChange: ((dialogue: Dialogue | null) => void) | null = null;
-
-  /** Told whenever the duty task progress updates. */
   onDutyChange: ((duty: DutySystem) => void) | null = null;
-
-  /** Told whenever the chapter 1 crisis progress updates. */
   onCrisisChange: ((crisis: CrisisSystem) => void) | null = null;
-
-  /** Told whenever the chapter 2 exploration progress updates. */
   onExplorationChange: ((exploration: ExplorationSystem) => void) | null = null;
-
-  /** Told whenever RPG stats, XP, logs, or inventory update. */
+  onSecurityChange: ((security: SecuritySystem) => void) | null = null;
   onRpgChange: ((rpg: RpgSystem) => void) | null = null;
 
   constructor(
@@ -111,25 +130,46 @@ export class ShipWorld implements GameWorld {
     const spawn = shipSpawn(map.tileSize);
     this.player = new Player(spawn.x, spawn.y);
 
-    const interactables: Interactable[] = [];
+    const tileSize = map.tileSize;
+    const baseInteractables: Interactable[] = [];
 
     props.forEach((prop, index) => {
+      // Soft pathfinding penalty for props so automated paths steer neatly around tables/bunk beds
+      const pad = 8;
+      const minTx = Math.floor((prop.x - (prop.w * tileSize) / 2 + pad) / tileSize);
+      const maxTx = Math.floor((prop.x + (prop.w * tileSize) / 2 - pad) / tileSize);
+      const minTy = Math.floor((prop.y - (prop.h * tileSize) / 2 + pad) / tileSize);
+      const maxTy = Math.floor((prop.y + (prop.h * tileSize) / 2 - pad) / tileSize);
+      for (let ty = minTy; ty <= maxTy; ty++) {
+        for (let tx = minTx; tx <= maxTx; tx++) {
+          if (!this.security.gateAtTile(tx, ty)) {
+            this.propFootprintTiles.add(`${tx},${ty}`);
+          }
+        }
+      }
+
       if (!prop.lines || prop.lines.length === 0) return;
       const id = `prop-${index}`;
       this.propById.set(id, prop);
-      interactables.push({
+      baseInteractables.push({
         id,
         label: prop.label,
         x: prop.x,
         y: prop.y,
-        radius: Math.max(32, (Math.max(prop.w, prop.h) * map.tileSize) / 2)
+        radius: Math.max(32, (Math.max(prop.w, prop.h) * tileSize) / 2)
       });
     });
 
     for (const person of people) {
+      const ptx = Math.floor(person.x / tileSize);
+      const pty = Math.floor((person.y - 8) / tileSize);
+      if (!this.security.gateAtTile(ptx, pty)) {
+        this.propFootprintTiles.add(`${ptx},${pty}`);
+      }
+
       const id = `person-${person.id}`;
       this.personById.set(id, person);
-      interactables.push({
+      baseInteractables.push({
         id,
         label: person.promptLabel,
         x: person.x,
@@ -138,7 +178,38 @@ export class ShipWorld implements GameWorld {
       });
     }
 
-    this.interactables = interactables;
+    this.baseInteractables = baseInteractables;
+
+    this.gateEntries = this.security.gates().map((gate) => ({
+      gate,
+      item: {
+        id: `gate-${gate.id}`,
+        label: `${gate.name} [${gate.badgeText}]`,
+        x: ((gate.x0 + gate.x1 + 1) / 2) * tileSize,
+        y: ((gate.y0 + gate.y1 + 1) / 2) * tileSize,
+        radius: gate.orientation === "horizontal" ? tileSize * 1.9 : tileSize * 1.5
+      }
+    }));
+
+    void FORE_ORIGIN;
+    void CABIN_ORIGIN;
+  }
+
+  /** Bound predicates passed to movement collision and A* pathfinder. */
+  private readonly isSecurityBlocked = (tx: number, ty: number): boolean => {
+    return this.security.isTileBlocked(tx, ty);
+  };
+
+  private readonly tilePenalty = (tx: number, ty: number): number => {
+    return this.propFootprintTiles.has(`${tx},${ty}`) ? 12 : 0;
+  };
+
+  /** Dynamic interactable list including currently locked bulkhead doors. */
+  private activeInteractables(): Interactable[] {
+    const activeGates = this.gateEntries
+      .filter((entry) => !this.security.isGateOpen(entry.gate))
+      .map((entry) => entry.item);
+    return [...this.baseInteractables, ...activeGates];
   }
 
   get currentMode(): "deck" | "space_flight" | "planetary_surface" {
@@ -175,9 +246,9 @@ export class ShipWorld implements GameWorld {
     return this.interactionTarget?.label ?? null;
   }
 
-  /** Everything that can be examined, for tests and tooling. */
+  /** Everything that can be examined on deck, for tests and tooling. */
   get examinable(): readonly Interactable[] {
-    return this.interactables;
+    return this.baseInteractables;
   }
 
   get placeLabel(): string {
@@ -194,7 +265,7 @@ export class ShipWorld implements GameWorld {
     return PLACE_LABELS[placeAt(tx, ty)];
   }
 
-  private get currentPlace() {
+  private get currentPlace(): Place {
     const size = this.map.tileSize;
     const tx = Math.floor(this.player.centerX / size);
     const ty = Math.floor((this.player.y + this.player.height - this.player.colliderHeight / 2) / size);
@@ -206,14 +277,64 @@ export class ShipWorld implements GameWorld {
     this.shakeDuration = Math.max(this.shakeDuration, duration);
   }
 
+  /** Trigger smart A* pathfinding toward a world pixel coordinate from current feet center. */
+  walkToWorldPoint(worldX: number, worldY: number): PathResult {
+    const feetX = this.player.centerX;
+    const feetY = this.player.y + this.player.height - this.player.colliderHeight / 2;
+    const result = findSmartPath(
+      this.map,
+      { x: feetX, y: feetY },
+      { x: worldX, y: worldY },
+      {
+        extraBlocked: this.isSecurityBlocked,
+        tilePenalty: this.tilePenalty
+      }
+    );
+
+    this.pendingClickTarget = null;
+    if (result.partialBlocked && result.blockedByGateTile) {
+      const gate = this.security.gateAtTile(result.blockedByGateTile.tx, result.blockedByGateTile.ty);
+      if (result.waypoints.length === 0 && gate) {
+        this.player.clearMoveTarget();
+        this.pendingBlockedGate = null;
+        this.examineSecurityGate(gate);
+      } else {
+        this.pendingBlockedGate = gate;
+        this.player.setPath(result.waypoints);
+      }
+    } else {
+      this.pendingBlockedGate = null;
+      this.player.setPath(result.waypoints);
+    }
+
+    return result;
+  }
+
   cycleTransitHub(): void {
-    this.transitHubIndex = (this.transitHubIndex + 1) % this.transitHubs.length;
-    const dest = this.transitHubs[this.transitHubIndex];
+    const unlocked = this.transitHubs.filter((s) => this.security.canAccessPlace(s.place));
+    if (unlocked.length <= 1) {
+      sounds.playBeep(320);
+      this.rpg.pushLog(
+        "warn",
+        "【门禁调度拦截】当前仅获准活动于生活区与 L-2 车间，请找老周申领中层通行卡后再搭乘穿梭干线！"
+      );
+      this.rpg.spawnFloatingText(this.player.centerX, this.player.y - 24, "高权限站台未解锁", "#f87171");
+      this.onRpgChange?.(this.rpg);
+      return;
+    }
+
+    const currentStation = this.transitHubs[this.transitHubIndex];
+    let idxInUnlocked = unlocked.findIndex((s) => s.name === currentStation?.name);
+    idxInUnlocked = (idxInUnlocked + 1) % unlocked.length;
+    const dest = unlocked[idxInUnlocked];
+    this.transitHubIndex = this.transitHubs.indexOf(dest);
+
     const size = this.map.tileSize;
-    this.player.x = dest.tx * size;
+    this.player.x = dest.tx * size + (size - this.player.width) / 2;
     this.player.y = dest.ty * size;
     this.player.clearMoveTarget();
     this.pendingClickTarget = null;
+    this.pendingBlockedGate = null;
     this.player.animation.face("down");
     sounds.playTransitChime();
     this.addShake(5, 0.4);
@@ -250,7 +371,6 @@ export class ShipWorld implements GameWorld {
       }
     }
 
-    // Track mouse position in world coordinates
     const hasMouse = typeof input.mouseOver === "boolean" && input.mouseOver;
     if (hasMouse) {
       this.mouseWorldX = this.lastCameraWorldX + input.mouseX;
@@ -285,7 +405,6 @@ export class ShipWorld implements GameWorld {
       return;
     }
 
-    // Quick stim hotkey H
     if (input.wasPressed("KeyH")) {
       this.useHealingStim();
     }
@@ -318,7 +437,7 @@ export class ShipWorld implements GameWorld {
     }
 
     const place = this.currentPlace;
-    const inHotZone = this.crisis.isAlarmActive && place === "reactor_bay";
+    const inHotZone = this.crisis.isAlarmActive && (place === "reactor_bay" || place === "propulsion_aft");
     const prevHp = this.rpg.hp;
     this.rpg.update(dt, inHotZone, this.crisis.isSuitEquipped, this.player.centerX, this.player.y);
     if (this.rpg.hp !== prevHp) {
@@ -326,7 +445,6 @@ export class ShipWorld implements GameWorld {
       this.onRpgChange?.(this.rpg);
     }
 
-    // Update ambient particle simulation around visible deck
     this.atmosphere.update(
       dt,
       this.lastCameraWorldX,
@@ -337,11 +455,13 @@ export class ShipWorld implements GameWorld {
       this.crisis.isAlarmActive
     );
 
-    // Mouse hover lookup over world interactables
+    const activeItems = this.activeInteractables();
+
+    // Mouse hover lookup over world interactables + locked security gates
     this.hoveredTarget = null;
     if (this.mouseWorldX !== null && this.mouseWorldY !== null) {
       let bestDist = Infinity;
-      for (const item of this.interactables) {
+      for (const item of activeItems) {
         const d = Math.hypot(this.mouseWorldX - item.x, this.mouseWorldY - item.y);
         if (d <= Math.max(40, item.radius) && d < bestDist) {
           bestDist = d;
@@ -350,35 +470,65 @@ export class ShipWorld implements GameWorld {
       }
     }
 
-    // Mouse left/right click-to-move and click-to-interact
+    // Smart A* click-to-move and click-to-interact
     if ((input.leftClicked || input.rightClicked) && this.mouseWorldX !== null && this.mouseWorldY !== null) {
       if (this.hoveredTarget) {
         const rightClick = !!input.rightClicked;
-        const distToPlayer = Math.hypot(
-          this.hoveredTarget.x - this.player.centerX,
-          this.hoveredTarget.y - (this.player.y + this.player.height)
-        );
+        const feetY = this.player.y + this.player.height;
+        const distToPlayer = Math.hypot(this.hoveredTarget.x - this.player.centerX, this.hoveredTarget.y - feetY);
+
         if (distToPlayer <= this.hoveredTarget.radius + PLAYER_INTERACT_REACH + 16) {
           this.pendingClickTarget = null;
+          this.pendingBlockedGate = null;
           this.player.clearMoveTarget();
           this.triggerMouseInteract(this.hoveredTarget, rightClick);
           return;
-        } else {
+        }
+
+        const result = findBestInteractStandPoint(
+          this.map,
+          { x: this.player.centerX, y: this.player.y + this.player.height - this.player.colliderHeight / 2 },
+          { x: this.hoveredTarget.x, y: this.hoveredTarget.y },
+          this.hoveredTarget.radius,
+          PLAYER_INTERACT_REACH,
+          { extraBlocked: this.isSecurityBlocked, tilePenalty: this.tilePenalty }
+        );
+
+        if (result.partialBlocked && result.blockedByGateTile) {
+          const gate = this.security.gateAtTile(result.blockedByGateTile.tx, result.blockedByGateTile.ty);
+          this.pendingClickTarget = null;
+          this.pendingBlockedGate = gate;
+          this.player.setPath(result.waypoints);
+          if (result.waypoints.length === 0 && gate) {
+            this.pendingBlockedGate = null;
+            this.examineSecurityGate(gate);
+            return;
+          }
+        } else if (result.waypoints.length > 0) {
+          this.pendingBlockedGate = null;
           this.pendingClickTarget = { target: this.hoveredTarget, rightClick };
-          this.player.setMoveTarget(this.hoveredTarget.x, this.hoveredTarget.y + 18);
+          this.player.setPath(result.waypoints);
         }
       } else if (input.leftClicked) {
-        this.pendingClickTarget = null;
-        this.player.setMoveTarget(this.mouseWorldX, this.mouseWorldY);
+        this.walkToWorldPoint(this.mouseWorldX, this.mouseWorldY);
       }
     }
 
     // Manual WASD cancels pending mouse click interaction
     if (input.isDown("KeyW") || input.isDown("KeyA") || input.isDown("KeyS") || input.isDown("KeyD")) {
       this.pendingClickTarget = null;
+      this.pendingBlockedGate = null;
     }
 
-    this.player.update(dt, input, this.map);
+    this.player.update(dt, input, this.map, this.isSecurityBlocked);
+
+    // Execute arrived-at-blocked-gate feedback automatically
+    if (this.pendingBlockedGate && !this.player.moveTarget) {
+      const gate = this.pendingBlockedGate;
+      this.pendingBlockedGate = null;
+      this.examineSecurityGate(gate);
+      return;
+    }
 
     if (this.pendingClickTarget) {
       const p = this.pendingClickTarget;
@@ -403,14 +553,44 @@ export class ShipWorld implements GameWorld {
       this.player.facing,
       PLAYER_INTERACT_REACH
     );
-    this.target = findInteractable(this.interactables, reach);
+    this.target = findInteractable(activeItems, reach);
 
     if (this.target && input.wasPressed("KeyE")) {
       this.triggerMouseInteract(this.target, false);
     }
   }
 
+  private examineSecurityGate(gate: SecurityGate): void {
+    const size = this.map.tileSize;
+    const gx = ((gate.x0 + gate.x1 + 1) / 2) * size;
+    const gy = ((gate.y0 + gate.y1 + 1) / 2) * size;
+    const dx = gx - this.player.centerX;
+    const dy = gy - (this.player.y + this.player.height);
+    if (dx !== 0 || dy !== 0) this.player.animation.face(facingFor(dx, dy));
+
+    sounds.playBeep(280);
+    this.addShake(2, 0.15);
+    this.rpg.pushLog("warn", `${gate.name}：${gate.badgeText}`);
+    this.rpg.spawnFloatingText(this.player.centerX, this.player.y - 24, "🔒 门禁权限不足", "#f87171");
+
+    this.dialogue.open([
+      { speaker: `${gate.name} [${gate.badgeText}]`, portraitId: "portrait_terminal", text: gate.denyReason },
+      { speaker: "船载勤务指引终端", portraitId: "portrait_terminal", text: `【权限晋升路线】${gate.hint}` }
+    ]);
+    this.onDialogueChange?.(this.dialogue);
+    this.onRpgChange?.(this.rpg);
+  }
+
   private triggerMouseInteract(target: Interactable, rightClick: boolean): void {
+    if (target.id.startsWith("gate-")) {
+      const gateId = target.id.slice("gate-".length);
+      const gate = this.security.gates().find((g) => g.id === gateId);
+      if (gate) {
+        this.examineSecurityGate(gate);
+        return;
+      }
+    }
+
     const mode = rightClick && this.rpg.activeMode === "interact" ? "inspect" : this.rpg.activeMode;
     if (mode !== "interact") {
       this.performSkillVerb(target, mode);
@@ -419,10 +599,6 @@ export class ShipWorld implements GameWorld {
     this.examine(target);
   }
 
-  /**
-   * Execute a specific Fallout skill action directly against a target
-   * (triggered via Right-Click or selecting a specialized tool mode on bottom HUD).
-   */
   private performSkillVerb(target: Interactable, mode: "inspect" | "repair" | "science" | "speech"): void {
     const person = this.personById.get(target.id);
     const prop = this.propById.get(target.id);
@@ -460,7 +636,7 @@ export class ShipWorld implements GameWorld {
               name: "老周的三号重型扳手",
               icon: "🔧",
               category: "gear",
-              desc: "铬钒合金重型管路扳手，握把缠着防滑油布。老周落在站台値班台的趁手家伙。",
+              desc: "铬钒合金重型管路扳手，握把缠着防滑油布。老周落在生活区值班台的趁手家伙。",
               bonusDesc: "机械工程 +15%",
               equipped: true
             }, anchor.x, anchor.y);
@@ -560,11 +736,10 @@ export class ShipWorld implements GameWorld {
       this.dialogue.open([{ speaker: person.name, text, portraitId: this.portraitForPerson(person.id) }]);
       this.onDialogueChange?.(this.dialogue);
       this.onRpgChange?.(this.rpg);
-      return;
     }
   }
 
-  /** Look at something, turning to face it first. */
+  /** Examine a prop or talk to an NPC. */
   private examine(target: Interactable): void {
     const person = this.personById.get(target.id);
     const prop = this.propById.get(target.id);
@@ -580,33 +755,73 @@ export class ShipWorld implements GameWorld {
     if (prop) {
       if (prop.label.includes("反应堆") || prop.label.includes("泄压") || prop.label.includes("展开栓") || prop.label.includes("压力")) {
         portraitOverride = "portrait_reactor";
-      } else if (prop.label.includes("台") || prop.label.includes("终端") || prop.label.includes("席") || prop.label.includes("开关") || prop.label.includes("屏") || prop.label.includes("办公桌")) {
+      } else if (prop.label.includes("台") || prop.label.includes("终端") || prop.label.includes("席") || prop.label.includes("开关") || prop.label.includes("屏") || prop.label.includes("办公桌") || prop.label.includes("阀")) {
         portraitOverride = "portrait_terminal";
       }
 
-      if (prop.label === "动力席") {
-        if (this.duty.complete("power")) {
-          this.rpg.grantXp(60, "动力席巡检", prop.x, prop.y);
-          dutyNote = { speaker: null, text: "【二班值班记录已更新】散热翼当前展开角度为 42°，第一回路状态恒定。已记入当班巡检日志。" };
+      // Phase 1 Lower Duties
+      if (prop.label === "水循环监测阀台") {
+        if (this.duty.complete("water")) {
+          this.rpg.grantXp(45, "水循环初检", prop.x, prop.y);
+          dutyNote = { speaker: null, text: "【底层值班单已签】生活区二级净化水压、余氯滤网指标悉数合格，已写入当班手抄表。" };
           this.onDutyChange?.(this.duty);
         }
-      } else if (prop.label === "机械应急开关" && prop.x > 20 * this.map.tileSize) {
+      } else if (prop.label === "机械臂液压装配台") {
+        if (this.duty.complete("workshop")) {
+          this.rpg.grantXp(55, "L-2 车间液压核检", prop.x, prop.y);
+          dutyNote = { speaker: null, text: "【底层值班单已签】已测试 L-2 四轴机械装配臂泵压——备件密封垫预热良好。可以回生活区找老周领取中层通行卡了！" };
+          this.onDutyChange?.(this.duty);
+        }
+
+      // Phase 2 Midship Duties
+      } else if (prop.label === "L-1 生态散热分流总阀") {
+        if (this.duty.complete("agri")) {
+          this.rpg.grantXp(65, "排查 L-1 生态分流阀", prop.x, prop.y);
+          dutyNote = { speaker: null, text: "【中层巡检记录已更】注意：生态散热总阀回流管出现 2.4 次/秒微震，回水温度高出基线 3.1℃！请如实报告老周。" };
+          this.onDutyChange?.(this.duty);
+        }
+      } else if (prop.label === "深空光谱折射测绘台") {
+        if (this.duty.complete("radar")) {
+          this.rpg.grantXp(65, "读取 R-2 尘埃异常光谱", prop.x, prop.y);
+          dutyNote = { speaker: null, text: "【中层巡检记录已更】已转储初辉前向微陨石尘埃反射峰值：碎冰粒径 3~8mm，右舷外装甲刚测得轻微撞击杂波。" };
+          this.onDutyChange?.(this.duty);
+        }
+      } else if (prop.label === "休眠生理监测终端") {
+        if (this.duty.complete("cryo")) {
+          this.rpg.grantXp(65, "核查 12,408 休眠母线", prop.x, prop.y);
+          dutyNote = { speaker: null, text: "【中层巡检记录已更】确认全部 12,408 名拓荒者生理抑制率稳定在 99.7%。已签收巡检清单！" };
+          this.onDutyChange?.(this.duty);
+        }
+
+      // Phase 3 Bridge Duties (post-Crisis)
+      } else if (prop.label === "动力席") {
+        if (this.duty.complete("power")) {
+          this.rpg.grantXp(60, "复核舰桥动力席", prop.x, prop.y);
+          dutyNote = { speaker: null, text: "【二班外勤日志已更】舰桥动力席读数与尾部实地抢险回传一致，主副散热翼热流趋于平衡。" };
+          this.onDutyChange?.(this.duty);
+        }
+      } else if (prop.label === "机械应急开关" && prop.x > (BRIDGE_ORIGIN.tx + 20) * this.map.tileSize) {
         if (this.duty.complete("switch")) {
           this.rpg.grantXp(60, "右舷开关核查", prop.x, prop.y);
-          dutyNote = { speaker: null, text: "【二班值班记录已更新】右舷机械应急开关的手动保护罩已确认处于锁定安全位。已记入当班巡检日志。" };
+          dutyNote = { speaker: null, text: "【二班外勤日志已更】右舷机械应急开关保护罩已确认处于锁定安全位。" };
           this.onDutyChange?.(this.duty);
         }
-      } else if (prop.label === "绿植" && prop.y < 20 * this.map.tileSize) {
+      } else if (prop.label === "绿植" && prop.y < CABIN_ORIGIN.ty * this.map.tileSize) {
         if (this.duty.complete("plant")) {
           this.rpg.grantXp(60, "照料舰桥绿植", prop.x, prop.y);
-          dutyNote = { speaker: null, text: "【二班值班记录已更新】你从随身水壶倒了点水给这盆绿植。干涸的土壤吸收了水分，叶片显得精神了些。" };
+          dutyNote = { speaker: null, text: "【二班外勤日志已更】你从随身水壶倒了点水给舰桥角落这盆植物，叶片恢复了挺立。" };
           this.onDutyChange?.(this.duty);
         }
+
+      // Transit & Crisis Hardware
       } else if (prop.label === "交通调度终端") {
         this.cycleTransitHub();
+        const unlockedCount = this.transitHubs.filter((s) => this.security.canAccessPlace(s.place)).length;
         dutyNote = {
           speaker: null,
-          text: `【高速穿梭捷运车已送达】气动水密门开启，捷运车已平稳送达：${this.placeLabel}！可再次互动前往下一站枢纽。`
+          text: unlockedCount <= 1
+            ? "【门禁联锁】高速穿梭捷运系统检测到你尚未拥有中高层通行卡，仅开放生活区站台。请向老周申领通行条。"
+            : `【高速穿梭捷运车已送达】气动水密门开启，捷运车平稳停靠：${this.placeLabel}！（高权限未解锁站台仍保持禁止停靠）`
         };
         dutyNoteFirst = true;
       } else if (prop.label === "重型防热工程服备勤架") {
@@ -626,7 +841,7 @@ export class ShipWorld implements GameWorld {
           this.rpg.grantXp(100, "整备防热装备", prop.x, prop.y);
           dutyNote = {
             speaker: null,
-            text: "【应急装备穿戴完毕】你迅速换上重型防热工程服。加厚陶瓷胸甲密闭锁死，独立加压呼吸循环启动！现在可以耐受高温机舱！"
+            text: "【应急装备穿戴完毕】你迅速套上重型防热工程服。加厚陶瓷胸甲密闭锁死，现在可以耐受高温聚变泵房与尾部散热廊！"
           };
           dutyNoteFirst = true;
           this.onCrisisChange?.(this.crisis);
@@ -652,29 +867,41 @@ export class ShipWorld implements GameWorld {
       } else if (prop.label === "副散热翼机械强制展开栓") {
         if (this.crisis.stage === "eject_lever") {
           this.crisis.pullEjectionLever();
+          this.security.grant("bridge_pass");
+          this.duty.unlockBridgePhase();
           sounds.playClank();
           sounds.stopAlarm();
           this.addShake(12, 1.2);
+          this.rpg.addItem({
+            id: "bridge_clearance_pass",
+            name: "舰桥临时外勤嘉奖令",
+            icon: "🎖️",
+            category: "quest",
+            desc: "第一章紧急排险立功后获发的指挥区准入权限磁条（不含舰长私人舱室三级私钥）。",
+            bonusDesc: "解锁舰桥与前向探测廊"
+          }, prop.x, prop.y);
           this.rpg.grantXp(220, "第一章结算：排除反应堆过热危机", prop.x, prop.y);
           dutyNote = {
             speaker: null,
-            text: "【副散热翼应急展开】你拔下黄色安全插销，用全身力气将应急手柄拉到底！深空外爆鸣传导，副散热翼完全弹开！聚变反应堆热平衡恢复基线！"
+            text: "【副散热翼应急展开】你拔下安全插销将杠杆压死到底！舰尾外爆鸣传导，副翼轰然弹开！全舰广播宣布危机解除，并特授二班抢险员【指挥区临时准入令】！"
           };
           dutyNoteFirst = true;
           this.onCrisisChange?.(this.crisis);
+          this.onSecurityChange?.(this.security);
+          this.onDutyChange?.(this.duty);
         }
       } else if (prop.label === "穿梭机登机舷梯控制台") {
         if (!this.crisis.isResolved) {
           dutyNote = {
             speaker: null,
-            text: "【登机权限锁定】全舰处于特级管损警报状态，机库气闸已全部电控切断锁死！请先协助老周排除反应堆过热危机！"
+            text: "【登机权限锁定】全舰处于特级管损警报状态，机库气闸已全部切断锁死！请先排除反应堆过热危机！"
           };
           dutyNoteFirst = true;
         } else {
           this.launchShuttle();
           dutyNote = {
             speaker: null,
-            text: "【特级指令：拓荒者一号深空出舱】你换上宇航服登上驾驶席，主气闸抽真空，磁力锁解脱！穿梭机轰然冲出机库，初辉恒星系的浩瀚星空在眼前豁然展开！"
+            text: "【特级指令：拓荒者一号深空出舱】主气闸抽真空完毕，磁力锁解脱！穿梭机轰然冲出机库，初辉恒星系的浩瀚星空在眼前豁然展开！"
           };
           dutyNoteFirst = true;
         }
@@ -694,7 +921,6 @@ export class ShipWorld implements GameWorld {
       lines = dutyNoteFirst ? [dutyNote, ...lines] : [...lines, dutyNote];
     }
 
-    // Attach optional Classic Fallout branching skill checks to the final line of rich fixtures/NPCs
     if (!lines[lines.length - 1].choices) {
       const extraChoices = this.choicesFor(target.id, prop, person);
       if (extraChoices && extraChoices.length > 0) {
@@ -722,12 +948,16 @@ export class ShipWorld implements GameWorld {
       case "captain":
         return "portrait_captain";
       case "engineer":
+      case "mechanic_liu":
         return "portrait_engineer";
       case "medic":
+      case "agronomist":
         return "portrait_medic";
       case "navigator":
+      case "researcher_su":
         return "portrait_navigator";
       case "transit_guard":
+      case "ring_steward":
         return "portrait_transit";
       default:
         return "portrait_player";
@@ -940,53 +1170,80 @@ export class ShipWorld implements GameWorld {
     return undefined;
   }
 
-  /**
-   * What a person says.
-   */
   private linesFor(person: ScenePerson): readonly DialogueLine[] {
     if (person.id === "engineer") {
-      if (this.duty.isInspectionDone() && !this.duty.tasks.find((t) => t.id === "report")?.completed) {
-        this.duty.complete("report");
+      // Phase 1 -> Grant midship_pass
+      if (!this.duty.isLowerTasksDone()) {
+        return [
+          { speaker: "老周", text: "「小徐，刚换班吧？咱们底层工勤二班现在没权去中层干线，南北跟东边的气闸都落着电子门禁。」" },
+          { speaker: "老周", text: "「先去东头核对一下生活区【水循环监测阀台】，再穿过西面门洞进 【L-2 重工业车间】把【机械臂液压装配台】压力读数签回来。办妥了我才好批给你中层通行条！」" }
+        ];
+      }
+
+      const lowerReport = this.duty.tasks.find((t) => t.id === "report_lower");
+      if (lowerReport && !lowerReport.completed) {
+        this.duty.complete("report_lower");
+        this.security.grant("midship_pass");
+        sounds.playTransitChime();
+        this.rpg.addItem({
+          id: "midship_pass_card",
+          name: "二班中层穿梭通行条",
+          icon: "💳",
+          category: "quest",
+          desc: "老周批发的机械签章通行卡，开启中央交通枢纽、L-1/R-1/R-2 模块与医疗休眠区。",
+          bonusDesc: "解锁中层全区气闸门"
+        }, person.x, person.y);
+        this.rpg.grantXp(85, "取得中层通行权限", person.x, person.y);
         this.onDutyChange?.(this.duty);
+        this.onSecurityChange?.(this.security);
+        return [
+          { speaker: "老周", text: "「水循环稳压、L-2 的液压泵读数也齐整——行！这是二班的【中层穿梭与模块通行卡】，拿好了！」" },
+          { speaker: null, text: "【安全闸门解封提示】北向中层穿梭气闸、R-2 科研气闸与南向医疗隔离闸已嘀声解锁！\n（指挥区舰桥防暴门及后部聚变机舱重闸依旧受最高军规封锁）" },
+          { speaker: "老周", text: "「赶紧顺着站台走一趟三个殖民外区：【L-1 生态散热分流总阀】、【R-2 深空光谱折射测绘台】、还有医疗舱的【休眠生理监测终端】。刚才总管好像有点微震，测完速回！」" }
+        ];
+      }
+
+      // Phase 2 -> Check mid tasks -> trigger crisis & open Aft/Reactor gate
+      if (!this.duty.isMidTasksDone()) {
+        return [
+          { speaker: "老周", text: "「中层门禁已经给你划开了。快去跑一遍 L-1 农业散热阀、东面 R-2 科研测绘台和南面休眠医疗端。」" },
+          { speaker: "老周", text: "「至于北头的舰桥和舰长私人舱室……咱们底层工勤别操心那头，上面闭锁严实着呢！」" }
+        ];
+      }
+
+      const midReport = this.duty.tasks.find((t) => t.id === "report_mid");
+      if (midReport && !midReport.completed) {
+        this.duty.complete("report_mid");
+        this.security.grant("crisis_override");
         this.crisis.triggerAlarm();
         this.crisis.advanceToEva();
+        this.onDutyChange?.(this.duty);
+        this.onSecurityChange?.(this.security);
         this.onCrisisChange?.(this.crisis);
-        this.rpg.grantXp(120, "完成二班巡检交接", person.x, person.y);
+        this.rpg.grantXp(120, "提交中层异常并拉响抢险警报", person.x, person.y);
         sounds.startAlarm();
         this.addShake(8, 1.2);
         return [
-          { speaker: "老周", text: "「动力席读数、应急开关……还给人员席那盆绿植浇了水？行，小徐，没偷懒。」老周在你的手抄巡检单上重重盖下当班红印。" },
-          { speaker: "老周", text: "「咱们远望号飞了三十年，两千八百米长的舰体，全靠各个底层系统按部就班。二班合格，准备交——」" },
-          { speaker: null, text: "【突然间，整艘飞船剧烈震颤！金属管线发出可怖的呻吟！暗红色的警报光柱瞬间划破廊道，全舰蜂鸣器尖锐长鸣！】" },
-          { speaker: "全舰广播", text: "【特级管损警报：微碎片擦伤！右舷主散热翼在 42° 展开角液压锁死！两座聚变反应堆废热无法排入真空！】" },
-          { speaker: "广播杂音", text: "【对讲机呼号：……机控中心尝试电控旁通……指令无响应！电控线路烧断！各工段损管队执行手动应急规程！……】" },
-          { speaker: "老周", text: "老周猛然抓住管线扶手，脸色骤变：“操！主散热翼卡死了！机控中心那帮坐办公室的根本不知道这底下老旧管线的受热极限！”" },
-          { speaker: "老周", text: "“小徐！别愣着！机控室高层顾不上咱们这头，生活区和休眠舱的备用冷却泵马上就会被反冲蒸汽烧毁！”" },
-          { speaker: "老周", text: "“快去机库工程柜套上重型防热服！然后下到最南端的动力排险泵房，帮我把那个死沉的红色泄压手轮转开！快，慢一秒这截管子都得炸！”" }
+          { speaker: "老周", text: "「生态分流阀微震、R-2 前哨测出尘埃带撞击波？！坏了——右舷微碎片擦中主散热翼作动轴了！」" },
+          { speaker: null, text: "【突然间，整艘飞船剧烈震颤！金属管线发出可怖的呻吟！暗红色警报光柱刹那撕裂走廊，全舰蜂鸣器刺耳长鸣！】" },
+          { speaker: "全舰广播", text: "【特级管损警报：微碎片击卡右舷主散热翼！第一聚变回路冷却余热急剧攀升！后部工业区及机库重水密闸强制切换为损管开放态！】" },
+          { speaker: "老周", text: "老周死死抓着管廊栏杆：「小徐！南边医疗室后面通往【机库与聚变动力区】的安全重闸刚刚自动爆解锁开了！」" },
+          { speaker: "老周", text: "「机控中心指望不上，你快直奔机库套上【重型防热工程服】，然后冲进最南端【动力排险泵房】，手动拧开【红色泄压转轮】并拉下【副散热翼展开栓】！」" }
         ];
       }
 
       if (this.crisis.isAlarmActive) {
         return [
-          { speaker: "老周", text: "「咳咳……小徐！主回路气压快把高压管顶爆了，我在这守着主循环！」" },
-          { speaker: "老周", text: "「快按刚才说的，去机库拿重型防热服，下到泵房转泄压转轮，再拉开副散热翼的击发栓！」" }
+          { speaker: "老周", text: "「咳咳……小徐！主回路压力快把高压管顶爆了，我得留在这盯着分流管网！」" },
+          { speaker: "老周", text: "「南下穿过休眠医疗区！去机库拿防热服，下到动力排险泵房转泄压轮、拉展开栓，慢一秒全区都得蒸熟！」" }
         ];
       }
 
       if (this.crisis.isResolved) {
         return [
           { speaker: "老周", text: "老周坐在翻倒的工具箱上，正用棉纱擦拭扳手上的黑油，长长舒了一口气。" },
-          { speaker: "老周", text: "「呼……听见排气声停了，压力表指针掉下来了。小子，手脚挺利索啊，没慌。」" },
-          { speaker: "老周", text: "「机控室那些坐大位子的高层，大概永远不会知道是咱们在最底层把手轮拧开的。但无所谓，咱们自己活着，这一万两千号休眠者也活着，这就够了。」" },
-          { speaker: "老周", text: "「喝口温水，把终端上的当班交接刷了。今晚生活区加餐，有压缩脱水羊肉，赶紧去打一份。」" }
-        ];
-      }
-
-      if (!this.duty.isInspectionDone()) {
-        return [
-          { speaker: "老周", text: "「哟，小徐，来得正好。今天的二班巡检任务还没结签呢。」" },
-          { speaker: "老周", text: "「去查一下动力席的散热翼、右舷应急开关锁闭销、还有人员席角落那盆快干枯的绿植。」" },
-          { speaker: "老周", text: "「咱们底层的工勤任务得按部就班，机控室不管咱们琐事，但咱们自己得把底层的底子摸清。」" }
+          { speaker: "老周", text: "「呼……听见排气声停了，主堆压差终于掉回绿区。小子，手脚硬朗得像块铁啊。」" },
+          { speaker: "老周", text: "「刚广播里居然破例给咱们发了【舰桥临时外勤嘉奖令】。上头那帮先生也算没彻底瞎眼——有空上去把指挥区收尾表交了，顺道试试机库那架拓荒者穿梭机吧！」" }
         ];
       }
     }
@@ -994,17 +1251,40 @@ export class ShipWorld implements GameWorld {
     if (person.id === "captain") {
       if (this.crisis.isAlarmActive) {
         return [
-          { speaker: "舰长", text: "舰长正戴着通讯耳机死死盯住前方主控大屏，甚至无暇回头看你一眼。" },
-          { speaker: "舰长", text: "「通信席，接通第三殖民模块！损管二组，汇报姿态修正喷口压差！……」" },
-          { speaker: "副官警卫", text: "「工勤巡检员请立刻退回生活区！舰桥正在执行特级应急姿态指挥，无关人员不得靠近！」" }
+          { speaker: "舰长", text: "舰长正戴着通讯耳机死死盯住前方主控大屏，声音冷硬克制。" },
+          { speaker: "舰长", text: "「全舰姿态喷口锁死，通知底层工勤组立刻执行应急手册！」" }
         ];
       }
 
-      if (this.crisis.isResolved) {
+      if (this.exploration.isChapter2Done && !this.security.hasClearance("captain_auth")) {
+        this.security.grant("captain_auth");
+        sounds.playTransitChime();
+        this.rpg.addItem({
+          id: "captain_bio_key",
+          name: "舰长私人舱室三级生物密钥",
+          icon: "🔑",
+          category: "quest",
+          desc: "由远望号舰长亲手写入生物授权的最高级私钥，开启通往舰长室的最后一道绝密舱门。",
+          bonusDesc: "解锁最终禁区：舰长室"
+        }, person.x, person.y);
+        this.rpg.grantXp(300, "远航功勋：获准进入舰长室", person.x, person.y);
+        this.onSecurityChange?.(this.security);
+        this.onRpgChange?.(this.rpg);
         return [
-          { speaker: "舰长", text: "舰桥前方弧形大屏正在解算新的深空轨道，参谋军官们快速低语记录数据。" },
-          { speaker: "舰长", text: "「……全舰警报降为三级，推进阵列保持微推巡航。记录航行日志。」" },
-          { speaker: null, text: "（舰长专注于宏观态势调度，并未注意到站在后方入口的基层工勤人员。）" }
+          { speaker: "舰长", text: "舰长慢慢摘下通讯耳机，目光落在你怀里那只结着 14K 白霜的【99.4% 高纯重氢冰晶罐】上。" },
+          { speaker: "舰长", text: "「从一名活动范围连生活区走廊都不敢迈出一步的二班巡勤员，到亲手保住主堆冷源、驾驶拓荒者一号带回远境-IV 希望的领航者——远望号欠你一条命。」" },
+          { speaker: null, text: "【最高级别权限授予】舰长将一枚磨得温润的钛合金私钥推入你掌心！后方走廊北侧那道终年紧锁的【舰长私人舱室生物锁】随之解开！" },
+          { speaker: "舰长", text: "「下去后侧走廊的私人舱室里走走看吧。桌上那台离线终端和那张老实体星图，现在对你完全公开。」" }
+        ];
+      }
+
+      if (this.duty.isBridgeTasksDone() && !this.duty.tasks.find((t) => t.id === "report_bridge")?.completed) {
+        this.duty.complete("report_bridge");
+        this.rpg.grantXp(120, "完成指挥区外勤汇报", person.x, person.y);
+        this.onDutyChange?.(this.duty);
+        return [
+          { speaker: "舰长", text: "舰长低头接过你的纸质复核表，用钢笔工整签下『准予出港勘测』五个字。" },
+          { speaker: "舰长", text: "「干得稳重。不过规矩就是规矩——后侧私人舱室仍然对全体勤务关闭。拿好批准令去机库登乘【拓荒者一号】，为远望号去远境-IV 探出一条生路吧。」" }
         ];
       }
 
@@ -1015,7 +1295,7 @@ export class ShipWorld implements GameWorld {
 
       return [
         ...person.lines.slice(0, 3),
-        { speaker: "舰长", text: "你已经把船上转了一圈了？" },
+        { speaker: "舰长", text: "看来你已经在全船上下转了一圈，把这十几个仓段实实在在踩过一遍了？" },
         ...person.lines.slice(3)
       ];
     }
@@ -1023,31 +1303,27 @@ export class ShipWorld implements GameWorld {
     if (person.id === "navigator") {
       if (this.crisis.isAlarmActive) {
         return [
-          { speaker: "领航员", text: "「特级管损！整条中枢星图都在红闪！机控室的指令总线全烧了……」" },
-          { speaker: "领航员", text: "「别在这挡着，快去救你们底层的回路！」" }
+          { speaker: "领航员", text: "「特级管损！中枢总线红闪个不停……底层加油！」" }
         ];
       }
-      if (this.crisis.isResolved) {
+      if (this.exploration.isChapter2Done) {
         return [
-          { speaker: "领航员", text: "「呼……副散热翼强制展开了，总算没偏航。去吧，回你们底层休息去。」" }
+          { speaker: "领航员", text: "「欢迎平安归来！星图桌刚刚把你测绘回来的远境-IV 重氢航点标上去，这条走了三十年的直线，终于迎来终站坐标了！」" }
         ];
       }
-      return [
-        { speaker: "领航员", text: "「哎，别踩进来，前方是主星图投影区。三十年了，这条线基本没怎么弯过。你们巡检员没事别往核心区跑，去生活区找老周吧。」" }
-      ];
+      return person.lines;
     }
 
     if (person.id === "medic") {
       if (this.crisis.isAlarmActive) {
         return [
-          { speaker: "陈医生", text: "「【警报急促蜂鸣】休眠母线电压在剧烈跌落！循环温度超标 4.2 度了！」" },
-          { speaker: "陈医生", text: "「小徐，求求你们快保住底层管路，休眠者经不起高温脑损伤！」" }
+          { speaker: "陈医生", text: "「【警报急促蜂鸣】休眠母线电压剧烈跌落！循坏温度超标了！」" },
+          { speaker: "陈医生", text: "「小徐！南面的工业重闸已经打开了，快救救底下散热环，一万两千号人不能出事！」" }
         ];
       }
       if (this.crisis.isResolved) {
         return [
-          { speaker: "陈医生", text: "「一万两千四百零八个生命体征信号灯全都恢复平稳绿光了……老天保佑。」" },
-          { speaker: "陈医生", text: "「小徐，你们底层机修工今天救了所有人一命，辛苦了。」" }
+          { speaker: "陈医生", text: "「所有 12,408 盏生命体征绿灯全部平稳亮着……你们救了全船人。」" }
         ];
       }
     }
@@ -1055,12 +1331,7 @@ export class ShipWorld implements GameWorld {
     if (person.id === "transit_guard") {
       if (this.crisis.isAlarmActive) {
         return [
-          { speaker: "调度员小刘", text: "「【对讲机杂音】『呼叫站台！中央穿梭轨道已切入特级损管优先！南向通道全线锁闭！』小徐，快走人行梯去机库！」" }
-        ];
-      }
-      if (this.crisis.isResolved) {
-        return [
-          { speaker: "调度员小刘", text: "「全线轨道警报解除！机控室那帮大佬刚才把我们信号全抢了……好在没事了。」" }
+          { speaker: "调度员小刘", text: "「南向重水密闸已经放开应急通道！赶紧搭捷运或者步跑去机库抢险！」" }
         ];
       }
     }
@@ -1068,9 +1339,7 @@ export class ShipWorld implements GameWorld {
     return person.lines;
   }
 
-  /**
-   * Interact with whatever is in reach right now.
-   */
+  /** Interact with whatever is in reach right now. */
   interactInReach(): boolean {
     if (this.dialogue.isOpen) return false;
 
@@ -1106,10 +1375,10 @@ export class ShipWorld implements GameWorld {
       this.player.facing,
       PLAYER_INTERACT_REACH
     );
-    const found = findInteractable(this.interactables, reach);
+    const found = findInteractable(this.activeInteractables(), reach);
     if (!found) return false;
 
-    this.examine(found);
+    this.triggerMouseInteract(found, false);
     return this.dialogue.isOpen;
   }
 
@@ -1141,6 +1410,7 @@ export class ShipWorld implements GameWorld {
 
   dockAtMothership(): void {
     this.mode = "deck";
+    this.exploration.completeReturn();
     const size = this.map.tileSize;
     this.player.x = (HANGAR_ORIGIN.tx + 8) * size;
     this.player.y = (HANGAR_ORIGIN.ty + 6) * size;
@@ -1150,8 +1420,9 @@ export class ShipWorld implements GameWorld {
     this.addShake(4, 0.4);
     this.rpg.grantXp(250, "平安返航归舰", this.player.centerX, this.player.y);
     this.dialogue.open([
-      { speaker: "机库调度终端", portraitId: "portrait_terminal", text: "【停泊磁吸闭锁】拓荒者一号已稳固归位。主气闸加压完毕，环境气压已恢复标准 101.3 kPa。欢迎回舰，开拓者！" }
+      { speaker: "机库调度终端", portraitId: "portrait_terminal", text: "【停泊磁吸闭锁】拓荒者一号已稳固归位。主气闸加压完毕，若已采回重氢样本，可前往舰桥向舰长提交功勋简报！" }
     ]);
+    this.onExplorationChange?.(this.exploration);
     this.onDialogueChange?.(this.dialogue);
     this.onRpgChange?.(this.rpg);
   }
@@ -1255,7 +1526,6 @@ export class ShipWorld implements GameWorld {
         ]);
         this.onDialogueChange?.(this.dialogue);
       }
-      return;
     }
   }
 
@@ -1305,6 +1575,7 @@ export class ShipWorld implements GameWorld {
     this.renderBackdrop(renderer);
     this.renderDeck(renderer);
     this.atmosphere.renderWallDepthAndAO(renderer, this.map);
+    this.renderSecurityGates(renderer);
     this.renderShadowsAndPaths(renderer);
     this.renderProps(renderer);
     this.renderPeople(renderer);
@@ -1315,8 +1586,63 @@ export class ShipWorld implements GameWorld {
     this.renderAlarmOverlay(renderer);
   }
 
+  private renderSecurityGates(renderer: Renderer): void {
+    const size = this.map.tileSize;
+    const vx0 = renderer.camera.worldX - 96;
+    const vy0 = renderer.camera.worldY - 96;
+    const vx1 = renderer.camera.worldX + renderer.camera.viewportWidth + 96;
+    const vy1 = renderer.camera.worldY + renderer.camera.viewportHeight + 96;
+    const pulse = (Math.sin(this.elapsedTime * 5) + 1) / 2;
+
+    for (const gate of this.security.gates()) {
+      const gx = gate.x0 * size;
+      const gy = gate.y0 * size;
+      const gw = (gate.x1 - gate.x0 + 1) * size;
+      const gh = (gate.y1 - gate.y0 + 1) * size;
+      if (gx + gw < vx0 || gx > vx1 || gy + gh < vy0 || gy > vy1) continue;
+
+      if (!this.security.isGateOpen(gate)) {
+        // Armored yellow/black hazard blast bulkhead + red security laser beams
+        renderer.drawRect(gx + 2, gy + 2, gw - 4, gh - 4, {
+          color: "rgba(18, 22, 30, 0.94)",
+          stroke: { width: 2, color: gate.id === "gate_cabin" ? "#c084fc" : "#f59e0b" },
+          radius: 4
+        });
+
+        const laserColor =
+          gate.id === "gate_cabin"
+            ? `rgba(192, 132, 252, ${(0.55 + pulse * 0.35).toFixed(2)})`
+            : `rgba(239, 68, 68, ${(0.6 + pulse * 0.32).toFixed(2)})`;
+
+        if (gate.orientation === "horizontal") {
+          renderer.drawLine?.(gx + 4, gy + gh * 0.33, gx + gw - 4, gy + gh * 0.33, laserColor, 2.5);
+          renderer.drawLine?.(gx + 4, gy + gh * 0.67, gx + gw - 4, gy + gh * 0.67, laserColor, 2.5);
+        } else {
+          renderer.drawLine?.(gx + gw * 0.33, gy + 4, gx + gw * 0.33, gy + gh - 4, laserColor, 2.5);
+          renderer.drawLine?.(gx + gw * 0.67, gy + 4, gx + gw * 0.67, gy + gh - 4, laserColor, 2.5);
+        }
+
+        renderer.drawWorldText(`🔒 ${gate.badgeText}`, gx + gw / 2, gy + gh / 2 + 4, {
+          color: gate.id === "gate_cabin" ? "#e9d5ff" : "#fecaca",
+          size: 11,
+          align: "center",
+          baseline: "middle"
+        });
+      } else {
+        // Unlocked recessed green sill indicator
+        const sillColor = "rgba(34, 197, 94, 0.35)";
+        if (gate.orientation === "horizontal") {
+          renderer.drawRect(gx, gy + gh / 2 - 2, 10, 4, { color: sillColor });
+          renderer.drawRect(gx + gw - 10, gy + gh / 2 - 2, 10, 4, { color: sillColor });
+        } else {
+          renderer.drawRect(gx + gw / 2 - 2, gy, 4, 10, { color: sillColor });
+          renderer.drawRect(gx + gw / 2 - 2, gy + gh - 10, 4, 10, { color: sillColor });
+        }
+      }
+    }
+  }
+
   private renderShadowsAndPaths(renderer: Renderer): void {
-    // Drop shadow discs under fixtures
     if (renderer.drawEllipse) {
       const size = this.map.tileSize;
       for (const prop of this.props) {
@@ -1336,28 +1662,48 @@ export class ShipWorld implements GameWorld {
       renderer.drawEllipse(this.player.centerX, this.player.y + this.player.height - 2, 13, 6, "rgba(2, 4, 9, 0.7)");
     }
 
-    // Fallout mouse click destination marker & dashed path
-    if (this.player.moveTarget) {
-      const tx = this.player.moveTarget.x;
-      const ty = this.player.moveTarget.y;
-      renderer.drawLine?.(
-        this.player.centerX,
-        this.player.y + this.player.height - 4,
-        tx,
-        ty,
-        "rgba(251, 191, 36, 0.45)",
-        1.5,
-        [5, 5]
-      );
+    // Multi-segment smart A* path breadcrumb rendering
+    const waypoints = this.player.waypoints;
+    if (waypoints.length > 0) {
+      const pathColor = this.pendingBlockedGate ? "rgba(248, 113, 113, 0.65)" : "rgba(251, 191, 36, 0.55)";
+      let prevX = this.player.centerX;
+      let prevY = this.player.y + this.player.height - 4;
+
+      for (let i = 0; i < waypoints.length; i++) {
+        const wp = waypoints[i];
+        renderer.drawLine?.(prevX, prevY, wp.x, wp.y, pathColor, 1.8, [6, 5]);
+        if (i < waypoints.length - 1) {
+          renderer.drawRect(wp.x - 2, wp.y - 2, 4, 4, {
+            color: this.pendingBlockedGate ? "#f87171" : "#fbbf24",
+            radius: 2
+          });
+        }
+        prevX = wp.x;
+        prevY = wp.y;
+      }
+
+      const finalPt = waypoints[waypoints.length - 1];
       const pulse = 7 + Math.sin(this.elapsedTime * 8) * 2;
-      renderer.drawEllipse?.(tx, ty, pulse + 4, pulse * 0.6, "rgba(245, 158, 11, 0.28)", true);
-      renderer.drawRect(tx - 3, ty - 3, 6, 6, { color: "#fbbf24", radius: 3 });
+      renderer.drawEllipse?.(
+        finalPt.x,
+        finalPt.y,
+        pulse + 4,
+        pulse * 0.6,
+        this.pendingBlockedGate ? "rgba(239, 68, 68, 0.32)" : "rgba(245, 158, 11, 0.28)",
+        true
+      );
+      renderer.drawRect(finalPt.x - 3, finalPt.y - 3, 6, 6, {
+        color: this.pendingBlockedGate ? "#ef4444" : "#fbbf24",
+        radius: 3
+      });
     }
 
-    // Mouse hover Fallout targeting bracket
+    // Hover Fallout bracket
     if (this.hoveredTarget) {
       const h = this.hoveredTarget;
-      const col = this.rpg.activeMode === "repair"
+      const col = h.id.startsWith("gate-")
+        ? "#ef4444"
+        : this.rpg.activeMode === "repair"
         ? "#f97316"
         : this.rpg.activeMode === "science"
         ? "#38bdf8"
@@ -1373,7 +1719,6 @@ export class ShipWorld implements GameWorld {
   }
 
   private renderLightingOverlay(renderer: Renderer): void {
-    // Aim shoulder lamp along player facing or slight angle toward hovered cursor
     let beamAngle = Math.PI / 2;
     if (this.player.facing === "up") beamAngle = -Math.PI / 2;
     else if (this.player.facing === "left") beamAngle = Math.PI;
@@ -1402,14 +1747,12 @@ export class ShipWorld implements GameWorld {
 
   private renderFloatingTexts(renderer: Renderer): void {
     for (const f of this.rpg.floatingTexts) {
-      const alpha = Math.max(0, 1 - f.life / f.maxLife);
       renderer.drawWorldText(f.text, f.x, f.y, {
         color: f.color,
         size: 13,
         align: "center",
         baseline: "bottom"
       });
-      void alpha;
     }
   }
 
@@ -1506,18 +1849,20 @@ export class ShipWorld implements GameWorld {
 
   private renderPrompt(renderer: Renderer): void {
     if (this.hoveredTarget && this.hoveredTarget !== this.target) {
-      const modeName =
-        this.rpg.activeMode === "repair"
-          ? "🔧 机械"
-          : this.rpg.activeMode === "science"
-          ? "💻 科学"
-          : this.rpg.activeMode === "speech"
-          ? "💬 交涉"
-          : this.rpg.activeMode === "inspect"
-          ? "🔍 观察"
-          : "点击靠近/右键观察";
+      const isGate = this.hoveredTarget.id.startsWith("gate-");
+      const modeName = isGate
+        ? "门禁已闭锁 · 点击查看授权"
+        : this.rpg.activeMode === "repair"
+        ? "🔧 机械"
+        : this.rpg.activeMode === "science"
+        ? "💻 科学"
+        : this.rpg.activeMode === "speech"
+        ? "💬 交涉"
+        : this.rpg.activeMode === "inspect"
+        ? "🔍 观察"
+        : "点击自动寻路互动/右键观察";
       renderer.drawWorldText(`${this.hoveredTarget.label} · ${modeName}`, this.hoveredTarget.x, this.hoveredTarget.y - 34, {
-        color: "#fde68a",
+        color: isGate ? "#fca5a5" : "#fde68a",
         size: 12,
         align: "center",
         baseline: "bottom"

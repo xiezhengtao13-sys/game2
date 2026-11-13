@@ -21,6 +21,7 @@ export const REACTOR_COLUMNS = 32;
 export const REACTOR_ROWS = 18;
 
 export const REACTOR_NORTH_DOOR = { x: 14, y: 0, w: 4, h: 1 };
+export const REACTOR_SOUTH_DOOR = { x: 14, y: REACTOR_ROWS - 1, w: 4, h: 1 };
 
 interface Shape {
   x: number;
@@ -38,8 +39,9 @@ const SHAPES: Shape[] = [
   { x: 0, y: 0, w: 1, h: REACTOR_ROWS, type: "wall_dark", note: "西向耐热承力壁" },
   { x: REACTOR_COLUMNS - 1, y: 0, w: 1, h: REACTOR_ROWS, type: "wall_dark", note: "东向耐热承力壁" },
 
-  // North entrance doorway
+  // North & South entrance doorways
   { x: REACTOR_NORTH_DOOR.x, y: REACTOR_NORTH_DOOR.y, w: REACTOR_NORTH_DOOR.w, h: REACTOR_NORTH_DOOR.h, type: "floor_light", note: "入口安全引道" },
+  { x: REACTOR_SOUTH_DOOR.x, y: REACTOR_SOUTH_DOOR.y, w: REACTOR_SOUTH_DOOR.w, h: REACTOR_SOUTH_DOOR.h, type: "floor_light", note: "南侧通往尾部主推进阵列走廊" },
 
   // Central runway guide lights
   { x: 15, y: 2, w: 2, h: 1, type: "floor_light", note: "中心作业导引灯" },
@@ -47,6 +49,7 @@ const SHAPES: Shape[] = [
   { x: 15, y: 8, w: 2, h: 1, type: "floor_light", note: "中心作业导引灯" },
   { x: 15, y: 11, w: 2, h: 1, type: "floor_light", note: "中心作业导引灯" },
   { x: 15, y: 14, w: 2, h: 1, type: "floor_light", note: "中心作业导引灯" },
+  { x: 15, y: 16, w: 2, h: 1, type: "floor_light", note: "南侧门岗导引灯" },
 
   // High-heat industrial deck zones (deck_dark)
   { x: 2, y: 2, w: 11, h: 14, type: "deck_dark", note: "第一回路冷却主管网作业区" },

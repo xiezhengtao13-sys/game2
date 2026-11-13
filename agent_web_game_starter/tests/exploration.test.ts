@@ -115,10 +115,13 @@ describe("Chapter 2 End-to-End integration in ShipWorld", () => {
     world.dialogue.close();
 
     // 2. Resolve Chapter 1 crisis
-    world.duty.complete("power");
-    world.duty.complete("switch");
-    world.duty.complete("plant");
-    world.duty.complete("report");
+    world.duty.complete("water");
+    world.duty.complete("workshop");
+    world.duty.complete("report_lower");
+    world.duty.complete("agri");
+    world.duty.complete("radar");
+    world.duty.complete("cryo");
+    world.duty.complete("report_mid");
     world.crisis.triggerAlarm();
     world.crisis.advanceToEva();
     world.crisis.equipEvaSuit();
@@ -179,5 +182,15 @@ describe("Chapter 2 End-to-End integration in ShipWorld", () => {
     world.interactInReach();
     assert.equal(world.currentMode, "deck", "docks back inside Yuanwang mothership hangar");
     assert.match(world.placeLabel, /机库|生活区|舰桥/);
+    world.dialogue.close();
+
+    // 9. Captain's Cabin unlocks ONLY after reporting the completed expedition to the Captain
+    assert.equal(world.security.canAccessPlace("cabin"), false);
+    const captainTarget = world.examinable.find((t) => t.id === "person-captain")!;
+    // @ts-expect-error accessing private examine
+    world.examine(captainTarget);
+    assert.equal(world.security.hasClearance("captain_auth"), true);
+    assert.equal(world.security.canAccessPlace("cabin"), true);
+    assert.equal(world.rpg.hasItem("captain_bio_key"), true);
   });
 });

@@ -27,7 +27,11 @@ const EPSILON = 1e-9;
 const SEARCH_ITERATIONS = 30;
 
 /** True when any tile overlapping this box blocks movement. */
-export function isBoxBlocked(map: TileMap, box: Box): boolean {
+export function isBoxBlocked(
+  map: TileMap,
+  box: Box,
+  extraBlocked?: (tx: number, ty: number) => boolean
+): boolean {
   const size = map.tileSize;
 
   const minTx = Math.floor(box.x / size);
@@ -41,7 +45,7 @@ export function isBoxBlocked(map: TileMap, box: Box): boolean {
     for (let tx = minTx; tx <= maxTx; tx++) {
       const type = map.tileAt(tx, ty);
       // Outside the map is solid, so the player cannot walk off the edge.
-      if (type === null || isSolidTile(type)) return true;
+      if (type === null || isSolidTile(type) || extraBlocked?.(tx, ty)) return true;
     }
   }
 
@@ -59,11 +63,12 @@ export function resolveMovement(
   map: TileMap,
   box: Box,
   dx: number,
-  dy: number
+  dy: number,
+  extraBlocked?: (tx: number, ty: number) => boolean
 ): { x: number; y: number } {
-  const moved = moveAxis(map, box, dx, "x");
+  const moved = moveAxis(map, box, dx, "x", extraBlocked);
   const afterX = { ...box, x: moved };
-  const afterY = moveAxis(map, afterX, dy, "y");
+  const afterY = moveAxis(map, afterX, dy, "y", extraBlocked);
 
   return { x: moved, y: afterY };
 }
@@ -74,7 +79,13 @@ export function resolveMovement(
  * Binary searches the furthest fraction of the requested move that leaves the
  * box unblocked. Assumes the starting position is not already blocked.
  */
-function moveAxis(map: TileMap, box: Box, delta: number, axis: "x" | "y"): number {
+function moveAxis(
+  map: TileMap,
+  box: Box,
+  delta: number,
+  axis: "x" | "y",
+  extraBlocked?: (tx: number, ty: number) => boolean
+): number {
   const start = axis === "x" ? box.x : box.y;
   if (delta === 0) return start;
 
@@ -87,7 +98,7 @@ function moveAxis(map: TileMap, box: Box, delta: number, axis: "x" | "y"): numbe
   const limit = axis === "x" ? map.pixelWidth - box.width : map.pixelHeight - box.height;
   const clamped = Math.min(Math.max(target, 0), limit);
 
-  if (!isBoxBlocked(map, at(clamped))) return clamped;
+  if (!isBoxBlocked(map, at(clamped), extraBlocked)) return clamped;
 
   // Invariant: `low` is known-good, `high` is known-blocked.
   let low = start;
@@ -95,7 +106,7 @@ function moveAxis(map: TileMap, box: Box, delta: number, axis: "x" | "y"): numbe
 
   for (let i = 0; i < SEARCH_ITERATIONS; i++) {
     const mid = (low + high) / 2;
-    if (isBoxBlocked(map, at(mid))) high = mid;
+    if (isBoxBlocked(map, at(mid), extraBlocked)) high = mid;
     else low = mid;
   }
 

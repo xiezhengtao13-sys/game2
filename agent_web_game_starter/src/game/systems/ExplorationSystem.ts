@@ -49,7 +49,7 @@ export class ExplorationSystem {
   }
 
   get isChapter2Done(): boolean {
-    return this._stage === "chapter2_resolved";
+    return this._stage === "chapter2_resolved" || (this._beaconDeployed && this._sampleCollected);
   }
 
   get beaconDeployed(): boolean {
@@ -77,6 +77,14 @@ export class ExplorationSystem {
           done: false
         };
       case "space_flight":
+        if (this._beaconDeployed && this._sampleCollected) {
+          return {
+            id: "return_mothership",
+            title: "携重氢样本返航远望号母舰",
+            hint: "驾驶穿梭机飞回西北方向远望号对接气闸，返回舰桥向舰长提交功勋简报！",
+            done: false
+          };
+        }
         return {
           id: "navigate_farthest",
           title: "导航飞往目标行星「远境-IV」",
@@ -109,7 +117,7 @@ export class ExplorationSystem {
         return {
           id: "return_mothership",
           title: "地表初探完成 · 第二章结案",
-          hint: "科研信标与重氢样本已齐备，可登机随时返航远望号",
+          hint: "前往舰桥向舰长汇报并领取舰长私人舱室三级生物密钥！",
           done: true
         };
     }
@@ -129,6 +137,13 @@ export class ExplorationSystem {
     }
     this._stage = "space_flight";
     return true;
+  }
+
+  /** Restore chapter2_resolved upon safely docking back at Yuanwang with collected sample. */
+  completeReturn(): void {
+    if (this._beaconDeployed && this._sampleCollected) {
+      this._stage = "chapter2_resolved";
+    }
   }
 
   /** Called when shuttle approaches Planet Farthest-IV. */

@@ -50,41 +50,64 @@ describe("Chapter 1 CrisisSystem state machine (TASK-G3)", () => {
   });
 });
 
-describe("Chapter 1 Crisis end-to-end integration with ShipWorld (TASK-G3)", () => {
-  test("routine duty sign-off triggers alarm, and physical bay fixtures resolve Chapter 1", () => {
+describe("Chapter 1 Crisis & Progressive Security Integration in ShipWorld", () => {
+  test("Phase 1 -> Phase 2 anomaly report triggers Crisis (unlocking Hangar/Reactor), and resolving Crisis grants Bridge Pass (leaving Cabin still locked)", () => {
     const world = ship();
 
-    // 1. Routine patrol
+    // 1. Initial starting state: locked out of upper decks & bridge
     assert.equal(world.duty.isInspectionDone(), false);
     assert.equal(world.crisis.stage, "routine");
     assert.equal(world.crisis.isAlarmActive, false);
+    assert.equal(world.security.canAccessPlace("crew_habitat"), true);
+    assert.equal(world.security.canAccessPlace("industrial_bay"), true);
+    assert.equal(world.security.canAccessPlace("transit_hub"), false);
+    assert.equal(world.security.canAccessPlace("hangar_bay"), false);
+    assert.equal(world.security.canAccessPlace("bridge"), false);
+    assert.equal(world.security.canAccessPlace("cabin"), false);
 
-    world.duty.complete("power");
-    world.duty.complete("switch");
-    world.duty.complete("plant");
-    assert.ok(world.duty.isInspectionDone());
-
-    // 2. Report to Shift Supervisor Lao Zhou triggers crisis
+    // 2. Complete Phase 1 lower tasks & earn midship_pass from Lao Zhou
+    world.duty.complete("water");
+    world.duty.complete("workshop");
     const engineerTarget = world.examinable.find((t) => t.id === "person-engineer");
     assert.ok(engineerTarget, "engineer interactable found");
 
-    // Trigger examine Lao Zhou
     // @ts-expect-error accessing private examine for deterministic test
     world.examine(engineerTarget);
-
-    assert.ok(world.dialogue.isOpen);
-    assert.ok(world.duty.tasks.find((t) => t.id === "report")?.completed);
-    assert.equal(world.crisis.stage, "eva_gear");
-    assert.equal(world.crisis.isAlarmActive, true);
+    assert.equal(world.security.hasClearance("midship_pass"), true);
+    assert.equal(world.security.canAccessPlace("transit_hub"), true);
+    assert.equal(world.security.canAccessPlace("agri_module"), true);
+    assert.equal(world.security.canAccessPlace("science_lab"), true);
+    assert.equal(world.security.canAccessPlace("medical_bay"), true);
+    assert.equal(world.security.canAccessPlace("hangar_bay"), false);
+    assert.equal(world.security.canAccessPlace("bridge"), false);
     world.dialogue.close();
 
-    // 3. Crew members provide urgent crisis directives during alarm
+    // 3. Complete Phase 2 midship checks -> report anomalies to Lao Zhou -> triggers Crisis & crisis_override
+    world.duty.complete("agri");
+    world.duty.complete("radar");
+    world.duty.complete("cryo");
+    assert.ok(world.duty.isMidTasksDone());
+
     // @ts-expect-error accessing private examine
     world.examine(engineerTarget);
-    assert.ok(world.dialogue.current?.text.includes("主回路气压快把高压管顶爆了"));
+    assert.ok(world.dialogue.isOpen);
+    assert.ok(world.duty.tasks.find((t) => t.id === "report_mid")?.completed);
+    assert.equal(world.crisis.stage, "eva_gear");
+    assert.equal(world.crisis.isAlarmActive, true);
+    assert.equal(world.security.hasClearance("crisis_override"), true);
+    assert.equal(world.security.canAccessPlace("hangar_bay"), true);
+    assert.equal(world.security.canAccessPlace("reactor_bay"), true);
+    assert.equal(world.security.canAccessPlace("propulsion_aft"), true);
+    assert.equal(world.security.canAccessPlace("bridge"), false, "bridge stays closed during crisis");
     world.dialogue.close();
 
-    // 4. Player equips heavy thermal suit in Hangar bay
+    // 4. Lao Zhou gives urgent crisis directives during alarm
+    // @ts-expect-error accessing private examine
+    world.examine(engineerTarget);
+    assert.ok(world.dialogue.current?.text.includes("主回路压力快把高压管顶爆了"));
+    world.dialogue.close();
+
+    // 5. Player equips heavy thermal suit in Hangar bay
     const suitTarget = world.examinable.find((t) => t.label === "重型防热工程服备勤架");
     assert.ok(suitTarget, "eva suit rack prop found");
     // @ts-expect-error accessing private examine
@@ -93,7 +116,7 @@ describe("Chapter 1 Crisis end-to-end integration with ShipWorld (TASK-G3)", () 
     assert.ok(world.dialogue.current?.text.includes("应急装备穿戴完毕"));
     world.dialogue.close();
 
-    // 5. Player vents coolant valve in Reactor bay
+    // 6. Player vents coolant valve in Reactor bay
     const valveTarget = world.examinable.find((t) => t.label === "应急旁路泄压转轮");
     assert.ok(valveTarget, "coolant wheel prop found");
     // @ts-expect-error accessing private examine
@@ -102,7 +125,7 @@ describe("Chapter 1 Crisis end-to-end integration with ShipWorld (TASK-G3)", () 
     assert.ok(world.dialogue.current?.text.includes("旁路泄压成功"));
     world.dialogue.close();
 
-    // 6. Player pulls ejection lever in Reactor bay
+    // 7. Player pulls ejection lever in Reactor bay -> Resolves crisis & grants Bridge Commendation!
     const leverTarget = world.examinable.find((t) => t.label === "副散热翼机械强制展开栓");
     assert.ok(leverTarget, "ejection lever prop found");
     // @ts-expect-error accessing private examine
@@ -110,25 +133,19 @@ describe("Chapter 1 Crisis end-to-end integration with ShipWorld (TASK-G3)", () 
     assert.equal(world.crisis.stage, "resolved");
     assert.equal(world.crisis.isAlarmActive, false);
     assert.equal(world.crisis.isResolved, true);
+    assert.equal(world.security.hasClearance("bridge_pass"), true);
+    assert.equal(world.security.canAccessPlace("bridge"), true);
+    assert.equal(world.security.canAccessPlace("fore_sensors"), true);
+    assert.equal(world.security.canAccessPlace("cabin"), false, "Captain's cabin remains strictly biometric locked post-Crisis!");
     assert.ok(world.dialogue.current?.text.includes("副散热翼应急展开"));
     world.dialogue.close();
 
-    // 7. Post-crisis grounded debriefing with Lao Zhou concludes Chapter 1
+    // 8. Post-crisis grounded debriefing with Lao Zhou concludes Chapter 1
     // @ts-expect-error accessing private examine
     world.examine(engineerTarget);
     assert.ok(world.dialogue.current?.text.includes("老周坐在翻倒的工具箱上"));
     world.dialogue.advance();
-    assert.ok(world.dialogue.current?.text.includes("小子，手脚挺利索啊"));
-    world.dialogue.close();
-
-    // 8. Fleet Captain maintains realistic command distance from low-level crew
-    const captainTarget = world.examinable.find((t) => t.id === "person-captain");
-    assert.ok(captainTarget);
-    // @ts-expect-error accessing private examine
-    world.examine(captainTarget);
-    assert.ok(world.dialogue.current?.text.includes("解算新的深空轨道"));
-    world.dialogue.advance();
-    assert.ok(world.dialogue.current?.text.includes("推进阵列保持微推巡航"));
+    assert.ok(world.dialogue.current?.text.includes("手脚硬朗得像块铁啊"));
     world.dialogue.close();
   });
 });

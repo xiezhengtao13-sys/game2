@@ -187,10 +187,12 @@ describe("BG3/Diablo ShipWorld CRPG integration & lighting pipeline", () => {
   test("Atmospheric multi-pass renderer invokes extrusion gradients, light mask cutouts, and blooms", () => {
     const world = ship();
     const mock = stubRenderer();
+    mock.camera.worldX = world.player.centerX - 640;
+    mock.camera.worldY = world.player.centerY - 360;
     const atmo = new ShipAtmosphere();
-    atmo.update(0.1, 0, 0, 1280, 720, "bridge", false);
+    atmo.update(0.1, mock.camera.worldX, mock.camera.worldY, 1280, 720, "crew_habitat", false);
     atmo.renderWallDepthAndAO(mock, world.tileMap);
-    atmo.renderLightingPass(mock, world.tileMap, [], world.player.centerX, world.player.y + 48, 0, "bridge", false, 1.0);
+    atmo.renderLightingPass(mock, world.tileMap, [], world.player.centerX, world.player.y + 48, 0, "crew_habitat", false, 1.0);
 
     assert.ok((mock.calls.drawGradientRect ?? 0) > 0, "2.5D wall extrusion gradients drawn");
     assert.equal(mock.calls.beginLightMask, 1, "light mask initialized");

@@ -61,10 +61,20 @@ export class Player {
 
   readonly animation = new Animation();
 
-  /** Optional world destination (feet center) set by mouse left-click. */
-  moveTarget: { x: number; y: number } | null = null;
+  /** Ordered world-space feet-center waypoints computed by A* pathfinding. */
+  private _waypoints: Array<{ x: number; y: number }> = [];
 
   constructor(public x: number, public y: number) {}
+
+  /** Ordered path waypoints remaining (empty when idle). */
+  get waypoints(): ReadonlyArray<{ x: number; y: number }> {
+    return this._waypoints;
+  }
+
+  /** Final world destination (feet center), or null when idle. */
+  get moveTarget(): { x: number; y: number } | null {
+    return this._waypoints.length > 0 ? this._waypoints[this._waypoints.length - 1] : null;
+  }
 
   /** Centre of the player, which is what the camera frames. */
   get centerX(): number {
@@ -90,35 +100,50 @@ export class Player {
     };
   }
 
+  setPath(points: ReadonlyArray<{ x: number; y: number }>): void {
+    this._waypoints = points.map((p) => ({ x: p.x, y: p.y }));
+  }
+
   setMoveTarget(worldX: number, worldY: number): void {
-    this.moveTarget = { x: worldX, y: worldY };
+    this._waypoints = [{ x: worldX, y: worldY }];
   }
 
   clearMoveTarget(): void {
-    this.moveTarget = null;
+    this._waypoints = [];
   }
 
-  update(dt: number, input: Input, map: TileMap): void {
+  update(
+    dt: number,
+    input: Input,
+    map: TileMap,
+    extraBlocked?: (tx: number, ty: number) => boolean
+  ): void {
     let { dx, dy } = readDirection(input);
     const keyMoving = dx !== 0 || dy !== 0;
     let moving = keyMoving;
+    let stepScale = PLAYER_SPEED * dt;
 
     if (keyMoving) {
       // Manual keyboard input cancels automated click-to-walk immediately.
-      this.moveTarget = null;
-    } else if (this.moveTarget) {
+      this._waypoints = [];
+    } else {
       const feetX = this.centerX;
       const feetY = this.y + this.height - this.colliderHeight / 2;
-      const vx = this.moveTarget.x - feetX;
-      const vy = this.moveTarget.y - feetY;
-      const dist = Math.hypot(vx, vy);
-      if (dist <= 6) {
-        this.moveTarget = null;
-        moving = false;
-      } else {
+
+      while (this._waypoints.length > 0) {
+        const wp = this._waypoints[0];
+        const vx = wp.x - feetX;
+        const vy = wp.y - feetY;
+        const dist = Math.hypot(vx, vy);
+        if (dist <= 5) {
+          this._waypoints.shift();
+          continue;
+        }
         dx = vx / dist;
         dy = vy / dist;
+        stepScale = Math.min(PLAYER_SPEED * dt, dist);
         moving = true;
+        break;
       }
     }
 
@@ -128,8 +153,9 @@ export class Player {
     const moved = resolveMovement(
       map,
       this.colliderAt(),
-      dx * PLAYER_SPEED * dt,
-      dy * PLAYER_SPEED * dt
+      dx * stepScale,
+      dy * stepScale,
+      extraBlocked
     );
 
     // `resolveMovement` works on the collider; shift the result back to the
@@ -137,9 +163,9 @@ export class Player {
     this.x = moved.x - (this.width - this.colliderWidth) / 2;
     this.y = moved.y - (this.height - this.colliderHeight);
 
-    // Cancel mouse target if completely blocked by a wall
-    if (!keyMoving && this.moveTarget && Math.hypot(this.x - prevX, this.y - prevY) < 0.05 && dt > 0.001) {
-      this.moveTarget = null;
+    // Cancel mouse target if completely blocked against a wall or sealed door
+    if (!keyMoving && this._waypoints.length > 0 && Math.hypot(this.x - prevX, this.y - prevY) < 0.05 && dt > 0.001) {
+      this._waypoints = [];
     }
 
     if (moving) this.animation.face(facingFor(dx, dy));
