@@ -69,13 +69,24 @@ export class DialogueBox {
   private defaultPortraitId(speaker: string | null): string | undefined {
     if (!speaker) return undefined;
     if (speaker === "舰长") return "portrait_captain";
+    if (speaker.includes("沃恩")) return "portrait_captain";
     if (speaker === "老周" || speaker.includes("老周") || speaker.includes("轮机")) return "portrait_engineer";
     if (speaker === "小宋" || speaker.includes("小宋") || speaker.includes("机工")) return "portrait_engineer";
     if (speaker === "老马" || speaker.includes("老马") || speaker.includes("配餐")) return "portrait_transit";
-    if (speaker === "陈医生" || speaker.includes("医")) return "portrait_medic";
-    if (speaker === "调度员小刘" || speaker.includes("调度")) return "portrait_transit";
-    if (speaker === "领航员" || speaker.includes("领航")) return "portrait_navigator";
-    if (speaker.includes("全舰广播") || speaker.includes("杂音") || speaker.includes("系统") || speaker.includes("终端")) {
+    if (speaker === "陈医生" || speaker.includes("医") || speaker.includes("艾琳")) return "portrait_medic";
+    if (speaker === "林芸" || speaker === "阿诚" || speaker === "调度员小刘" || speaker.includes("调度")) {
+      return "portrait_transit";
+    }
+    if (speaker === "领航员" || speaker.includes("领航") || speaker.includes("苏博士")) return "portrait_navigator";
+    if (
+      speaker.includes("林文") ||
+      speaker.includes("MNA-01") ||
+      speaker.includes("弥涅瓦") ||
+      speaker.includes("全舰广播") ||
+      speaker.includes("杂音") ||
+      speaker.includes("系统") ||
+      speaker.includes("终端")
+    ) {
       return "portrait_terminal";
     }
     if (speaker.includes("副官")) return "portrait_captain";
@@ -97,6 +108,33 @@ export class DialogueBox {
     if (speaker === "舰长") {
       this.badgeEl.textContent = "COMMAND · 远望号旗舰指挥官";
       this.badgeEl.className = "dialogue-badge badge-command";
+    } else if (speaker?.includes("沃恩")) {
+      this.badgeEl.textContent = "ADVISOR · 船长顾问 & 弥涅瓦-V 协同载体";
+      this.badgeEl.className = "dialogue-badge badge-command";
+    } else if (speaker?.includes("弥涅瓦-V")) {
+      this.badgeEl.textContent = "MINERVA-V · 主舰双监督独立系统";
+      this.badgeEl.className = "dialogue-badge badge-command";
+    } else if (speaker?.includes("MNA-01")) {
+      this.badgeEl.textContent = "MNA-01 · 历史档案馆特殊数字船员";
+      this.badgeEl.className = "dialogue-badge badge-nav";
+    } else if (speaker === "陈艾琳" || speaker?.includes("艾琳")) {
+      this.badgeEl.textContent = "REHAB · 第七神经康复中心（原 C-7）";
+      this.badgeEl.className = "dialogue-badge badge-med";
+    } else if (speaker === "周瑾" || speaker?.includes("受试")) {
+      this.badgeEl.textContent = "SUBJECT · 第七神经康复观察受试者";
+      this.badgeEl.className = "dialogue-badge badge-med";
+    } else if (speaker === "林文" || speaker?.includes("档案")) {
+      this.badgeEl.textContent = "ARCHIVE · 远望号历史档案馆";
+      this.badgeEl.className = "dialogue-badge badge-nav";
+    } else if (speaker === "林芸") {
+      this.badgeEl.textContent = "AGRI · L-1 封闭生态农业区";
+      this.badgeEl.className = "dialogue-badge badge-eng";
+    } else if (speaker === "苏博士") {
+      this.badgeEl.textContent = "SCI · R-2 深空光谱分析室";
+      this.badgeEl.className = "dialogue-badge badge-nav";
+    } else if (speaker === "阿诚") {
+      this.badgeEl.textContent = "RING · R-1 双旋转生活环厅";
+      this.badgeEl.className = "dialogue-badge badge-transit";
     } else if (speaker === "老周" || speaker?.includes("老周") || speaker?.includes("轮机")) {
       this.badgeEl.textContent = "ENG · 轮机维护二班班长";
       this.badgeEl.className = "dialogue-badge badge-eng";

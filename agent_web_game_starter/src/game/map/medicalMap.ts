@@ -19,6 +19,8 @@ export const MEDICAL_ROWS = 22;
 
 export const MEDICAL_NORTH_DOOR = { x: 13, y: 0, w: 4, h: 1 };
 export const MEDICAL_SOUTH_DOOR = { x: 13, y: MEDICAL_ROWS - 1, w: 4, h: 1 };
+export const MEDICAL_WEST_DOOR = { x: 0, y: 7, w: 1, h: 3 };
+export const MEDICAL_EAST_DOOR = { x: MEDICAL_COLUMNS - 1, y: 7, w: 1, h: 3 };
 
 interface Shape {
   x: number;
@@ -36,9 +38,11 @@ const SHAPES: Shape[] = [
   { x: 0, y: 0, w: 1, h: MEDICAL_ROWS, type: "wall", note: "西向低温隔热壁" },
   { x: MEDICAL_COLUMNS - 1, y: 0, w: 1, h: MEDICAL_ROWS, type: "wall", note: "东向低温隔热壁" },
 
-  // Doorways
+  // Doorways (North Spine, South Aft Lock, West to C-7 Rehab, East to Archives)
   { x: MEDICAL_NORTH_DOOR.x, y: MEDICAL_NORTH_DOOR.y, w: MEDICAL_NORTH_DOOR.w, h: MEDICAL_NORTH_DOOR.h, type: "floor_light", note: "北侧通往生活区入口" },
   { x: MEDICAL_SOUTH_DOOR.x, y: MEDICAL_SOUTH_DOOR.y, w: MEDICAL_SOUTH_DOOR.w, h: MEDICAL_SOUTH_DOOR.h, type: "floor_light", note: "南侧通往机库重水密闸" },
+  { x: MEDICAL_WEST_DOOR.x, y: MEDICAL_WEST_DOOR.y, w: MEDICAL_WEST_DOOR.w, h: MEDICAL_WEST_DOOR.h, type: "floor_light", note: "西侧通往第七神经康复中心连廊" },
+  { x: MEDICAL_EAST_DOOR.x, y: MEDICAL_EAST_DOOR.y, w: MEDICAL_EAST_DOOR.w, h: MEDICAL_EAST_DOOR.h, type: "floor_light", note: "东侧通往远望号历史档案馆连廊" },
 
   // Distributed Cryo-Stasis Isolation Partition Walls (4 independent Cryo Vaults!)
   { x: 10, y: 1, w: 1, h: 20, type: "wall", note: "西侧休眠分仓气密隔墙" },
@@ -46,16 +50,16 @@ const SHAPES: Shape[] = [
   { x: 1, y: 11, w: 10, h: 1, type: "wall", note: "西甲/乙休眠仓独立环境隔离壁" },
   { x: 19, y: 11, w: 10, h: 1, type: "wall", note: "东丙/丁休眠仓独立环境隔离壁" },
 
-  // Pressurized maintenance doors into each of the 4 modular Cryo Vaults
-  { x: 10, y: 5, w: 1, h: 2, type: "floor_light", note: "休眠第 1 分仓检修门" },
+  // Pressurized doors aligned with the horizontal wing corridor (y 7..9) for upper vaults
+  { x: 10, y: 7, w: 1, h: 3, type: "floor_light", note: "休眠第 1 分仓主廊贯通门" },
   { x: 10, y: 15, w: 1, h: 2, type: "floor_light", note: "休眠第 2 分仓检修门" },
-  { x: 19, y: 5, w: 1, h: 2, type: "floor_light", note: "休眠第 3 分仓检修门" },
+  { x: 19, y: 7, w: 1, h: 3, type: "floor_light", note: "休眠第 3 分仓主廊贯通门" },
   { x: 19, y: 15, w: 1, h: 2, type: "floor_light", note: "休眠第 4 分仓检修门" },
 
   // Cold Cryo-Vault floor decks & dedicated cooling equipment manifolds flush on vault walls
-  { x: 2, y: 2, w: 7, h: 8, type: "deck_dark", note: "第一休眠分仓冷机巡检甲板" },
+  { x: 2, y: 2, w: 7, h: 5, type: "deck_dark", note: "第一休眠分仓冷机巡检甲板" },
   { x: 2, y: 13, w: 7, h: 7, type: "deck_dark", note: "第二休眠分仓冷机巡检甲板" },
-  { x: 21, y: 2, w: 7, h: 8, type: "deck_dark", note: "第三休眠分仓冷机巡检甲板" },
+  { x: 21, y: 2, w: 7, h: 5, type: "deck_dark", note: "第三休眠分仓冷机巡检甲板" },
   { x: 21, y: 13, w: 7, h: 7, type: "deck_dark", note: "第四休眠分仓冷机巡检甲板" },
 
   { x: 1, y: 1, w: 9, h: 1, type: "wall_dark", note: "休眠分仓 1 独立维生冷机机组" },
@@ -63,14 +67,15 @@ const SHAPES: Shape[] = [
   { x: 20, y: 1, w: 9, h: 1, type: "wall_dark", note: "休眠分仓 3 独立维生冷机机组" },
   { x: 20, y: 12, w: 9, h: 1, type: "wall_dark", note: "休眠分仓 4 独立维生冷机机组" },
 
-  // Central Sterile Clinical Diagnostic Floor (clean dark grey/slate medical bay pad, NO bedroom rug!)
-  { x: 12, y: 8, w: 6, h: 9, type: "deck_dark", note: "中央紧急救治与生理监测无菌工作台区" },
+  // Central Sterile Clinical Diagnostic Floor (south of horizontal cross-spine y 7..9)
+  { x: 12, y: 10, w: 6, h: 7, type: "deck_dark", note: "中央紧急救治与生理监测无菌工作台区" },
 
-  // Wall telemetry screens along center concourse
-  { x: 10, y: 8, w: 1, h: 2, type: "screen", note: "西侧休眠舱生理遥测总览屏" },
-  { x: 19, y: 8, w: 1, h: 2, type: "screen", note: "东侧休眠舱生理遥测总览屏" },
+  // Wall telemetry screens along northern central bay (clear of horizontal wing doorways y 7..9)
+  { x: 10, y: 3, w: 1, h: 2, type: "screen", note: "西侧休眠舱生理遥测总览屏" },
+  { x: 19, y: 3, w: 1, h: 2, type: "screen", note: "东侧休眠舱生理遥测总览屏" },
 
-  // Central clinical lighting runner
+  // Central clinical lighting runner & transverse wing guidance strip
+  { x: 2, y: 8, w: 26, h: 1, type: "floor_light", note: "东西向星翼医疗连廊引导灯" },
   { x: 14, y: 2, w: 2, h: 1, type: "floor_light", note: "医疗中心主通道灯" },
   { x: 14, y: 5, w: 2, h: 1, type: "floor_light", note: "医疗中心主通道灯" },
   { x: 14, y: 18, w: 2, h: 1, type: "floor_light", note: "南闸前引导地灯" }

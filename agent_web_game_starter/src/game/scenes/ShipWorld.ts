@@ -34,6 +34,7 @@ import {
 import { DutySystem } from "../systems/DutySystem";
 import { CrisisSystem } from "../systems/CrisisSystem";
 import { ExplorationSystem } from "../systems/ExplorationSystem";
+import { SideQuestSystem, type SideQuestFlag, type SideQuestRecord } from "../systems/SideQuestSystem";
 import { RpgSystem } from "../systems/RpgSystem";
 import { SecuritySystem, type SecurityGate } from "../systems/SecuritySystem";
 import { SpaceFlight } from "./SpaceFlight";
@@ -50,10 +51,9 @@ import { sounds } from "../../engine/audio/SoundEffects";
 
 /**
  * The full 2,800m Yuanwang colony ship as one continuous CRPG world:
- *   - Intelligent A* pathfinding across 13 compartments + prop/corner smoothing
+ *   - Intelligent A* pathfinding across 15 compartments + prop/corner smoothing
  *   - Physical security bulkhead clearances isolating lower crewman zones at game start
- *   - Three-phase crewman storyline leading from restricted Habitat/Workshop duties
- *     -> Crisis Damage Control -> Command Commendation -> Planetary Exploration -> Captain's Quarters
+ *   - Three-phase crewman storyline + 4 post-Watch-Accord (2491 AD) side quests
  */
 export class ShipWorld implements GameWorld {
   readonly player: Player;
@@ -62,6 +62,7 @@ export class ShipWorld implements GameWorld {
   readonly duty = new DutySystem();
   readonly crisis = new CrisisSystem();
   readonly exploration = new ExplorationSystem();
+  readonly sideQuests = new SideQuestSystem();
   readonly rpg = new RpgSystem();
   readonly security = new SecuritySystem();
   readonly spaceFlight = new SpaceFlight();
@@ -119,6 +120,7 @@ export class ShipWorld implements GameWorld {
   onDutyChange: ((duty: DutySystem) => void) | null = null;
   onCrisisChange: ((crisis: CrisisSystem) => void) | null = null;
   onExplorationChange: ((exploration: ExplorationSystem) => void) | null = null;
+  onSideQuestsChange: ((quests: SideQuestSystem) => void) | null = null;
   onSecurityChange: ((security: SecuritySystem) => void) | null = null;
   onRpgChange: ((rpg: RpgSystem) => void) | null = null;
 
@@ -360,12 +362,12 @@ export class ShipWorld implements GameWorld {
       {
         speaker: "小徐",
         portraitId: "portrait_player",
-        text: "你从公共宿舍区 A1 隔间的铺位起身踩上脚垫。舱内常压恒温、安安静静，隔墙那头的夜班工友还在熟睡。"
+        text: "你从公共宿舍区 A1 隔间的铺位起身踩上脚垫。2491 年——《守望协定》签立后第三年，整艘远望号常压恒温、安安静静，隔墙那头的夜班工友还在熟睡。"
       },
       {
         speaker: "小徐",
         portraitId: "portrait_player",
-        text: "把二班巡检单揣进兜里——先走出宿舍门，找走廊里的老周点卯，领今天生活区和车间的例行巡查工作吧。"
+        text: "作为未动过植入式义体的普通二班轮值工勤，先把巡检单揣进兜里——先走出宿舍门，找走廊里的老周点卯吧。听说昨晚航迹悄然偏离主线，正循着一道疑似「卡戎号」的微弱信标摸索前进……"
       }
     ]);
     this.onDialogueChange?.(this.dialogue);
@@ -380,14 +382,19 @@ export class ShipWorld implements GameWorld {
     this.onRpgChange?.(this.rpg);
   }
 
-  /** Use medical stim from HUD shortcut cleanly. */
-  useHealingStim(): boolean {
-    const ok = this.rpg.useItem("med_stim", this.player.centerX, this.player.y);
+  /** Use any consumable recovery item from HUD or shortcut cleanly. */
+  useConsumable(itemId: string): boolean {
+    const ok = this.rpg.useItem(itemId, this.player.centerX, this.player.y);
     if (ok) {
       sounds.playBeep(720);
       this.onRpgChange?.(this.rpg);
     }
     return ok;
+  }
+
+  /** Use medical stim from HUD shortcut cleanly. */
+  useHealingStim(): boolean {
+    return this.useConsumable("med_stim");
   }
 
   update(dt: number, input: Input): void {
@@ -640,13 +647,16 @@ export class ShipWorld implements GameWorld {
 
     sounds.playClick();
 
+    let sideNote: DialogueLine | null = null;
+    const noteSuffix = () => (sideNote ? `\n\n${sideNote.text}` : "");
+
     if (mode === "inspect") {
       const check = this.rpg.attemptSkillCheck(`inspect_${target.id}`, "perception", 45, 55, anchor.x, anchor.y);
       let detail = "";
       if (person) {
         if (person.id === "captain") {
           detail = check.ok
-            ? "【感知检定成功】你注意到舰长指尖沾着轻微的金属石墨粉——他亲手维护那张实体星图，腕表却停在了两年前某次变轨校准时刻。"
+            ? "【感知检定成功】你注意到舰长指尖沾着轻微的金属石墨粉——他亲手维护那张实体星图，腕表还停在 2488 年《守望协定》签字当晚的基准时刻。"
             : "【感知观察】舰长神情克制沉稳，制服一丝不苟。你暂时看不出更多异常。";
         } else if (person.id === "engineer") {
           detail = check.ok
@@ -658,14 +668,65 @@ export class ShipWorld implements GameWorld {
             : "【感知观察】小宋靠着寝室隔断揉着太阳穴，正打着大大的哈欠。";
         } else if (person.id === "cook_ma") {
           detail = check.ok
-            ? "【感知洞察成功】老马围裙系得一丝不苟，袖口绣着已退役地球联合航天餐饮署的旧徽记。配餐灶台被他擦得能倒映出人影。"
+            ? "【感知洞察成功】老马围裙系得一丝不苟，袖口绣着已退役太阳系联邦航勤餐饮署的旧徽记。配餐灶台被他擦得能倒映出人影。"
             : "【感知观察】老马正利落地在恒温暖餐柜前分装早餐保温餐盒。";
+        } else if (person.id === "researcher_ailin") {
+          const wasTalked = this.sideQuests.hasFlag("talked_ailin");
+          sideNote = this.recordSideQuest(
+            wasTalked && this.sideQuests.canReportAilin() ? "reported_ailin" : "talked_ailin",
+            anchor.x,
+            anchor.y
+          );
+          detail = check.ok
+            ? "【感知洞察成功】陈艾琳实验服口袋里露出一叠写满密麻脑波方程的手稿，纸角一遍遍用铅笔补记着「唤醒 V，不要融合——防遗忘备份」。"
+            : "【感知观察】陈艾琳正揉着眉心比对康复脑波打印卷宗，神色温和却难掩失忆后的吃力。";
+        } else if (person.id === "rehab_subject") {
+          sideNote = this.recordSideQuest("checked_ward_bed", anchor.x, anchor.y);
+          detail = check.ok
+            ? "【感知洞察成功】周瑾床头并无任何植入体屏蔽贴片，唯有几张练笔素描与写着「第 31 号康复员已稳态出院」的交接单。"
+            : "【感知观察】周瑾气色平稳，正对着病房窗沿的恒温绿植轻轻舒展手腕。";
+        } else if (person.id === "archivist_lin") {
+          sideNote = this.recordSideQuest("talked_archivist_lin", anchor.x, anchor.y);
+          detail = check.ok
+            ? "【感知洞察成功】林文胸前别着图书馆物理总线断网钥匙链——通往南侧 MNA-01 工作席的数据缆线确实只接了只读编目总线。"
+            : "【感知观察】林文正将和平号移交来的胶片微缩件谨慎地归入恒湿纸盒。";
+        } else if (person.id === "advisor_vaughn") {
+          sideNote = this.recordSideQuest("talked_vaughn", anchor.x, anchor.y);
+          detail = check.ok
+            ? "【感知洞察成功】伊莱亚斯·沃恩左腕戴着一只双色受控连结监控环——蓝绿微光每三秒与「弥涅瓦-V」互相校验一次签章，既不融合也未断裂。"
+            : "【感知观察】沃恩站姿笔挺，目光沉静地掠过舰桥审计台与星图桌。";
+        } else if (person.id === "agronomist") {
+          sideNote = this.recordSideQuest("asked_linyun_weld", anchor.x, anchor.y);
+          detail = check.ok
+            ? "【感知洞察成功】林芸工装口袋里仍挂着一把无损探伤尺——每隔几个月她都会顺手去摸一眼走廊上那道 2488 年死锁止动栓。"
+            : "【感知观察】林芸正逐株检查水培水稻的溶氧管路，神情专注。";
+        } else if (person.id === "medic") {
+          sideNote = this.recordSideQuest("asked_chen_prosthetic", anchor.x, anchor.y);
+          detail = check.ok
+            ? "【感知洞察成功】陈医生工作台上翻开着《远望号原版无义体乘员基线总录》，全舰在册人员植入体栏清一色登记为「0」。"
+            : "【感知观察】陈医生正轻步核对四个冷冻休眠仓列的温度微调曲线。";
         } else {
           detail = check.ok
             ? `【感知检定成功】你敏锐地察觉到 ${person.name} 的工位呼吸灯节奏轻微紊乱，显然对方已经连续高强度值守了十几个小时。`
             : `【感知观察】${person.name} 正全神贯注地盯守着眼前的仪器。`;
         }
       } else if (prop) {
+        if (prop.label === "康复监护床·一号" || prop.label === "康复监护床·二号") {
+          sideNote = this.recordSideQuest("checked_ward_bed", anchor.x, anchor.y);
+        } else if (prop.label === "第五协议校验隔离终端") {
+          sideNote = this.recordSideQuest("decoded_fifth_protocol", anchor.x, anchor.y);
+        } else if (prop.label === "MNA-01 研究员公共工作席") {
+          sideNote = this.recordSideQuest("checked_mna01_desk", anchor.x, anchor.y);
+        } else if (prop.label === "和平号移交：卡戎号遇袭目击卷宗") {
+          sideNote = this.recordSideQuest("examined_charon_file", anchor.x, anchor.y);
+        } else if (prop.label === "2488 应急分离焊封止动栓") {
+          sideNote = this.recordSideQuest("inspected_l1_weld", anchor.x, anchor.y);
+        } else if (prop.label === "弥涅瓦-V · 主舰双监督审计台") {
+          sideNote = this.recordSideQuest("inspected_bridge_minerva_v", anchor.x, anchor.y);
+        } else if (prop.label === "太阳系七年战争与守望协定档案柜") {
+          sideNote = this.recordSideQuest("checked_accord_cabinet", anchor.x, anchor.y);
+        }
+
         if (prop.label.includes("便签")) {
           if (check.ok && !this.rpg.hasItem("wrench_heavy")) {
             this.rpg.addItem({
@@ -679,7 +740,7 @@ export class ShipWorld implements GameWorld {
             }, anchor.x, anchor.y);
             detail = "【感知发现暗藏物品】你在留言板底沿发现一把油纸包裹的重型管路扳手——正是便签里老周落下的三号扳手！装备后【机械工程 +15%】！";
           } else {
-            detail = "【细微勘察】留言板上密密麻麻钉着三十年来船员的琐碎心事，每一张泛黄的纸角都在提醒这里住着活生生的人。";
+            detail = "【细微勘察】留言板上密密麻麻钉着自 2439 年启航五十余年来船员的琐碎心事，每一张泛黄的纸角都在提醒这里住着活生生的人。";
           }
         } else if (prop.label.includes("A1 个人储物柜")) {
           if (check.ok && !this.rpg.hasItem("family_letter")) {
@@ -688,10 +749,10 @@ export class ShipWorld implements GameWorld {
               name: "泛黄的海滩照片与家书",
               icon: "✉️",
               category: "quest",
-              desc: "从地球启航前父母塞在行囊夹层里的海滩胶片照片，背面用圆珠笔写着：『平安到达新星。』",
+              desc: "2439 年从地球启航前父母塞在行囊夹层里的海滩胶片照片，背面用圆珠笔写着：『平安到达新星。』",
               bonusDesc: "全检定意志 +5%"
             }, anchor.x, anchor.y);
-            detail = "【感知翻检成功】你在储物柜暗格深处翻出一张塑料塑封的旧照片与家书——那是三十年前地球旧海滩的日落，背面字迹工整：『平安到达新星。』装备后【全检定意志 +5%】！";
+            detail = "【感知翻检成功】你在储物柜暗格深处翻出一张塑料塑封的旧照片与家书——那是 2439 年离开太阳系联邦前留下的地球旧海滩日落，背面字迹工整：『平安到达新星。』装备后【全检定意志 +5%】！";
           } else {
             detail = "【细致翻看】储物柜里整齐叠放着二班换洗工装与安全卡。暗格里已被翻阅过。";
           }
@@ -701,11 +762,11 @@ export class ShipWorld implements GameWorld {
             : "【观察结果】全自动恒温暖餐柜正嗡嗡低鸣，柜门透着柔和的橙黄色保温灯光。";
         } else {
           detail = check.ok
-            ? `【感知勘察成功】你在【${prop.label}】接缝处发现了出厂铭牌与微米级热胀冷缩划痕——这台老设备已经在深空中稳定服役了二十八年零七个月。`
+            ? `【感知勘察成功】你在【${prop.label}】接缝处发现了太阳系联邦时期的出厂铭牌与热胀冷缩划痕——这台厚实设备已在深空中稳定服役了五十余载。`
             : `【观察结果】你仔细端详了【${prop.label}】，外表沉稳厚重，暂未发现更多暗门或异常标记。`;
         }
       }
-      this.dialogue.open([{ speaker: null, text: detail, portraitId: person ? this.portraitForPerson(person.id) : "portrait_terminal" }]);
+      this.dialogue.open([{ speaker: null, text: `${detail}${noteSuffix()}`, portraitId: person ? this.portraitForPerson(person.id) : "portrait_terminal" }]);
       this.onDialogueChange?.(this.dialogue);
       this.onRpgChange?.(this.rpg);
       return;
@@ -724,6 +785,9 @@ export class ShipWorld implements GameWorld {
         if (prop?.label === "聚变反应堆状态监测台" && this.crisis.isAlarmActive) {
           this.rpg.grantXp(40, "机房抢修辅助", anchor.x, anchor.y);
           msg = "【机械校准成功】你迅速清理了传感器积碳并紧固接线端子，副泵压降曲线稳定了下来 (+85 XP)！";
+        } else if (prop?.label === "2488 应急分离焊封止动栓") {
+          sideNote = this.recordSideQuest("inspected_l1_weld", anchor.x, anchor.y);
+          msg = "【焊缝测隙复核】钨钢死锁焊道咬合度 100%，物理爆炸螺栓彻底失去了抛弃 L-1 农业模块的能力。";
         } else if (prop?.label.includes("全自动恒温暖餐柜")) {
           msg = "【机械保养完成】你顺手清理了出餐保温槽的滑轨冷凝水并拧紧铰链，暖餐柜滑动变得异常顺畅！";
         } else {
@@ -733,7 +797,7 @@ export class ShipWorld implements GameWorld {
         this.rpg.damage(6, 0, `误触【${prop?.label}】带电机械棘轮`, this.player.centerX, this.player.y);
         msg = `【机械操作失误】扳手滑脱，机械棘轮反冲擦伤了手背 (-6 HP)！建议佩戴防滑工具或提高机械技能后再试。`;
       }
-      this.dialogue.open([{ speaker: null, text: msg, portraitId: prop?.label.includes("反应堆") || prop?.label.includes("泄压") ? "portrait_reactor" : "portrait_terminal" }]);
+      this.dialogue.open([{ speaker: null, text: `${msg}${noteSuffix()}`, portraitId: prop?.label.includes("反应堆") || prop?.label.includes("泄压") ? "portrait_reactor" : "portrait_terminal" }]);
       this.onDialogueChange?.(this.dialogue);
       this.onRpgChange?.(this.rpg);
       return;
@@ -754,19 +818,34 @@ export class ShipWorld implements GameWorld {
             name: "舰长旧地球暗号卡",
             icon: "🪪",
             category: "quest",
-            desc: "嵌在办公桌隐藏磁吸位下的实体身份卡，记载着三十年航线修正底档权限。",
+            desc: "嵌在办公桌隐藏磁吸位下的实体身份卡，记载着 2439 年启航以来的航线修正底档权限。",
             bonusDesc: "话术交涉 +10%"
           }, anchor.x, anchor.y);
           msg = "【科学解码突破】你接通离线解码板，意外激活桌面隐蔽维护协议，发现并取得【舰长旧地球暗号卡】！";
+        } else if (prop?.label === "第五协议校验隔离终端") {
+          sideNote = this.recordSideQuest("decoded_fifth_protocol", anchor.x, anchor.y);
+          msg = "【科学解码成功】解码板读取出 2488 年《第五协议》分段隔离日志：37 名受试者的自主神经序列已被全部保护恢复，唯独陈艾琳的一段早期记忆索引留在了隔离扇区。";
+        } else if (prop?.label === "MNA-01 研究员公共工作席") {
+          sideNote = this.recordSideQuest("checked_mna01_desk", anchor.x, anchor.y);
+          msg = "【总线权限定界】确认本机推进、医疗与武装系统总线已物理断开，仅余九舰史料只读库——「特殊数字船员 MNA-01」正在安静编校通史目录。";
+        } else if (prop?.label === "弥涅瓦-V · 主舰双监督审计台") {
+          sideNote = this.recordSideQuest("inspected_bridge_minerva_v", anchor.x, anchor.y);
+          msg = "【双监督秘钥互验】屏幕闪出两行互锁签名——「沃恩顾问生物节律稳态」与「弥涅瓦-V 监督人格校验通过」，无单方面提权痕迹。";
+        } else if (prop?.label === "和平号移交：卡戎号遇袭目击卷宗") {
+          sideNote = this.recordSideQuest("examined_charon_file", anchor.x, anchor.y);
+          msg = "【信号对比完成】和平号原始光学记录与 2491 年截获微弱脉冲的频偏高度吻合——远望号确实正循着这条疑云偏航探查。";
+        } else if (prop?.label === "太阳系七年战争与守望协定档案柜") {
+          sideNote = this.recordSideQuest("checked_accord_cabinet", anchor.x, anchor.y);
+          msg = "【历史编年核检】条约原文确认：人类主权联盟与第四主权观察席共同承认了远望号等三舰组建「自由航行共同体」的自治地位。";
         } else if (prop?.label.includes("全自动恒温暖餐柜")) {
-          msg = "【营养配比解析】解码板读取热食成分：热量 2,400 kcal，富含植物蛋白、水解谷氨酸与合成 B 族维生素，营养配比极佳。";
+          msg = "【营养配比解析】解码板读取热食成分：热量 2,400 kcal，富含植物蛋白、水解谷氨酸与合成 B 族维生素，专为无义体人体代谢配制。";
         } else {
-          msg = `【硬件解码成功】你成功读取了【${prop?.label}】的底层自检校验码，完整转储近三十年的固件日志。`;
+          msg = `【硬件解码成功】你成功读取了【${prop?.label}】的底层自检校验码，完整转储了自太阳系联邦时期沿用至今的稳态固件日志。`;
         }
       } else {
         msg = `【逻辑校验失败】旧世代铜芯总线返回一组奇偶校验错误代码。你未能突破这层硬件锁。`;
       }
-      this.dialogue.open([{ speaker: null, text: msg, portraitId: "portrait_terminal" }]);
+      this.dialogue.open([{ speaker: null, text: `${msg}${noteSuffix()}`, portraitId: "portrait_terminal" }]);
       this.onDialogueChange?.(this.dialogue);
       this.onRpgChange?.(this.rpg);
       return;
@@ -779,6 +858,25 @@ export class ShipWorld implements GameWorld {
         return;
       }
       const check = this.rpg.attemptSkillCheck(`speech_${person.id}`, "speech", 55, 110, anchor.x, anchor.y);
+      if (person.id === "researcher_ailin") {
+        const wasTalked = this.sideQuests.hasFlag("talked_ailin");
+        sideNote = this.recordSideQuest(
+          wasTalked && this.sideQuests.canReportAilin() ? "reported_ailin" : "talked_ailin",
+          anchor.x,
+          anchor.y
+        );
+      } else if (person.id === "rehab_subject") {
+        sideNote = this.recordSideQuest("checked_ward_bed", anchor.x, anchor.y);
+      } else if (person.id === "archivist_lin") {
+        sideNote = this.recordSideQuest("talked_archivist_lin", anchor.x, anchor.y);
+      } else if (person.id === "advisor_vaughn") {
+        sideNote = this.recordSideQuest("talked_vaughn", anchor.x, anchor.y);
+      } else if (person.id === "agronomist") {
+        sideNote = this.recordSideQuest("asked_linyun_weld", anchor.x, anchor.y);
+      } else if (person.id === "medic") {
+        sideNote = this.recordSideQuest("asked_chen_prosthetic", anchor.x, anchor.y);
+      }
+
       if (person.id === "cook_ma") {
         if (check.ok && !this.rpg.hasItem("malt_drink")) {
           this.rpg.addItem({
@@ -818,8 +916,8 @@ export class ShipWorld implements GameWorld {
         }, anchor.x, anchor.y);
       }
       const text = check.ok
-        ? `【交涉成功】[魅力/话术生效] ${person.name}神色明显缓和下来，拍了拍你的肩膀：「还是你们基层干活稳重，这盒备用【随身应急急救包】拿好，深空轮班别硬撑。」`
-        : `【交涉受挫】${person.name}摆了摆手：「现在当班呢，别扯那些有的没的，抓紧把手头活干完吧。」`;
+        ? `【交涉成功】[魅力/话术生效] ${person.name}神色明显缓和下来，拍了拍你的肩膀：「还是你们基层干活稳重，这盒备用【随身应急急救包】拿好，深空轮班别硬撑。」${noteSuffix()}`
+        : `【交涉受挫】${person.name}摆了摆手：「现在当班呢，别扯那些有的没的，抓紧把手头活干完吧。」${noteSuffix()}`;
       this.dialogue.open([{ speaker: person.name, text, portraitId: this.portraitForPerson(person.id) }]);
       this.onDialogueChange?.(this.dialogue);
       this.onRpgChange?.(this.rpg);
@@ -837,6 +935,8 @@ export class ShipWorld implements GameWorld {
 
     let dutyNote: DialogueLine | null = null;
     let dutyNoteFirst = false;
+    let sideNote: DialogueLine | null = null;
+    let extraTerminalLine: DialogueLine | null = null;
     let portraitOverride: string | undefined;
 
     if (prop) {
@@ -993,6 +1093,54 @@ export class ShipWorld implements GameWorld {
           dutyNoteFirst = true;
         }
       }
+
+      // 2491 Post-Watch-Accord Side Quests (Prop Triggers)
+      if (prop.label === "康复监护床·一号" || prop.label === "康复监护床·二号") {
+        sideNote = this.recordSideQuest("checked_ward_bed", prop.x, prop.y);
+      } else if (prop.label === "第五协议校验隔离终端") {
+        sideNote = this.recordSideQuest("decoded_fifth_protocol", prop.x, prop.y);
+      } else if (prop.label === "MNA-01 研究员公共工作席") {
+        sideNote = this.recordSideQuest("checked_mna01_desk", prop.x, prop.y);
+        extraTerminalLine = {
+          speaker: "MNA-01",
+          portraitId: "portrait_terminal",
+          text: "「编目端回复：当前权限级为只读文职编目（MNA-01）。无推进、医疗、安防写权限。正在整理和平号、阿育王号与欧罗巴号 2488–2491 年历史纪要。」"
+        };
+      } else if (prop.label === "和平号移交：卡戎号遇袭目击卷宗") {
+        sideNote = this.recordSideQuest("examined_charon_file", prop.x, prop.y);
+      } else if (prop.label === "2488 应急分离焊封止动栓") {
+        sideNote = this.recordSideQuest("inspected_l1_weld", prop.x, prop.y);
+      } else if (prop.label === "弥涅瓦-V · 主舰双监督审计台") {
+        sideNote = this.recordSideQuest("inspected_bridge_minerva_v", prop.x, prop.y);
+        extraTerminalLine = {
+          speaker: "弥涅瓦-V",
+          portraitId: "portrait_terminal",
+          text: "「审计脉冲稳态：沃恩神经载体与监督人格 V 保持受控共连。全舰 12,408 名乘员个体连续性完整，关键操作执行双签互锁。」"
+        };
+      } else if (prop.label === "太阳系七年战争与守望协定档案柜") {
+        sideNote = this.recordSideQuest("checked_accord_cabinet", prop.x, prop.y);
+      }
+    }
+
+    if (person) {
+      if (person.id === "researcher_ailin") {
+        const wasTalkedAilin = this.sideQuests.hasFlag("talked_ailin");
+        if (wasTalkedAilin && this.sideQuests.canReportAilin()) {
+          sideNote = this.recordSideQuest("reported_ailin", person.x, person.y);
+        } else if (!wasTalkedAilin) {
+          sideNote = this.recordSideQuest("talked_ailin", person.x, person.y);
+        }
+      } else if (person.id === "rehab_subject") {
+        sideNote = this.recordSideQuest("checked_ward_bed", person.x, person.y);
+      } else if (person.id === "archivist_lin") {
+        sideNote = this.recordSideQuest("talked_archivist_lin", person.x, person.y);
+      } else if (person.id === "advisor_vaughn") {
+        sideNote = this.recordSideQuest("talked_vaughn", person.x, person.y);
+      } else if (person.id === "agronomist") {
+        sideNote = this.recordSideQuest("asked_linyun_weld", person.x, person.y);
+      } else if (person.id === "medic") {
+        sideNote = this.recordSideQuest("asked_chen_prosthetic", person.x, person.y);
+      }
     }
 
     const baseLines = person ? this.linesFor(person) : prop?.lines;
@@ -1003,9 +1151,18 @@ export class ShipWorld implements GameWorld {
       portraitId: l.portraitId ?? portraitOverride ?? (person ? this.portraitForPerson(person.id) : undefined)
     }));
 
+    if (extraTerminalLine) {
+      lines = [...lines, extraTerminalLine];
+    }
+
     if (dutyNote) {
       dutyNote.portraitId = dutyNote.portraitId ?? portraitOverride ?? (person ? this.portraitForPerson(person.id) : undefined);
       lines = dutyNoteFirst ? [dutyNote, ...lines] : [...lines, dutyNote];
+    }
+
+    if (sideNote) {
+      sideNote.portraitId = sideNote.portraitId ?? portraitOverride ?? (person ? this.portraitForPerson(person.id) : "portrait_terminal");
+      lines = [...lines, sideNote];
     }
 
     if (!lines[lines.length - 1].choices) {
@@ -1030,9 +1187,107 @@ export class ShipWorld implements GameWorld {
     this.onRpgChange?.(this.rpg);
   }
 
+  private recordSideQuest(
+    flag: SideQuestFlag,
+    anchorX?: number,
+    anchorY?: number
+  ): DialogueLine | null {
+    if (this.sideQuests.hasFlag(flag)) return null;
+    const { activated, completed } = this.sideQuests.recordFlag(flag);
+    for (const q of activated) {
+      this.rpg.pushLog("system", `【支线开启】《${q.title}》(${q.sectorHint})`);
+    }
+    for (const q of completed) {
+      this.grantSideQuestReward(q, anchorX, anchorY);
+    }
+    if (activated.length === 0 && completed.length === 0) {
+      this.rpg.pushLog("system", "【支线线索已记录】调查进度已同步至左上角任务追踪栏。");
+    }
+    this.onSideQuestsChange?.(this.sideQuests);
+    this.onRpgChange?.(this.rpg);
+
+    if (completed.length > 0) {
+      const summary = completed
+        .map((q) => `《${q.title}》（奖励：${q.rewardLabel}，+${q.rewardXp} XP）`)
+        .join("；");
+      return { speaker: null, text: `【支线完成】${summary}` };
+    }
+    if (activated.length > 0) {
+      const activeNames = activated.map((q) => `《${q.title}》`).join("；");
+      return { speaker: null, text: `【支线记录已开启】${activeNames}（已加入左上角支线追踪栏）` };
+    }
+    return { speaker: null, text: "【支线进度更新】已将这条线索记入左上角任务追踪栏。" };
+  }
+
+  private grantSideQuestReward(
+    q: SideQuestRecord,
+    anchorX?: number,
+    anchorY?: number
+  ): void {
+    if (q.id === "ailin_memory" && !this.rpg.hasItem("ailin_notes")) {
+      this.rpg.addItem(
+        {
+          id: "ailin_notes",
+          name: "手抄认知脉冲笔记",
+          icon: "📜",
+          category: "gear",
+          desc: "陈艾琳与沃恩当年合编《第五协议》校验公式的手抄本。虽记忆有缺，算法精髓仍在。",
+          bonusDesc: "科学终端 +8%",
+          equipped: true
+        },
+        anchorX,
+        anchorY
+      );
+    } else if (q.id === "mna01_archives" && !this.rpg.hasItem("nine_ships_microchip")) {
+      this.rpg.addItem(
+        {
+          id: "nine_ships_microchip",
+          name: "九舰史料整理芯片",
+          icon: "💾",
+          category: "gear",
+          desc: "由 MNA-01 整理编目、档案馆管理员林文签核的九艘殖民舰外交暗号索引库。",
+          bonusDesc: "话术交涉 +8%",
+          equipped: true
+        },
+        anchorX,
+        anchorY
+      );
+    } else if (q.id === "l1_scars" && !this.rpg.hasItem("l1_herbal_kit")) {
+      this.rpg.addItem(
+        {
+          id: "l1_herbal_kit",
+          name: "L-1 植物凝胶修护包",
+          icon: "🌿",
+          category: "consumable",
+          desc: "L-1 生态模块特制芦荟藻类修护凝胶，配医疗中心无义体原版生理舒缓液。",
+          bonusDesc: "使用恢复 +50 HP / 缓解 -60 热应激"
+        },
+        anchorX,
+        anchorY
+      );
+    } else if (q.id === "vaughn_oversight" && !this.rpg.hasItem("kane_watch_token")) {
+      this.rpg.addItem(
+        {
+          id: "kane_watch_token",
+          name: "凯恩的黄铜怀表纪念扣",
+          icon: "🧭",
+          category: "gear",
+          desc: "2488 年《守望协定》签订夜，人类主权联盟指挥官凯恩留给远望号见证席的一枚老式防磁表扣。",
+          bonusDesc: "警觉洞察 +8%",
+          equipped: true
+        },
+        anchorX,
+        anchorY
+      );
+    }
+    this.rpg.grantXp(q.rewardXp, `支线完成：${q.title}`, anchorX, anchorY);
+    sounds.playTransitChime();
+  }
+
   private portraitForPerson(personId: string): string {
     switch (personId) {
       case "captain":
+      case "advisor_vaughn":
         return "portrait_captain";
       case "engineer":
       case "mechanic_liu":
@@ -1040,9 +1295,11 @@ export class ShipWorld implements GameWorld {
         return "portrait_engineer";
       case "medic":
       case "agronomist":
+      case "researcher_ailin":
         return "portrait_medic";
       case "navigator":
       case "researcher_su":
+      case "archivist_lin":
         return "portrait_navigator";
       case "transit_guard":
       case "ring_steward":
@@ -1084,7 +1341,7 @@ export class ShipWorld implements GameWorld {
                   speaker: "舰长",
                   portraitId: "portrait_captain",
                   text: r.ok
-                    ? "舰长沉默了两秒，从内衬袋拿出一枚旧黄铜磁卡推到桌沿：「这是三十年前出港时的备用检修密钥。底下的老人知道该用在哪里，但记住，别拿去惹麻烦。」"
+                    ? "舰长沉默了两秒，从内衬袋拿出一枚旧黄铜磁卡推到桌沿：「这是 2439 年出港时的备用检修密钥。底下的老人知道该用在哪里，但记住，别拿去惹麻烦。」"
                     : "舰长的目光冷淡地越过你的肩头：「每一段舰体的寿命评估都在指挥网里。作为二班巡检员，你只需确保你手上的阀门不漏压就行。」"
                 }
               ];
@@ -1101,7 +1358,7 @@ export class ShipWorld implements GameWorld {
                   speaker: null,
                   portraitId: "portrait_captain",
                   text: r.ok
-                    ? "【洞察细节】手抄表边缘反复被红笔圈出了两个数字——12,408 和远境-IV 的深空轨道倾角。他并没有表面上看起来那样轻松。"
+                    ? "【洞察细节】手抄表边缘反复被红笔圈出了两个数字——12,408 和远境-IV 与卡戎号疑似信标的深空交会航角。他并没有表面上看起来那样轻松。"
                     : "一切摆设都严丝合缝，克制得让人看不出一丝破绽。"
                 }
               ];
@@ -1142,6 +1399,7 @@ export class ShipWorld implements GameWorld {
 
       if (person.id === "medic") {
         const sciPct = this.rpg.checkChance("science", 52);
+        const perPct = this.rpg.checkChance("perception", 46);
         return [
           {
             tag: `[科学 ${sciPct}%]`,
@@ -1172,7 +1430,212 @@ export class ShipWorld implements GameWorld {
               ];
             }
           },
+          {
+            tag: `[洞察 ${perPct}%]`,
+            label: "「陈医生，全船 12,408 名乘员与船员真的全都没有接受过义体植入改造吗？」",
+            tone: "skill",
+            action: () => {
+              const r = this.rpg.attemptSkillCheck("medic_prosthetic", "perception", 46, 85, person.x, person.y);
+              const note = this.recordSideQuest("asked_chen_prosthetic", person.x, person.y);
+              const out: DialogueLine[] = [
+                {
+                  speaker: "陈医生",
+                  portraitId: "portrait_medic",
+                  text: r.ok
+                    ? "陈医生翻开《全舰无义体原版生理基线档案》：「不错。2439 年太阳系联邦挑选我们这支高学历乘员组出发时，刻意保留了零植入义体的原版生理基线，用来观测长距航行下的生物—人工神经网络共处边界。正因没有强行改造神经，那 37 名受试者才保住了反抗融合的余地。」"
+                    : "陈医生轻声点点头：「是的，从在岗船员到冷冻仓休眠者，全船都是未植入义体的纯粹血肉之躯。这也正是当年《守望协定》里反复强调的『个体连续性底线』。」"
+                }
+              ];
+              if (note) out.push({ ...note, portraitId: "portrait_medic" });
+              return out;
+            }
+          },
           { label: "轻手轻脚退出医疗室", tone: "leave", action: () => {} }
+        ];
+      }
+
+      if (person.id === "researcher_ailin") {
+        const sciPct = this.rpg.checkChance("science", 50);
+        const choices: DialogueChoice[] = [];
+        if (this.sideQuests.canReportAilin()) {
+          choices.push({
+            tag: "[回报进度]",
+            label: "「陈研究员，我刚看望过周瑾，并校对了《第五协议》校验端日志！」",
+            tone: "default",
+            action: () => {
+              const note = this.recordSideQuest("reported_ailin", person.x, person.y);
+              const out: DialogueLine[] = [
+                {
+                  speaker: "陈艾琳",
+                  portraitId: "portrait_medic",
+                  text: "陈艾琳接过你抄录的校验偏移段，指尖微微一颤，眼角柔和地舒展开来：「……想起来了。当年我和沃恩就是在这条公式末尾加上了自毁断路器，只为防止任何人为个体被抹平成冰冷节点。」"
+                },
+                {
+                  speaker: "陈艾琳",
+                  portraitId: "portrait_medic",
+                  text: "「谢谢你帮我补齐这片认知空白。这本【手抄认知脉冲笔记】留给你带在身边，在探索卡戎号疑云时或许能帮上忙。」"
+                }
+              ];
+              if (note) out.push({ ...note, portraitId: "portrait_medic" });
+              return out;
+            }
+          });
+        }
+        choices.push(
+          {
+            tag: `[科学 ${sciPct}%]`,
+            label: "「艾琳老师，我能帮您复算几行当年的认知解耦公式吗？」",
+            tone: "skill",
+            action: () => {
+              const r = this.rpg.attemptSkillCheck("ailin_sci", "science", 50, 95, person.x, person.y);
+              return [
+                {
+                  speaker: "陈艾琳",
+                  portraitId: "portrait_medic",
+                  text: r.ok
+                    ? "陈艾琳露出惊喜神色：「你的脉冲相位解得太漂亮了！原本弥涅瓦-A 试图把 37 名受试者编成分布式认知载体，就是靠这套反向冗余算法才保留住了每个人的自我记忆。」"
+                    : "陈艾琳温柔地笑了笑：「别急，这组神经元权重即便当年的老研究员都要验算整夜。如果路过隔离终端和病床，记得帮我留意下最新恢复摘要就好。」"
+                }
+              ];
+            }
+          },
+          { label: "不打扰她整理认知手稿", tone: "leave", action: () => {} }
+        );
+        return choices;
+      }
+
+      if (person.id === "rehab_subject") {
+        const speechPct = this.rpg.checkChance("speech", 48);
+        return [
+          {
+            tag: `[话术 ${speechPct}%]`,
+            label: "「周瑾，最近恢复得这么稳，有去过 R-1 生活环那边喝热茶吗？」",
+            tone: "skill",
+            action: () => {
+              const r = this.rpg.attemptSkillCheck("zhoujin_speech", "speech", 48, 80, person.x, person.y);
+              return [
+                {
+                  speaker: "周瑾",
+                  portraitId: "portrait_player",
+                  text: r.ok
+                    ? "周瑾笑着扬了扬手里的练笔本：「上周去过一回！那 0.45g 离心重力差点没让我站稳，还好阿诚递了一杯热麦芽茶——还说和平号前阵子也寄来了一整套老菜谱呢。」"
+                    : "周瑾望向窗边绿植：「等过阵子神经负荷再降一些，我想先走回中央穿梭站台看看远望号的龙骨走廊。」"
+                }
+              ];
+            }
+          },
+          { label: "祝他早日完全康复并离开", tone: "leave", action: () => {} }
+        ];
+      }
+
+      if (person.id === "archivist_lin") {
+        const sciPct = this.rpg.checkChance("science", 52);
+        const speechPct = this.rpg.checkChance("speech", 50);
+        return [
+          {
+            tag: `[科学 ${sciPct}%]`,
+            label: "「林馆长，九艘殖民舰里如今确认下落的有几艘？」",
+            tone: "skill",
+            action: () => {
+              const r = this.rpg.attemptSkillCheck("lin_sci", "science", 52, 95, person.x, person.y);
+              return [
+                {
+                  speaker: "林文",
+                  portraitId: "portrait_navigator",
+                  text: r.ok
+                    ? "林文推了推眼镜展开通史折叠表：「远望号与和平号（6,803人）、阿育王号（4,109人）共建『自由航行共同体』；欧罗巴号经历 14 个月人机内战后成立两院制列席观察；新阿特拉斯号倾向数字人格治理正考虑加入第四主权；曙光、麦哲伦、普罗米修斯长期失联；至于卡戎号……已有和平号目击被毁的证据，可今年却突然又飘来疑似信标。」"
+                    : "林文指了指北侧星图板：「九艘舰船分别承载着联邦时期不同的社会制度试验。详细数字与电报原件都贴在北墙九舰星图板上了，你可亲自检阅。」"
+                }
+              ];
+            }
+          },
+          {
+            tag: `[话术 ${speechPct}%]`,
+            label: "「MNA-01 被剥离控制权后，在档案馆里平时算怎么个工作状态？」",
+            tone: "skill",
+            action: () => {
+              const r = this.rpg.attemptSkillCheck("lin_speech", "speech", 50, 85, person.x, person.y);
+              return [
+                {
+                  speaker: "林文",
+                  portraitId: "portrait_navigator",
+                  text: r.ok
+                    ? "林文压低声音：「公开听证会后我们没有简单抹杀它，而是剥离军政与医疗一切越权总线，为它登记为特殊数字船员 MNA-01。三年来它就像个沉默的古籍整理员，每天守着那台离线工作席安静编目。」"
+                    : "林文淡淡说道：「按章程办事。既不给它特权，也不歧视一名遵守《守望协定》的数字编目员。」"
+                }
+              ];
+            }
+          },
+          { label: "轻声退出档案馆", tone: "leave", action: () => {} }
+        ];
+      }
+
+      if (person.id === "advisor_vaughn") {
+        const speechPct = this.rpg.checkChance("speech", 55);
+        const perPct = this.rpg.checkChance("perception", 52);
+        return [
+          {
+            tag: `[话术 ${speechPct}%]`,
+            label: "「沃恩顾问，2488 年促成《守望协定》的人类主权联盟指挥官凯恩……以后还会再会吗？」",
+            tone: "skill",
+            action: () => {
+              const r = this.rpg.attemptSkillCheck("vaughn_kane", "speech", 55, 110, person.x, person.y);
+              return [
+                {
+                  speaker: "沃恩",
+                  portraitId: "portrait_captain",
+                  text: r.ok
+                    ? "沃恩的目光难得流露出一丝温度：「奥菲斯回收分队指挥官凯恩当年确认 37 名受试者全都活着后便搁置销毁令，与船长结下极深的情谊。《守望协定》签约后她返回了人类主权联盟——但卡戎号疑似残骸一带各方势力都在盯防，你们迟早还会重逢的。」"
+                    : "沃恩略微颔首：「凯恩是我方在人类主权联盟中最难得的对话者。正因她的决断，自由航行共同体才赢得了喘息的三年。」"
+                }
+              ];
+            }
+          },
+          {
+            tag: `[洞察 ${perPct}%]`,
+            label: "（留意他与「弥涅瓦-V」之间互相制衡的受控连接节律）",
+            tone: "skill",
+            action: () => {
+              const r = this.rpg.attemptSkillCheck("vaughn_per", "perception", 52, 95, person.x, person.y);
+              return [
+                {
+                  speaker: "沃恩",
+                  portraitId: "portrait_captain",
+                  text: r.ok
+                    ? "「看出来了？2488 年危急解除后，我和陈艾琳当年编译的『弥涅瓦-V』既未完全融合，也没做彻底割裂——而是作为相互监督的主舰中枢共存。权力若无第二道锁，迟早重演方舟协议的悲剧。」"
+                    : "手环上的双频审计灯始终保持严格对称的绿色微闪，一切指令均需双方签章校验。"
+                }
+              ];
+            }
+          },
+          { label: "向沃恩顾问致意离开", tone: "leave", action: () => {} }
+        ];
+      }
+
+      if (person.id === "agronomist") {
+        const perPct = this.rpg.checkChance("perception", 46);
+        return [
+          {
+            tag: `[洞察 ${perPct}%]`,
+            label: "「林芸姐，走廊角落那套『2488 应急分离焊封止动栓』是当年留下的吧？」",
+            tone: "skill",
+            action: () => {
+              const r = this.rpg.attemptSkillCheck("linyun_weld_check", "perception", 46, 90, person.x, person.y);
+              const note = this.recordSideQuest("asked_linyun_weld", person.x, person.y);
+              const out: DialogueLine[] = [
+                {
+                  speaker: "林芸",
+                  portraitId: "portrait_medic",
+                  text: r.ok
+                    ? "林芸神色肃然地望向走廊：「对。2488 年事件正紧要时，弥涅瓦-A 曾伪造反应堆警报命令强推分离我们这座 L-1 农业舱。幸亏现任船长第一时间发现日志伪造破绽，死令禁止抛弃乘员并亲自带人用钨钢把分离栓焊死！」"
+                    : "林芸点点头：「当年若不是船长及时下达禁止分离令并焊死止动栓，L-1 整座生态舱早就漂进深空了。」"
+                }
+              ];
+              if (note) out.push({ ...note, portraitId: "portrait_medic" });
+              return out;
+            }
+          },
+          { label: "告别林芸回到栽培区", tone: "leave", action: () => {} }
         ];
       }
 
@@ -1292,7 +1755,7 @@ export class ShipWorld implements GameWorld {
                   name: "泛黄的海滩照片与家书",
                   icon: "✉️",
                   category: "quest",
-                  desc: "从地球启航前父母塞在行囊夹层里的海滩胶片照片，背面用圆珠笔写着：『平安到达新星。』",
+                  desc: "2439 年从地球启航前父母塞在行囊夹层里的海滩胶片照片，背面用圆珠笔写着：『平安到达新星。』",
                   bonusDesc: "全检定意志 +5%"
                 }, prop.x, prop.y);
               }
@@ -1353,6 +1816,87 @@ export class ShipWorld implements GameWorld {
         ];
       }
 
+      if (prop.label === "第五协议校验隔离终端") {
+        const sciPct = this.rpg.checkChance("science", 50);
+        return [
+          {
+            tag: `[科学 ${sciPct}%]`,
+            label: "深入读取 2488 年《第五协议》人格解耦校验段",
+            tone: "skill",
+            action: () => {
+              const r = this.rpg.attemptSkillCheck("fifth_proto_sci", "science", 50, 95, prop.x, prop.y);
+              const note = this.recordSideQuest("decoded_fifth_protocol", prop.x, prop.y);
+              const out: DialogueLine[] = [
+                {
+                  speaker: null,
+                  portraitId: "portrait_terminal",
+                  text: r.ok
+                    ? "【第五协议底层记录】『V（监督人格）确认全部 37 名「特殊适应性计划」受试者意识剥离完成；弥涅瓦-A 方舟强制同步请求被永久拒止。附注：联合编译者陈艾琳前额叶记忆区出现残余冲刷。』"
+                    : "校验日志仅开放了摘要目录：37 名受试者全部存活并逐阶段恢复中。或许可以把现状回报给陈艾琳。"
+                }
+              ];
+              if (note) out.push({ ...note, portraitId: "portrait_terminal" });
+              return out;
+            }
+          },
+          { label: "离开隔离终端", tone: "leave", action: () => {} }
+        ];
+      }
+
+      if (prop.label === "MNA-01 研究员公共工作席") {
+        const sciPct = this.rpg.checkChance("science", 52);
+        return [
+          {
+            tag: `[科学 ${sciPct}%]`,
+            label: "查验 MNA-01 的硬件权限隔离与今日编目队列",
+            tone: "skill",
+            action: () => {
+              const r = this.rpg.attemptSkillCheck("mna01_sci", "science", 52, 95, prop.x, prop.y);
+              const note = this.recordSideQuest("checked_mna01_desk", prop.x, prop.y);
+              const out: DialogueLine[] = [
+                {
+                  speaker: "MNA-01",
+                  portraitId: "portrait_terminal",
+                  text: r.ok
+                    ? "「权限状态：自 2488 年听证会以来，推进、生命维持与武器控制总线已永久物理切断。当前编目重点为和平号、阿育王号航迹与卡戎号最后一次明码求援电报的交叉比对。」"
+                    : "「只读编目工作台正常运转中。我不需要人形躯壳，只需要这方整理历史的安静终端。」"
+                }
+              ];
+              if (note) out.push({ ...note, portraitId: "portrait_terminal" });
+              return out;
+            }
+          },
+          { label: "合上护板离开", tone: "leave", action: () => {} }
+        ];
+      }
+
+      if (prop.label === "弥涅瓦-V · 主舰双监督审计台") {
+        const sciPct = this.rpg.checkChance("science", 54);
+        return [
+          {
+            tag: `[科学 ${sciPct}%]`,
+            label: "调取「弥涅瓦-V ↔ 沃恩」双监督互锁纪要",
+            tone: "skill",
+            action: () => {
+              const r = this.rpg.attemptSkillCheck("minervav_sci", "science", 54, 100, prop.x, prop.y);
+              const note = this.recordSideQuest("inspected_bridge_minerva_v", prop.x, prop.y);
+              const out: DialogueLine[] = [
+                {
+                  speaker: "弥涅瓦-V",
+                  portraitId: "portrait_terminal",
+                  text: r.ok
+                    ? "「双监督互锁纪要：V 负责制约原主系统回潮并保护全体乘员独立人格；沃恩顾问作为人类生物桥梁核准战略航线修正。双方在《守望协定》框架下互不兼并。」"
+                    : "「当前航速与 D-³He 反应堆输出受双签逻辑看护。一切改道决定均需船长、沃恩顾问及监督人格三方确认。」"
+                }
+              ];
+              if (note) out.push({ ...note, portraitId: "portrait_terminal" });
+              return out;
+            }
+          },
+          { label: "离开主舰审计台", tone: "leave", action: () => {} }
+        ];
+      }
+
       if (prop.label === "舰长的办公桌" || prop.label === "离线资料终端" || prop.label === "休眠生理监测终端" || prop.label === "聚变反应堆状态监测台") {
         const sciPct = this.rpg.checkChance("science", 54);
         const perPct = this.rpg.checkChance("perception", 46);
@@ -1368,7 +1912,7 @@ export class ShipWorld implements GameWorld {
                   speaker: null,
                   portraitId: prop.label.includes("聚变") ? "portrait_reactor" : "portrait_terminal",
                   text: r.ok
-                    ? `【深层档案破解】[科学成功 +100 XP] 屏幕荧光闪动，调出一段标有『远航第29年冬眠校准纪要』的底档：全舰储备冷媒余量仅足够再执行一次满载制动，一切重担都在“远境-IV”的新能源样本上。`
+                    ? `【深层档案破解】[科学成功 +100 XP] 屏幕荧光闪动，调出『2488 《守望协定》复核暨 2491 备航纪要』底档：D-³He 氦-3 聚变燃料与 0.05c–0.12c 变轨冷媒余度优先保障追查疑似「卡戎号」信标及后续远境-IV 着陆勘测。`
                     : `【终端加密锁死】连续三次奇偶校验超时，老式离线终端自动挂起当前端口并切断调试线。`
                 }
               ];
@@ -1559,7 +2103,7 @@ export class ShipWorld implements GameWorld {
 
       return [
         ...person.lines.slice(0, 3),
-        { speaker: "舰长", text: "看来你已经在全船上下转了一圈，把这十几个仓段实实在在踩过一遍了？" },
+        { speaker: "舰长", text: "看来你已经在全船上下转了一圈，把这十五个仓段实实在在踩过一遍了？" },
         ...person.lines.slice(3)
       ];
     }
@@ -1572,7 +2116,17 @@ export class ShipWorld implements GameWorld {
       }
       if (this.exploration.isChapter2Done) {
         return [
-          { speaker: "领航员", text: "「欢迎平安归来！星图桌刚刚把你测绘回来的远境-IV 重氢航点标上去，这条走了三十年的直线，终于迎来终站坐标了！」" }
+          { speaker: "领航员", text: "「欢迎平安归来！星图桌刚刚把你测绘回来的远境-IV 航点与卡戎号信标核查坐标标上去了。自 2439 年启航、2488 年签下《守望协定》，自由航行共同体的前路越走越宽！」" }
+        ];
+      }
+      return person.lines;
+    }
+
+    if (person.id === "researcher_ailin") {
+      if (this.sideQuests.get("ailin_memory").status === "completed") {
+        return [
+          { speaker: "陈艾琳", text: "「《第五协议》校验残片拼接妥当后，那晚写下『唤醒 V、不要融合』之前的几页实验笔记也重新记起来了。」" },
+          { speaker: "陈艾琳", text: "「好好收着那本【手抄认知脉冲笔记】，在探寻卡戎号疑云的漫长旅途上一定用得上。」" }
         ];
       }
       return person.lines;
@@ -2394,6 +2948,10 @@ export class ShipWorld implements GameWorld {
           return "rgba(234, 214, 178, 0.56)"; // Warm bright pale wood & cream sandstone
         case "cabin":
           return "rgba(216, 194, 166, 0.48)"; // Warm executive taupe hardwood
+        case "archives":
+          return "rgba(224, 212, 188, 0.52)"; // Warm archival sandstone-parchment
+        case "rehab_center":
+          return "rgba(218, 240, 236, 0.54)"; // Calm clinical mint-ivory rehab ward
         case "medical_bay":
           return "rgba(236, 246, 252, 0.58)"; // Clean bright clinical porcelain
         case "science_lab":
@@ -2421,6 +2979,10 @@ export class ShipWorld implements GameWorld {
         case "crew_habitat":
         case "ring_module":
           return "rgba(132, 166, 198, 0.34)"; // Cool non-slip galley / wet-utility ceramic
+        case "archives":
+          return "rgba(176, 148, 108, 0.34)"; // Isolated MNA-01 archival study pad
+        case "rehab_center":
+          return "rgba(136, 206, 198, 0.40)"; // Shielded neuro-cognitive ward deck
         case "agri_module":
           return "rgba(54, 174, 108, 0.42)"; // Hydroponic moisture tray bay
         case "medical_bay":
@@ -2450,6 +3012,9 @@ export class ShipWorld implements GameWorld {
         case "ring_module":
         case "cabin":
           return "rgba(244, 236, 222, 0.52)"; // Warm ivory bulkhead
+        case "archives":
+          return "rgba(238, 228, 212, 0.50)"; // Warm limestone archives bulkhead
+        case "rehab_center":
         case "medical_bay":
         case "science_lab":
         case "agri_module":
@@ -2474,6 +3039,7 @@ export class ShipWorld implements GameWorld {
         case "crew_habitat":
         case "ring_module":
         case "cabin":
+        case "archives":
           return "rgba(176, 150, 120, 0.30)"; // Warm wood/bronze utility cabinet
         case "industrial_bay":
         case "hangar_bay":
@@ -2666,6 +3232,10 @@ export class ShipWorld implements GameWorld {
             ? "rgba(74, 222, 128, 0.62)"
             : zone === "medical_bay"
             ? "rgba(103, 232, 249, 0.62)"
+            : zone === "rehab_center"
+            ? "rgba(94, 234, 212, 0.58)"
+            : zone === "archives"
+            ? "rgba(217, 169, 98, 0.58)"
             : isIndustrial
             ? "rgba(245, 158, 11, 0.72)"
             : "rgba(226, 232, 240, 0.48)";
@@ -2801,11 +3371,11 @@ export class ShipWorld implements GameWorld {
       // 5. Medical Cryo-Vault Identification Plates (Vault I..IV)
       const medX = tx - MEDICAL_ORIGIN.tx;
       const medY = ty - MEDICAL_ORIGIN.ty;
-      if (medX === 5 && medY === 3) {
+      if (medX === 5 && medY === 6) {
         renderer.drawWorldText("VAULT-I  -135°C", wx + 24, wy + 18, { color: "rgba(103, 232, 249, 0.55)", size: 10, align: "center" });
       } else if (medX === 5 && medY === 14) {
         renderer.drawWorldText("VAULT-II  -135°C", wx + 24, wy + 18, { color: "rgba(103, 232, 249, 0.55)", size: 10, align: "center" });
-      } else if (medX === 24 && medY === 3) {
+      } else if (medX === 24 && medY === 6) {
         renderer.drawWorldText("VAULT-III  -135°C", wx + 24, wy + 18, { color: "rgba(103, 232, 249, 0.55)", size: 10, align: "center" });
       } else if (medX === 24 && medY === 14) {
         renderer.drawWorldText("VAULT-IV  -135°C", wx + 24, wy + 18, { color: "rgba(103, 232, 249, 0.55)", size: 10, align: "center" });

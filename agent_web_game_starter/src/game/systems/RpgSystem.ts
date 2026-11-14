@@ -225,6 +225,9 @@ export class RpgSystem {
     if (skill === "repair" && this.hasItem("wrench_heavy")) itemBonus += 15;
     if (skill === "speech" && this.hasItem("captain_cipher")) itemBonus += 10;
     if (skill === "science" && this.hasItem("kaiyang_cipher")) itemBonus += 8;
+    if (skill === "science" && this.hasItem("ailin_notes")) itemBonus += 8;
+    if (skill === "speech" && this.hasItem("nine_ships_microchip")) itemBonus += 8;
+    if (skill === "perception" && this.hasItem("kane_watch_token")) itemBonus += 8;
 
     return Math.max(5, Math.min(99, base + arch + this.allocatedSkills[skill] + itemBonus));
   }
@@ -324,19 +327,32 @@ export class RpgSystem {
     const item = this.items.get(id);
     if (!item || item.quantity <= 0) return false;
 
-    if (id === "med_stim") {
+    const consume = (hpGain: number, radRelief: number, label: string): true => {
       item.quantity -= 1;
       const prevHp = this.hp;
       const prevRad = this.rad;
-      this.hp = Math.min(this.maxHp, this.hp + 40);
-      this.rad = Math.max(0, this.rad - 50);
+      this.hp = Math.min(this.maxHp, this.hp + hpGain);
+      this.rad = Math.max(0, this.rad - radRelief);
       const healed = this.hp - prevHp;
       const purged = prevRad - this.rad;
-      this.pushLog("loot", `使用【随身应急急救包】：生命 +${healed} (${this.hp}/${this.maxHp})，热应激降温 -${purged} (余 ${item.quantity} 份)`);
+      this.pushLog(
+        "loot",
+        `使用【${label}】：生命 +${healed} (${this.hp}/${this.maxHp})，热应激降温 -${purged} (余 ${item.quantity} 份)`
+      );
       if (anchorX !== undefined && anchorY !== undefined) {
         this.spawnFloatingText(anchorX, anchorY - 40, `+${healed} HP / -${purged} 热应激`, "#34d399");
       }
       return true;
+    };
+
+    if (id === "med_stim") {
+      return consume(40, 50, "随身应急急救包");
+    }
+    if (id === "l1_herbal_kit") {
+      return consume(50, 60, "L-1 植物凝胶修护包");
+    }
+    if (id === "malt_drink") {
+      return consume(25, 30, "温热麦芽蛋白质汤");
     }
     return false;
   }

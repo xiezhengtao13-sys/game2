@@ -114,10 +114,18 @@ async function main() {
   // 8. Jump across representative zones with dialogue cleanly closed
   const zoneHops = [
     { file: "/tmp/shot_10_industrial_l2.png", tx: 12.5, ty: 101.5, facing: "up" },
-    { file: "/tmp/shot_11_medical_cryo.png", tx: 40.5, ty: 129.0, facing: "down" },
-    { file: "/tmp/shot_12_bridge_hall.png", tx: 42.0, ty: 29.0, facing: "up" },
-    { file: "/tmp/shot_13_cabin_suite.png", tx: 41.5, ty: 49.0, facing: "up" }
+    { file: "/tmp/shot_11_medical_cryo.png", tx: 41.0, ty: 125.0, facing: "up" },
+    { file: "/tmp/shot_12_bridge_hall.png", tx: 43.5, ty: 28.5, facing: "up" },
+    { file: "/tmp/shot_13_cabin_suite.png", tx: 41.5, ty: 49.0, facing: "up" },
+    { file: "/tmp/shot_14_rehab_c7.png", tx: 11.5, ty: 125.5, facing: "up" },
+    { file: "/tmp/shot_15_archives.png", tx: 72.5, ty: 126.5, facing: "down" }
   ];
+
+  await page.evaluate(() => {
+    window.ship.security.grant("midship_pass");
+    window.ship.security.grant("bridge_pass");
+    window.ship.security.grant("cabin_pass");
+  });
 
   for (const hop of zoneHops) {
     await page.evaluate(({ tx, ty, facing }) => {
@@ -132,6 +140,29 @@ async function main() {
     console.log(`Hop ${hop.file} -> place=${p?.place}, pos=(${p?.playerX},${p?.playerY})`);
     await page.screenshot({ path: hop.file });
   }
+
+  // 9. Trigger a side quest via Chen Ailin dialogue and expand #sidequest-tracker HUD
+  await page.evaluate(() => {
+    window.ship.dialogue.close();
+    window.ship.onDialogueChange?.(null);
+    const ailin = window.ship.examinable.find((e) => e.label.includes("和陈艾琳交谈"));
+    if (ailin) window.ship.examine(ailin);
+  });
+  await new Promise((r) => setTimeout(r, 350));
+  await page.evaluate(() => {
+    window.ship.dialogue.close();
+    window.ship.onDialogueChange?.(null);
+  });
+  await page.click("#sidequest-tracker .sq-header");
+  await new Promise((r) => setTimeout(r, 300));
+  await page.screenshot({ path: "/tmp/shot_16_sidequest_tracker.png" });
+  console.log("Captured shot_16_sidequest_tracker.png");
+
+  // 10. Open [M] 15-compartment hull minimap overlay
+  await page.keyboard.press("KeyM");
+  await new Promise((r) => setTimeout(r, 350));
+  await page.screenshot({ path: "/tmp/shot_17_minimap_15wings.png" });
+  console.log("Captured shot_17_minimap_15wings.png");
 
   if (consoleErrors.length > 0) {
     throw new Error(`Console errors detected:\n${consoleErrors.join("\n")}`);

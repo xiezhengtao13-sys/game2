@@ -263,3 +263,77 @@ export function propulsionGrid(): TileType[][] {
   ];
   return buildFromShapes(PROPULSION_COLUMNS, PROPULSION_ROWS, "deck", shapes);
 }
+
+// =============================================================================
+// 7. Seventh Neural Rehab & Cognitive Research Center / Formerly C-7 (第七神经康复与认知研究中心)
+// =============================================================================
+export const REHAB_COLUMNS = 21;
+export const REHAB_ROWS = 22;
+export const REHAB_EAST_DOOR = { x: REHAB_COLUMNS - 1, y: 7, w: 1, h: 3 };
+
+export function rehabGrid(): TileType[][] {
+  const shapes: Shape[] = [
+    { x: 0, y: 0, w: REHAB_COLUMNS, h: 1, type: "wall", note: "C-7 北向神经屏蔽隔离壁" },
+    { x: 0, y: REHAB_ROWS - 1, w: REHAB_COLUMNS, h: 1, type: "wall", note: "C-7 南向屏蔽隔离壁" },
+    { x: 0, y: 0, w: 1, h: REHAB_ROWS, type: "wall", note: "C-7 外舷气密壁" },
+    { x: REHAB_COLUMNS - 1, y: 0, w: 1, h: REHAB_ROWS, type: "wall", note: "C-7 东向医疗区连廊门墙" },
+
+    { x: REHAB_EAST_DOOR.x, y: REHAB_EAST_DOOR.y, w: REHAB_EAST_DOOR.w, h: REHAB_EAST_DOOR.h, type: "floor_light", note: "东向连廊气密入口" },
+
+    // Telemetry screen & deep space quiet window
+    { x: 0, y: 3, w: 1, h: 3, type: "screen", note: "37名受试者脑波基线波形监护墙屏" },
+    { x: 0, y: 14, w: 1, h: 4, type: "window", note: "西向康复休养静谧观景窗" },
+
+    // East Pressurization Vestibule + North Cognitive Research Lab + South Rehab Ward
+    { x: 16, y: 1, w: 1, h: 20, type: "wall", note: "神经屏蔽洁净缓冲区隔墙" },
+    { x: 16, y: 7, w: 1, h: 3, type: "floor_light", note: "研究中心主双开门" },
+    { x: 1, y: 6, w: 15, h: 1, type: "wall", note: "北侧陈艾琳认知研究区隔墙" },
+    { x: 7, y: 6, w: 3, h: 1, type: "floor_light", note: "认知实验室推拉门" },
+    { x: 1, y: 10, w: 15, h: 1, type: "wall", note: "南侧康复观察病房隔墙" },
+    { x: 7, y: 10, w: 3, h: 1, type: "floor_light", note: "康复病房滑动门" },
+
+    // Calm research deck & warm recovery ward floor pad
+    { x: 2, y: 2, w: 13, h: 4, type: "deck_dark", note: "陈艾琳离线认知波形解码台区" },
+    { x: 2, y: 12, w: 13, h: 7, type: "deck_rug", note: "温润减噪神经康复病房地垫" },
+
+    { x: 3, y: 8, w: 16, h: 1, type: "floor_light", note: "研究中心东西贯通长廊灯带" }
+  ];
+  return buildFromShapes(REHAB_COLUMNS, REHAB_ROWS, "deck", shapes);
+}
+
+// =============================================================================
+// 8. Yuanwang Historical Archives & MNA-01 Study (远望号历史档案馆)
+// =============================================================================
+export const ARCHIVES_COLUMNS = 21;
+export const ARCHIVES_ROWS = 22;
+export const ARCHIVES_WEST_DOOR = { x: 0, y: 7, w: 1, h: 3 };
+
+export function archivesGrid(): TileType[][] {
+  const shapes: Shape[] = [
+    { x: 0, y: 0, w: ARCHIVES_COLUMNS, h: 1, type: "wall", note: "档案馆北向恒温防潮舱壁" },
+    { x: 0, y: ARCHIVES_ROWS - 1, w: ARCHIVES_COLUMNS, h: 1, type: "wall", note: "档案馆南向防磁存储隔离壁" },
+    { x: 0, y: 0, w: 1, h: ARCHIVES_ROWS, type: "wall", note: "档案馆西向医疗区门墙" },
+    { x: ARCHIVES_COLUMNS - 1, y: 0, w: 1, h: ARCHIVES_ROWS, type: "wall", note: "档案馆东向外舷墙" },
+
+    { x: ARCHIVES_WEST_DOOR.x, y: ARCHIVES_WEST_DOOR.y, w: ARCHIVES_WEST_DOOR.w, h: ARCHIVES_WEST_DOOR.h, type: "floor_light", note: "西向连廊气密入口" },
+
+    // Chronology telemetry screen & reading room viewport
+    { x: 7, y: 0, w: 6, h: 1, type: "screen", note: "2439-2491 远望号与九舰共同体纪事索引屏" },
+    { x: ARCHIVES_COLUMNS - 1, y: 14, w: 1, h: 4, type: "window", note: "东向历史阅览区星空长窗" },
+
+    // West Archive Security Vestibule + North Solar/Nine-Ships Chronology Room + South MNA-01 Study
+    { x: 4, y: 1, w: 1, h: 20, type: "wall", note: "档案馆离线典籍物理隔离隔墙" },
+    { x: 4, y: 7, w: 1, h: 3, type: "floor_light", note: "档案馆阅览室主门" },
+    { x: 5, y: 6, w: 15, h: 1, type: "wall", note: "北侧太阳系与九舰史料陈列隔墙" },
+    { x: 10, y: 6, w: 3, h: 1, type: "floor_light", note: "史料陈列室门" },
+    { x: 5, y: 10, w: 15, h: 1, type: "wall", note: "南侧 MNA-01 研究员隔离工作间墙" },
+    { x: 10, y: 10, w: 3, h: 1, type: "floor_light", note: "MNA-01 工作席透明隔离门" },
+
+    // Warm archival reading rug & clean MNA-01 isolated workstation slab
+    { x: 6, y: 2, w: 13, h: 3, type: "deck_rug", note: "实体纸质史料与守望协定阅览毯" },
+    { x: 6, y: 12, w: 13, h: 7, type: "deck_dark", note: "MNA-01 离线孤岛终端研究区" },
+
+    { x: 2, y: 8, w: 16, h: 1, type: "floor_light", note: "档案馆东西向引导地灯" }
+  ];
+  return buildFromShapes(ARCHIVES_COLUMNS, ARCHIVES_ROWS, "deck", shapes);
+}

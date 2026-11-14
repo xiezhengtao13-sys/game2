@@ -55,7 +55,13 @@ import {
   propulsionGrid,
   PROPULSION_COLUMNS,
   PROPULSION_ROWS,
-  PROPULSION_NORTH_DOOR
+  PROPULSION_NORTH_DOOR,
+  rehabGrid,
+  REHAB_COLUMNS,
+  REHAB_ROWS,
+  archivesGrid,
+  ARCHIVES_COLUMNS,
+  ARCHIVES_ROWS
 } from "./wingModulesMap";
 
 /**
@@ -71,6 +77,8 @@ import {
  *                     ├─ Port Wing  L-2 Heavy Industrial Foundry Workshop (cols 2..22) [STARTING ACCESS]
  *                     └─ Stbd Wing  R-2 Deep-Space Science & Telescope Lab (cols 61..81)
  *   1450-1850m U-1 : Central Medical & 12,408-Sleeper Cryo-Stasis Bay (rows 118..139)
+ *                     ├─ Port Wing  C-7 Seventh Neural Rehab & Cognitive Research Center (cols 2..22)
+ *                     └─ Stbd Wing  Yuanwang Historical Archives & MNA-01 Study (cols 61..81)
  *   1850-2250m D-1 : EVA Airlock & Pioneer-1 Shuttle Hangar Bay (rows 144..161)
  *   2250-2550m Eng : Fusion Reactor Auxiliary Heat-Sink Pump Room (rows 166..183)
  *   2550-2800m Aft : Aft Propulsion Nozzle Array & 1200m Radiator Gallery (rows 187..201)
@@ -91,6 +99,8 @@ export const HABITAT_ORIGIN = { tx: 26, ty: 91 };
 export const L2_ORIGIN = { tx: 2, ty: 91 };
 export const R2_ORIGIN = { tx: 61, ty: 91 };
 export const MEDICAL_ORIGIN = { tx: 27, ty: 118 };
+export const C7_ORIGIN = { tx: 2, ty: 118 };
+export const ARCHIVES_ORIGIN = { tx: 61, ty: 118 };
 export const HANGAR_ORIGIN = { tx: 26, ty: 144 };
 export const REACTOR_ORIGIN = { tx: 26, ty: 166 };
 export const PROPULSION_ORIGIN = { tx: 14, ty: 187 };
@@ -125,7 +135,7 @@ export function buildShipGrid(): TileType[][] {
     grid.push(new Array<TileType>(SHIP_COLUMNS).fill("hull"));
   }
 
-  // Blit all 13 starship compartments onto the continuous deck
+  // Blit all 15 starship compartments onto the continuous deck
   blit(grid, foreSensorGrid(), FORE_ORIGIN);
   blit(grid, bridgeGrid(), BRIDGE_ORIGIN);
   blit(grid, cabinGrid(), CABIN_ORIGIN);
@@ -136,6 +146,8 @@ export function buildShipGrid(): TileType[][] {
   blit(grid, industrialGrid(), L2_ORIGIN);
   blit(grid, scienceLabGrid(), R2_ORIGIN);
   blit(grid, medicalGrid(), MEDICAL_ORIGIN);
+  blit(grid, rehabGrid(), C7_ORIGIN);
+  blit(grid, archivesGrid(), ARCHIVES_ORIGIN);
   blit(grid, hangarGrid(), HANGAR_ORIGIN);
   blit(grid, reactorBayGrid(), REACTOR_ORIGIN);
   blit(grid, propulsionGrid(), PROPULSION_ORIGIN);
@@ -158,6 +170,8 @@ export function buildShipGrid(): TileType[][] {
   carveHorizontalPassage(grid, 74, 76, TRANSIT_ORIGIN.tx + TRANSIT_COLUMNS - 1, R1_ORIGIN.tx);
   carveHorizontalPassage(grid, 101, 103, L2_ORIGIN.tx + L2_COLUMNS - 1, HABITAT_ORIGIN.tx);
   carveHorizontalPassage(grid, 101, 103, HABITAT_ORIGIN.tx + HABITAT_COLUMNS - 1, R2_ORIGIN.tx);
+  carveHorizontalPassage(grid, 125, 127, C7_ORIGIN.tx + REHAB_COLUMNS - 1, MEDICAL_ORIGIN.tx);
+  carveHorizontalPassage(grid, 125, 127, MEDICAL_ORIGIN.tx + MEDICAL_COLUMNS - 1, ARCHIVES_ORIGIN.tx);
 
   return grid;
 }
@@ -361,6 +375,8 @@ export type Place =
   | "industrial_bay"
   | "science_lab"
   | "medical_bay"
+  | "rehab_center"
+  | "archives"
   | "hangar_bay"
   | "reactor_bay"
   | "propulsion_aft"
@@ -377,6 +393,8 @@ export function placeAt(tx: number, ty: number): Place {
   if (inCompartment(L2_ORIGIN, L2_COLUMNS, L2_ROWS, tx, ty)) return "industrial_bay";
   if (inCompartment(R2_ORIGIN, R2_COLUMNS, R2_ROWS, tx, ty)) return "science_lab";
   if (inCompartment(MEDICAL_ORIGIN, MEDICAL_COLUMNS, MEDICAL_ROWS, tx, ty)) return "medical_bay";
+  if (inCompartment(C7_ORIGIN, REHAB_COLUMNS, REHAB_ROWS, tx, ty)) return "rehab_center";
+  if (inCompartment(ARCHIVES_ORIGIN, ARCHIVES_COLUMNS, ARCHIVES_ROWS, tx, ty)) return "archives";
   if (inCompartment(HANGAR_ORIGIN, HANGAR_COLUMNS, HANGAR_ROWS, tx, ty)) return "hangar_bay";
   if (inCompartment(REACTOR_ORIGIN, REACTOR_COLUMNS, REACTOR_ROWS, tx, ty)) return "reactor_bay";
   if (inCompartment(PROPULSION_ORIGIN, PROPULSION_COLUMNS, PROPULSION_ROWS, tx, ty)) return "propulsion_aft";
@@ -400,7 +418,9 @@ export function placeAt(tx: number, ty: number): Place {
     (ty >= 74 && ty <= 76 && tx >= L1_ORIGIN.tx + L1_COLUMNS && tx < TRANSIT_ORIGIN.tx) ||
     (ty >= 74 && ty <= 76 && tx >= TRANSIT_ORIGIN.tx + TRANSIT_COLUMNS && tx < R1_ORIGIN.tx) ||
     (ty >= 101 && ty <= 103 && tx >= L2_ORIGIN.tx + L2_COLUMNS && tx < HABITAT_ORIGIN.tx) ||
-    (ty >= 101 && ty <= 103 && tx >= HABITAT_ORIGIN.tx + HABITAT_COLUMNS && tx < R2_ORIGIN.tx)
+    (ty >= 101 && ty <= 103 && tx >= HABITAT_ORIGIN.tx + HABITAT_COLUMNS && tx < R2_ORIGIN.tx) ||
+    (ty >= 125 && ty <= 127 && tx >= C7_ORIGIN.tx + REHAB_COLUMNS && tx < MEDICAL_ORIGIN.tx) ||
+    (ty >= 125 && ty <= 127 && tx >= MEDICAL_ORIGIN.tx + MEDICAL_COLUMNS && tx < ARCHIVES_ORIGIN.tx)
   ) {
     return "transit_corridor";
   }
@@ -429,6 +449,8 @@ export const HABITAT_BOUNDS = { ...HABITAT_ORIGIN, columns: HABITAT_COLUMNS, row
 export const L2_BOUNDS = { ...L2_ORIGIN, columns: L2_COLUMNS, rows: L2_ROWS };
 export const R2_BOUNDS = { ...R2_ORIGIN, columns: R2_COLUMNS, rows: R2_ROWS };
 export const MEDICAL_BOUNDS = { ...MEDICAL_ORIGIN, columns: MEDICAL_COLUMNS, rows: MEDICAL_ROWS };
+export const C7_BOUNDS = { ...C7_ORIGIN, columns: REHAB_COLUMNS, rows: REHAB_ROWS };
+export const ARCHIVES_BOUNDS = { ...ARCHIVES_ORIGIN, columns: ARCHIVES_COLUMNS, rows: ARCHIVES_ROWS };
 export const HANGAR_BOUNDS = { ...HANGAR_ORIGIN, columns: HANGAR_COLUMNS, rows: HANGAR_ROWS };
 export const REACTOR_BOUNDS = { ...REACTOR_ORIGIN, columns: REACTOR_COLUMNS, rows: REACTOR_ROWS };
 export const PROPULSION_BOUNDS = { ...PROPULSION_ORIGIN, columns: PROPULSION_COLUMNS, rows: PROPULSION_ROWS };
@@ -469,6 +491,8 @@ export function exteriorKindAt(
     ((ty === 68 || ty === 69 || ty === 81 || ty === 82) &&
       ((tx >= 21 && tx <= 25) || (tx >= 58 && tx <= 62))) ||
     ((ty === 95 || ty === 96 || ty === 108 || ty === 109) &&
+      ((tx >= 22 && tx <= 26) || (tx >= 57 && tx <= 61))) ||
+    ((ty === 121 || ty === 122 || ty === 130 || ty === 131) &&
       ((tx >= 22 && tx <= 26) || (tx >= 57 && tx <= 61)));
   if (inLateralTrussY) return "truss";
 

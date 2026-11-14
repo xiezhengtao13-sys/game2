@@ -148,6 +148,50 @@ if (app && stage) {
   renderExploration();
   ship.onExplorationChange = () => renderExploration();
 
+  // Collapsible SideQuest Tracker HUD (left side, below Duty Tracker)
+  const sqTracker = document.createElement("div");
+  sqTracker.id = "sidequest-tracker";
+  sqTracker.className = "collapsed";
+  stage.appendChild(sqTracker);
+
+  const renderSideQuests = () => {
+    const snaps = ship.sideQuests.snapshot();
+    const done = snaps.filter((q) => q.status === "completed").length;
+    const isCollapsed = sqTracker.classList.contains("collapsed");
+    const rowsHtml = snaps
+      .map((q) => {
+        const cls = q.status === "completed" ? "completed" : q.status === "active" ? "active" : "";
+        const prog = q.status === "completed" ? "✓ 已完成" : `${q.doneCount}/${q.totalSteps}`;
+        return `
+          <div class="sq-row ${cls}">
+            <div class="sq-row-title">
+              <span>${q.title}</span>
+              <span class="sq-prog">${prog}</span>
+            </div>
+            <div class="sq-row-step">${q.currentStepText}</div>
+          </div>`;
+      })
+      .join("");
+
+    sqTracker.innerHTML = `
+      <button type="button" class="sq-header" title="展开/收起 2491 船员支线见闻录">
+        <span>📜 船员支线档案 · ${done}/${snaps.length}</span>
+        <span class="sq-toggle">${isCollapsed ? "展开 ▾" : "收起 ▴"}</span>
+      </button>
+      <div class="sq-list">${rowsHtml}</div>
+    `;
+    const btn = sqTracker.querySelector<HTMLButtonElement>(".sq-header");
+    if (btn) {
+      btn.onclick = () => {
+        sqTracker.classList.toggle("collapsed");
+        renderSideQuests();
+      };
+    }
+  };
+
+  renderSideQuests();
+  ship.onSideQuestsChange = () => renderSideQuests();
+
   // Holographic 2D Ship Blueprint Minimap (M Key)
   const minimap = new ShipMinimap(app);
   const getMinimapState = () => ({
@@ -188,8 +232,8 @@ if (app && stage) {
     },
     onUseItem: (itemId) => {
       sounds.init();
-      if (itemId === "med_stim") {
-        ship.useHealingStim();
+      if (itemId === "med_stim" || itemId === "l1_herbal_kit" || itemId === "malt_drink") {
+        ship.useConsumable(itemId);
         falloutHud?.sync(ship.rpg);
       }
     },
@@ -353,6 +397,8 @@ interface Probe {
   crisisResolved: number;
   explorationStage: string;
   explorationDone: number;
+  sideQuestsCompleted: number;
+  sideQuestsTotal: number;
   currentMode: string;
   rpgLevel: number;
   rpgHp: number;
@@ -392,6 +438,8 @@ function readProbe(): Probe {
     crisisResolved: ship.crisis.isResolved ? 1 : 0,
     explorationStage: ship.exploration.stage,
     explorationDone: ship.exploration.isChapter2Done ? 1 : 0,
+    sideQuestsCompleted: ship.sideQuests.completedCount(),
+    sideQuestsTotal: ship.sideQuests.all().length,
     currentMode: ship.currentMode,
     rpgLevel: ship.rpg.level,
     rpgHp: Math.round(ship.rpg.hp),

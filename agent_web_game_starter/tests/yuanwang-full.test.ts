@@ -12,6 +12,8 @@ import {
   L2_BOUNDS,
   R2_BOUNDS,
   MEDICAL_BOUNDS,
+  C7_BOUNDS,
+  ARCHIVES_BOUNDS,
   HANGAR_BOUNDS,
   REACTOR_BOUNDS,
   PROPULSION_BOUNDS,
@@ -30,15 +32,15 @@ import { ship, standableTiles, unlockedTiles } from "./shipWorld";
 import { findInteractable, reachPoint } from "../src/game/systems/Interaction";
 
 /**
- * Full 2,800m Yuanwang colony ship verification across all 13 compartments & lateral wings.
+ * Full 2,800m Yuanwang colony ship verification across all 15 compartments & lateral wings.
  */
 
 const map = createShipMap(TILE);
 const world = ship();
 const reached = standableTiles(world);
 
-describe("the complete 13-compartment 2,800m Yuanwang ship architecture", () => {
-  test("map has the full 84 x 204 scale to fit all 13 central and lateral compartments", () => {
+describe("the complete 15-compartment 2,800m Yuanwang ship architecture", () => {
+  test("map has the full 84 x 204 scale to fit all 15 central and lateral compartments", () => {
     assert.equal(map.width, SHIP_COLUMNS);
     assert.equal(map.height, SHIP_ROWS);
     assert.equal(SHIP_COLUMNS, 84);
@@ -55,6 +57,8 @@ describe("the complete 13-compartment 2,800m Yuanwang ship architecture", () => 
       L2_BOUNDS,
       R2_BOUNDS,
       MEDICAL_BOUNDS,
+      C7_BOUNDS,
+      ARCHIVES_BOUNDS,
       HANGAR_BOUNDS,
       REACTOR_BOUNDS,
       PROPULSION_BOUNDS
@@ -64,8 +68,8 @@ describe("the complete 13-compartment 2,800m Yuanwang ship architecture", () => 
     }
   });
 
-  test("static hull flood fill reaches 100% of floor tiles across all 13 compartments", () => {
-    assert.ok(reached.size > 4500, `only ${reached.size} static floor tiles reached`);
+  test("static hull flood fill reaches 100% of floor tiles across all 15 compartments", () => {
+    assert.ok(reached.size > 5100, `only ${reached.size} static floor tiles reached`);
 
     const compartments = [
       { name: "Fore Sensors (0-300m)", bounds: FORE_BOUNDS },
@@ -78,6 +82,8 @@ describe("the complete 13-compartment 2,800m Yuanwang ship architecture", () => 
       { name: "L-2 Industrial Foundry", bounds: L2_BOUNDS },
       { name: "R-2 Science Lab", bounds: R2_BOUNDS },
       { name: "Medical & Cryo Bay", bounds: MEDICAL_BOUNDS },
+      { name: "Seventh Neural Rehab Center (C-7)", bounds: C7_BOUNDS },
+      { name: "Yuanwang Historical Archives", bounds: ARCHIVES_BOUNDS },
       { name: "Shuttle Hangar", bounds: HANGAR_BOUNDS },
       { name: "Reactor Heat-Sink Bay", bounds: REACTOR_BOUNDS },
       { name: "Aft Propulsion & Radiator Gallery", bounds: PROPULSION_BOUNDS }
@@ -123,6 +129,8 @@ describe("the complete 13-compartment 2,800m Yuanwang ship architecture", () => 
       "ring_module",
       "science_lab",
       "medical_bay",
+      "rehab_center",
+      "archives",
       "hangar_bay",
       "reactor_bay",
       "propulsion_aft"
@@ -131,7 +139,7 @@ describe("the complete 13-compartment 2,800m Yuanwang ship architecture", () => 
     }
   });
 
-  test("no walkable tile on the entire 13-compartment ship leaks into bare hull structure", () => {
+  test("no walkable tile on the entire 15-compartment ship leaks into bare hull structure", () => {
     for (const key of reached) {
       const [tx, ty] = key.split(",").map(Number);
       for (const [ox, oy] of [
@@ -149,7 +157,7 @@ describe("the complete 13-compartment 2,800m Yuanwang ship architecture", () => 
     }
   });
 
-  test("all 16 place labels are defined and correctly mapped", () => {
+  test("all 18 place labels are defined and correctly mapped", () => {
     assert.equal(PLACE_LABELS.fore_sensors, "远望号 · 舰首探测与消融护盾廊");
     assert.equal(PLACE_LABELS.bridge, "远望号 · 舰桥");
     assert.equal(PLACE_LABELS.passage, "远望号 · 指挥舱通道");
@@ -162,6 +170,8 @@ describe("the complete 13-compartment 2,800m Yuanwang ship architecture", () => 
     assert.equal(PLACE_LABELS.industrial_bay, "远望号 · L-2 重工业车间");
     assert.equal(PLACE_LABELS.science_lab, "远望号 · R-2 科研实验舱");
     assert.equal(PLACE_LABELS.medical_bay, "远望号 · 医疗与休眠舱");
+    assert.equal(PLACE_LABELS.rehab_center, "远望号 · 第七神经康复中心");
+    assert.equal(PLACE_LABELS.archives, "远望号 · 历史档案馆");
     assert.equal(PLACE_LABELS.hangar_bay, "远望号 · 穿梭机机库");
     assert.equal(PLACE_LABELS.reactor_bay, "远望号 · 动力排险泵房");
     assert.equal(PLACE_LABELS.propulsion_aft, "远望号 · 舰尾聚变推进与散热翼廊");
@@ -177,6 +187,8 @@ describe("the complete 13-compartment 2,800m Yuanwang ship architecture", () => 
     assert.equal(placeAt(L2_BOUNDS.tx + 8, L2_BOUNDS.ty + 8), "industrial_bay");
     assert.equal(placeAt(R2_BOUNDS.tx + 8, R2_BOUNDS.ty + 8), "science_lab");
     assert.equal(placeAt(MEDICAL_BOUNDS.tx + 10, MEDICAL_BOUNDS.ty + 5), "medical_bay");
+    assert.equal(placeAt(C7_BOUNDS.tx + 8, C7_BOUNDS.ty + 8), "rehab_center");
+    assert.equal(placeAt(ARCHIVES_BOUNDS.tx + 10, ARCHIVES_BOUNDS.ty + 8), "archives");
     assert.equal(placeAt(HANGAR_BOUNDS.tx + 10, HANGAR_BOUNDS.ty + 5), "hangar_bay");
     assert.equal(placeAt(REACTOR_BOUNDS.tx + 10, REACTOR_BOUNDS.ty + 5), "reactor_bay");
     assert.equal(placeAt(PROPULSION_BOUNDS.tx + 20, PROPULSION_BOUNDS.ty + 5), "propulsion_aft");
@@ -186,9 +198,9 @@ describe("the complete 13-compartment 2,800m Yuanwang ship architecture", () => 
   });
 });
 
-describe("crew and fixtures across the 13-compartment ship", () => {
-  test("all 11 crew members are aboard and standing on walkable floor", () => {
-    assert.equal(ALL_SHIP_PEOPLE.length, 11);
+describe("crew and fixtures across the 15-compartment ship", () => {
+  test("all 15 crew members are aboard and standing on walkable floor", () => {
+    assert.equal(ALL_SHIP_PEOPLE.length, 15);
 
     for (const person of ALL_SHIP_PEOPLE) {
       const tx = Math.floor(person.x / TILE);
@@ -199,9 +211,9 @@ describe("crew and fixtures across the 13-compartment ship", () => {
     }
   });
 
-  test("every examinable prop across all 13 compartments can be reached", () => {
+  test("every examinable prop across all 15 compartments can be reached", () => {
     const examinableProps = SHIP_PROPS.filter((p) => p.lines && p.lines.length > 0);
-    assert.ok(examinableProps.length >= 60, `expected >= 60 examinable props, got ${examinableProps.length}`);
+    assert.ok(examinableProps.length >= 70, `expected >= 70 examinable props, got ${examinableProps.length}`);
 
     for (const prop of examinableProps) {
       let found = false;

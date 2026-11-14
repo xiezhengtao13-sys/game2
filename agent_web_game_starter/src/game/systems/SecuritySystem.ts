@@ -175,6 +175,8 @@ export class SecuritySystem {
       case "ring_module":
       case "science_lab":
       case "medical_bay":
+      case "rehab_center":
+      case "archives":
         return this.hasClearance("midship_pass");
       case "hangar_bay":
       case "reactor_bay":

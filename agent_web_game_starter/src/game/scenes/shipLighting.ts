@@ -59,6 +59,7 @@ function wallExtrusionColors(
       };
     case "medical_bay":
     case "science_lab":
+    case "rehab_center":
       return {
         stops: isDark
           ? [
@@ -73,6 +74,22 @@ function wallExtrusionColors(
             ],
         rim: "rgba(241, 245, 249, 0.65)",
         seam: "rgba(15, 23, 42, 0.85)"
+      };
+    case "archives":
+      return {
+        stops: isDark
+          ? [
+              { offset: 0, color: "#5e5347" },
+              { offset: 0.55, color: "#433b32" },
+              { offset: 1, color: "#28231d" }
+            ]
+          : [
+              { offset: 0, color: "#bfb09a" },
+              { offset: 0.5, color: "#90816e" },
+              { offset: 1, color: "#574c40" }
+            ],
+        rim: "rgba(248, 232, 200, 0.58)",
+        seam: "rgba(28, 22, 16, 0.88)"
       };
     case "agri_module":
       return {
@@ -131,7 +148,7 @@ function wallExtrusionColors(
 /**
  * Baldur's Gate 3 / Diablo-grade 2.5D architectural extrusion, crisp boundary seams,
  * soft ambient occlusion, bright readable zone lighting, volumetric bloom,
- * and zone-specific atmospheric particles across all 13 compartments.
+ * and zone-specific atmospheric particles across all 15 compartments.
  */
 export class ShipAtmosphere {
   private readonly particles: AmbientParticle[] = [];
@@ -157,7 +174,12 @@ export class ShipAtmosphere {
         kind = Math.random() < 0.72 ? "ember" : "dust";
       } else if (place === "industrial_bay") {
         kind = Math.random() < 0.45 ? "ember" : "dust";
-      } else if (place === "medical_bay" || place === "science_lab" || place === "fore_sensors") {
+      } else if (
+        place === "medical_bay" ||
+        place === "rehab_center" ||
+        place === "science_lab" ||
+        place === "fore_sensors"
+      ) {
         kind = Math.random() < 0.65 ? "cryo" : "dust";
       } else if (place === "agri_module") {
         kind = Math.random() < 0.68 ? "spore" : "dust";
@@ -481,7 +503,10 @@ export class ShipAtmosphere {
       case "crew_habitat":
         return "rgba(28, 20, 12, 0.02)";
       case "medical_bay":
+      case "rehab_center":
         return "rgba(10, 20, 28, 0.02)";
+      case "archives":
+        return "rgba(22, 17, 11, 0.03)";
       case "ring_module":
         return "rgba(20, 16, 10, 0.03)";
       case "science_lab":
@@ -511,6 +536,20 @@ export class ShipAtmosphere {
     const id = prop.assetId;
     const flicker = 0.94 + Math.sin(t * 5.3 + prop.x * 0.1) * 0.06;
 
+    if (prop.label.includes("弥涅瓦-V") || prop.label.includes("第五协议")) {
+      return {
+        holeRadius: 130,
+        bloomRadius: 84,
+        colorInner: "rgba(167, 139, 250, 0.20)"
+      };
+    }
+    if (prop.label.includes("MNA-01") || prop.label.includes("卡戎号")) {
+      return {
+        holeRadius: 124,
+        bloomRadius: 78,
+        colorInner: "rgba(251, 191, 36, 0.18)"
+      };
+    }
     if (id === "fx_plant" && (prop.label.includes("水培") || prop.label.includes("氧循环") || prop.label.includes("苗圃"))) {
       return {
         holeRadius: 135,
@@ -532,7 +571,7 @@ export class ShipAtmosphere {
         colorInner: "rgba(253, 230, 138, 0.12)"
       };
     }
-    if (id === "fx_reading_lamp" || prop.label.includes("灯") || prop.label.includes("铺位") || prop.label.includes("床位") || prop.label.includes("狭铺")) {
+    if (id === "fx_reading_lamp" || prop.label.includes("灯") || prop.label.includes("铺位") || prop.label.includes("床位") || prop.label.includes("狭铺") || prop.label.includes("康复监护床")) {
       return {
         holeRadius: 118 * flicker,
         bloomRadius: 72 * flicker,
@@ -546,7 +585,7 @@ export class ShipAtmosphere {
         colorInner: "rgba(249, 115, 22, 0.22)"
       };
     }
-    if (prop.label.includes("休眠舱")) {
+    if (prop.label.includes("休眠舱") || prop.label.includes("神经")) {
       return {
         holeRadius: 120,
         bloomRadius: 78,

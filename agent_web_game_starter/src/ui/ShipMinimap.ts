@@ -71,7 +71,7 @@ export class ShipMinimap {
         <div class="minimap-header">
           <div class="minimap-title">
             <span class="minimap-icon">🛰️</span>
-            <span>远望号 2800米 全舰 13 仓段全息蓝图 (HULL TOPOLOGY)</span>
+            <span>远望号 2800米 全舰 15 仓段全息蓝图 (HULL TOPOLOGY)</span>
           </div>
           <button id="minimap-close-btn" class="minimap-close">✕ 关闭 (M / ESC)</button>
         </div>
@@ -143,12 +143,20 @@ export class ShipMinimap {
               </div>
             </div>
 
-            <!-- Medical & Cryo (1450-1850m) -->
-            <div class="bp-row bp-single">
+            <!-- Medical & Cryo + Wing Modules: C-7 Rehab & Archives (1450-1850m) -->
+            <div class="bp-row bp-three">
+              <div class="hull-segment seg-rehab ${midship ? "is-open" : "is-locked"}">
+                <span class="hull-tag">C-7 神经康复中心</span>
+                ${badge(midship, "需中层卡")}
+              </div>
               <div class="hull-segment seg-cryo ${midship ? "is-open" : "is-locked"}">
-                <span class="hull-tag">U-1 医疗与 12,408 休眠舱区</span>
+                <span class="hull-tag">U-1 医疗与 12,408 休眠舱</span>
                 ${badge(midship, "需中层卡")}
                 <span class="hull-meter">1450-1850m</span>
+              </div>
+              <div class="hull-segment seg-archives ${midship ? "is-open" : "is-locked"}">
+                <span class="hull-tag">远望号历史档案馆</span>
+                ${badge(midship, "需中层卡")}
               </div>
             </div>
 

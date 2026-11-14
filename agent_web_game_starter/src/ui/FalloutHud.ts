@@ -333,8 +333,8 @@ export class FalloutHud {
       .filter((it) => it.quantity > 0)
       .map((it) => {
         const useBtn =
-          it.id === "med_stim"
-            ? `<button type="button" class="inv-use-btn" data-use-item="${it.id}">🩹 使用</button>`
+          it.id === "med_stim" || it.id === "l1_herbal_kit" || it.id === "malt_drink"
+            ? `<button type="button" class="inv-use-btn" data-use-item="${it.id}">${it.icon} 使用</button>`
             : it.equipped
             ? `<span class="inv-eq-tag">✓ 已装备</span>`
             : "";
