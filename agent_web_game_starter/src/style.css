@@ -152,14 +152,14 @@ html, body {
   background: #06090e;
 }
 
-/* Painterly grimdark vignette framing viewport */
+/* Whisper-soft framing vignette — keeps entire deck crisp and brightly legible */
 #canvas-stage::after {
   content: "";
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background: radial-gradient(ellipse at center, transparent 58%, rgba(2, 4, 9, 0.52) 86%, rgba(1, 2, 6, 0.85) 100%);
-  box-shadow: inset 0 0 65px rgba(0, 0, 0, 0.72);
+  background: radial-gradient(ellipse at center, transparent 80%, rgba(3, 6, 12, 0.08) 94%, rgba(2, 4, 9, 0.16) 100%);
+  box-shadow: inset 0 0 14px rgba(0, 0, 0, 0.14);
   z-index: 6;
 }
 

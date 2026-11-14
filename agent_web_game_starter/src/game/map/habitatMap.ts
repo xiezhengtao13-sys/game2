@@ -55,9 +55,9 @@ const SHAPES: Shape[] = [
   { x: 1, y: 9, w: 12, h: 1, type: "wall", note: "北宿舍区走廊隔墙" },
   { x: 9, y: 9, w: 2, h: 1, type: "floor_light", note: "北宿舍房门（衔接生活区起点走廊）" },
   { x: 6, y: 1, w: 1, h: 5, type: "wall", note: "A1/A2 船员寝室隔音隔断" },
-  // Tidy fitted carpets directly under bunk berths (not oversized!)
-  { x: 2, y: 2, w: 4, h: 4, type: "deck_rug", note: "A1 铺位保暖地垫" },
-  { x: 7, y: 2, w: 4, h: 4, type: "deck_rug", note: "A2 铺位保暖地垫" },
+  // Tidy fitted carpets directly under bunk berths (proportioned to 1.8m/tile furniture)
+  { x: 2, y: 2, w: 3, h: 3, type: "deck_rug", note: "A1 铺位保暖地垫" },
+  { x: 8, y: 2, w: 3, h: 3, type: "deck_rug", note: "A2 铺位保暖地垫" },
   // Flush wall wardrobes (recessed against perimeter walls, never floating!)
   { x: 1, y: 2, w: 1, h: 3, type: "wall_dark", note: "A1 嵌入式个人储物柜" },
   { x: 11, y: 2, w: 1, h: 3, type: "wall_dark", note: "A2 嵌入式个人储物柜" },
@@ -67,8 +67,8 @@ const SHAPES: Shape[] = [
   { x: 1, y: 13, w: 12, h: 1, type: "wall", note: "南宿舍区走廊隔墙" },
   { x: 9, y: 13, w: 2, h: 1, type: "floor_light", note: "南宿舍房门" },
   { x: 6, y: 17, w: 1, h: 5, type: "wall", note: "B1/B2 船员寝室隔音隔断" },
-  { x: 2, y: 16, w: 4, h: 4, type: "deck_rug", note: "B1 铺位保暖地垫" },
-  { x: 7, y: 16, w: 4, h: 4, type: "deck_rug", note: "B2 铺位保暖地垫" },
+  { x: 2, y: 17, w: 3, h: 3, type: "deck_rug", note: "B1 铺位保暖地垫" },
+  { x: 8, y: 17, w: 3, h: 3, type: "deck_rug", note: "B2 铺位保暖地垫" },
   { x: 1, y: 18, w: 1, h: 3, type: "wall_dark", note: "B1 嵌入式个人储物柜" },
   { x: 11, y: 18, w: 1, h: 3, type: "wall_dark", note: "B2 嵌入式个人储物柜" },
 
@@ -85,7 +85,7 @@ const SHAPES: Shape[] = [
   { x: 19, y: 13, w: 12, h: 1, type: "wall", note: "休闲与水循环区走廊隔墙" },
   { x: 21, y: 13, w: 3, h: 1, type: "floor_light", note: "公共休闲阅读室门" },
   // Living Lounge warm alcove
-  { x: 20, y: 16, w: 5, h: 5, type: "deck_rug", note: "绿化休息角暖色地毯" },
+  { x: 20, y: 16, w: 5, h: 4, type: "deck_rug", note: "绿化休息角暖色地毯" },
   // Partition wall isolating Wet Water-Recycling Utility Room (x 26..30)
   { x: 26, y: 14, w: 1, h: 8, type: "wall", note: "水净化工程机房防水隔墙" },
   { x: 26, y: 16, w: 1, h: 2, type: "floor_light", note: "水净化间检修门" },

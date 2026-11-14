@@ -82,12 +82,12 @@ const SHAPES: Shape[] = [
   { x: ROOM_COLUMNS - 1, y: 3, w: 1, h: 1, type: "wall_dark", note: "阅读区旁的检修面板" },
 
   // --- floor detail ----------------------------------------------------------
-  // Rugs under the functional zones: office, reception, bedroom, and reading.
+  // Rugs tightly framing functional zones: office, reception, bedroom, and reading.
   // Applied BEFORE the guide lights, so the lights stay visible across rugs.
-  { x: 4, y: 2, w: 5, h: 3, type: "deck_rug", note: "办公区行政地毯" },
-  { x: 7, y: 6, w: 6, h: 5, type: "deck_rug", note: "会客区地毯" },
+  { x: 4, y: 2, w: 4, h: 3, type: "deck_rug", note: "办公区行政地毯" },
+  { x: 7, y: 6, w: 5, h: 5, type: "deck_rug", note: "会客区地毯" },
   { x: 1, y: 11, w: 4, h: 4, type: "deck_rug", note: "起居区静音地毯" },
-  { x: 17, y: 11, w: 4, h: 3, type: "deck_rug", note: "阅读区地毯" },
+  { x: 17, y: 11, w: 5, h: 3, type: "deck_rug", note: "阅读区地毯" },
 
   // Guide lighting running up the middle of the room with side wings.
   { x: 12, y: 2, w: 1, h: 1, type: "floor_light", note: "地面导引灯" },

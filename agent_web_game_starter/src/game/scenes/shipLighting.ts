@@ -1,6 +1,6 @@
 import type { Renderer } from "../../engine/graphics/Renderer";
 import type { TileMap, TileType } from "../map/TileMap";
-import { exteriorKindAt, type Place } from "../map/shipMap";
+import { exteriorKindAt, placeAt, type Place } from "../map/shipMap";
 import type { SceneProp } from "./shipProps";
 
 interface AmbientParticle {
@@ -22,9 +22,115 @@ function isWalkableDeck(t: TileType | null): boolean {
   return t === "deck" || t === "deck_dark" || t === "deck_rug" || t === "floor_light";
 }
 
+function wallExtrusionColors(
+  place: Place,
+  isDark: boolean,
+  isScreen: boolean
+): { stops: Array<{ offset: number; color: string }>; rim: string; seam: string } {
+  if (isScreen) {
+    return {
+      stops: [
+        { offset: 0, color: "#1d3557" },
+        { offset: 0.7, color: "#11223b" },
+        { offset: 1, color: "#081221" }
+      ],
+      rim: "rgba(103, 232, 249, 0.75)",
+      seam: "rgba(15, 23, 42, 0.9)"
+    };
+  }
+  switch (place) {
+    case "crew_habitat":
+    case "ring_module":
+    case "cabin":
+      return {
+        stops: isDark
+          ? [
+              { offset: 0, color: "#6b6154" },
+              { offset: 0.55, color: "#4a4238" },
+              { offset: 1, color: "#2d2720" }
+            ]
+          : [
+              { offset: 0, color: "#b8aa96" },
+              { offset: 0.5, color: "#8c7e6c" },
+              { offset: 1, color: "#54493c" }
+            ],
+        rim: "rgba(247, 238, 222, 0.58)",
+        seam: "rgba(38, 30, 22, 0.88)"
+      };
+    case "medical_bay":
+    case "science_lab":
+      return {
+        stops: isDark
+          ? [
+              { offset: 0, color: "#64748b" },
+              { offset: 0.55, color: "#475569" },
+              { offset: 1, color: "#273447" }
+            ]
+          : [
+              { offset: 0, color: "#cbd5e1" },
+              { offset: 0.5, color: "#94a3b8" },
+              { offset: 1, color: "#52637a" }
+            ],
+        rim: "rgba(241, 245, 249, 0.65)",
+        seam: "rgba(15, 23, 42, 0.85)"
+      };
+    case "agri_module":
+      return {
+        stops: isDark
+          ? [
+              { offset: 0, color: "#4a6657" },
+              { offset: 0.55, color: "#32493d" },
+              { offset: 1, color: "#1c2b23" }
+            ]
+          : [
+              { offset: 0, color: "#a7c4b5" },
+              { offset: 0.5, color: "#769987" },
+              { offset: 1, color: "#42594d" }
+            ],
+        rim: "rgba(220, 252, 231, 0.52)",
+        seam: "rgba(20, 38, 28, 0.88)"
+      };
+    case "industrial_bay":
+    case "hangar_bay":
+    case "reactor_bay":
+    case "propulsion_aft":
+      return {
+        stops: isDark
+          ? [
+              { offset: 0, color: "#475263" },
+              { offset: 0.55, color: "#2b3340" },
+              { offset: 1, color: "#151a22" }
+            ]
+          : [
+              { offset: 0, color: "#78869b" },
+              { offset: 0.5, color: "#525e70" },
+              { offset: 1, color: "#2c3442" }
+            ],
+        rim: "rgba(251, 191, 36, 0.42)",
+        seam: "rgba(10, 14, 20, 0.92)"
+      };
+    default:
+      return {
+        stops: isDark
+          ? [
+              { offset: 0, color: "#4b5568" },
+              { offset: 0.55, color: "#2e3645" },
+              { offset: 1, color: "#171c26" }
+            ]
+          : [
+              { offset: 0, color: "#94a3b8" },
+              { offset: 0.5, color: "#64748b" },
+              { offset: 1, color: "#384354" }
+            ],
+        rim: "rgba(226, 232, 240, 0.52)",
+        seam: "rgba(15, 23, 42, 0.88)"
+      };
+  }
+}
+
 /**
- * Baldur's Gate 3 / Diablo-grade 2.5D architectural extrusion, ambient occlusion,
- * dynamic darkness mask, directional tactical flashlight, volumetric bloom,
+ * Baldur's Gate 3 / Diablo-grade 2.5D architectural extrusion, crisp boundary seams,
+ * soft ambient occlusion, bright readable zone lighting, volumetric bloom,
  * and zone-specific atmospheric particles across all 13 compartments.
  */
 export class ShipAtmosphere {
@@ -42,7 +148,7 @@ export class ShipAtmosphere {
   ): void {
     this.spawnAccum += dt;
     const isHot = crisisActive || place === "reactor_bay" || place === "propulsion_aft" || place === "industrial_bay";
-    const targetCount = isHot ? 40 : place === "agri_module" ? 32 : 26;
+    const targetCount = isHot ? 36 : place === "agri_module" ? 28 : 22;
 
     while (this.particles.length < targetCount && this.spawnAccum >= 0.06) {
       this.spawnAccum -= 0.06;
@@ -96,8 +202,8 @@ export class ShipAtmosphere {
   }
 
   /**
-   * Extrude 2.5D south-facing wall skirts and floor Contact Ambient Occlusion
-   * along bulkhead boundaries so flat top-down tiles read like sculpted CRPG architecture.
+   * Extrude 2.5D south-facing wall skirts with crisp top bevels, baseboard seams,
+   * and clean floor Contact Ambient Occlusion so room & corridor boundaries pop sharply.
    */
   renderWallDepthAndAO(renderer: Renderer, map: TileMap): void {
     if (!renderer.drawGradientRect) return;
@@ -120,47 +226,22 @@ export class ShipAtmosphere {
         if (isWalkableDeck(south)) {
           const isDark = type === "wall_dark" || type === "hull";
           const isScreen = type === "screen" || type === "window";
-          renderer.drawGradientRect(
-            wx,
-            wy + s,
-            s,
-            11,
-            isScreen
-              ? [
-                  { offset: 0, color: "#15263d" },
-                  { offset: 0.7, color: "#0c1422" },
-                  { offset: 1, color: "rgba(5, 9, 16, 0.9)" }
-                ]
-              : isDark
-              ? [
-                  { offset: 0, color: "#2d3544" },
-                  { offset: 0.5, color: "#191e28" },
-                  { offset: 1, color: "#0b0e14" }
-                ]
-              : [
-                  { offset: 0, color: "#505a6b" },
-                  { offset: 0.45, color: "#2b323e" },
-                  { offset: 1, color: "#12161e" }
-                ],
-            true
-          );
+          const zone = placeAt(tx, ty + 1) === "structure" ? placeAt(tx, ty) : placeAt(tx, ty + 1);
+          const palette = wallExtrusionColors(zone, isDark, isScreen);
 
-          renderer.drawLine?.(
-            wx,
-            wy + s - 1,
-            wx + s,
-            wy + s - 1,
-            type === "screen" ? "rgba(56, 189, 248, 0.55)" : "rgba(180, 196, 220, 0.24)",
-            1
-          );
+          renderer.drawGradientRect(wx, wy + s, s, 10, palette.stops, true);
+
+          // Crisp illuminated top lip of south wall skirt & dark floor-meet baseboard seam
+          renderer.drawLine?.(wx, wy + s, wx + s, wy + s, palette.rim, 1.8);
+          renderer.drawLine?.(wx, wy + s + 10, wx + s, wy + s + 10, palette.seam, 2);
 
           renderer.drawGradientRect(
             wx,
-            wy + s + 11,
+            wy + s + 10,
             s,
-            14,
+            8,
             [
-              { offset: 0, color: "rgba(2, 4, 9, 0.52)" },
+              { offset: 0, color: "rgba(2, 4, 9, 0.14)" },
               { offset: 1, color: "rgba(2, 4, 9, 0)" }
             ],
             true
@@ -171,9 +252,9 @@ export class ShipAtmosphere {
               wx,
               wy + s,
               s,
-              32,
+              28,
               [
-                { offset: 0, color: "rgba(56, 189, 248, 0.22)" },
+                { offset: 0, color: "rgba(56, 189, 248, 0.24)" },
                 { offset: 1, color: "rgba(56, 189, 248, 0)" }
               ],
               true
@@ -187,10 +268,10 @@ export class ShipAtmosphere {
           renderer.drawGradientRect(
             wx,
             wy,
-            10,
+            6,
             s,
             [
-              { offset: 0, color: "rgba(2, 4, 9, 0.42)" },
+              { offset: 0, color: "rgba(2, 4, 9, 0.14)" },
               { offset: 1, color: "rgba(2, 4, 9, 0)" }
             ],
             false
@@ -198,13 +279,13 @@ export class ShipAtmosphere {
         }
         if (tx + 1 < map.width && isWallType(map.tileAt(tx + 1, ty))) {
           renderer.drawGradientRect(
-            wx + s - 10,
+            wx + s - 6,
             wy,
-            10,
+            6,
             s,
             [
               { offset: 0, color: "rgba(2, 4, 9, 0)" },
-              { offset: 1, color: "rgba(2, 4, 9, 0.42)" }
+              { offset: 1, color: "rgba(2, 4, 9, 0.14)" }
             ],
             false
           );
@@ -214,8 +295,8 @@ export class ShipAtmosphere {
   }
 
   /**
-   * Render darkness veil, real-time flashlight & fixture cutouts, additive glow
-   * blooms, and zone-specific atmospheric particles.
+   * Render restrained atmospheric tint veil, fixture & suit light cutouts, subtle bloom
+   * halos, and zone-specific atmospheric particles without crushing overall visibility.
    */
   renderLightingPass(
     renderer: Renderer,
@@ -238,31 +319,31 @@ export class ShipAtmosphere {
     };
     const size = map.tileSize;
 
-    // 1. Offscreen darkness buffer
+    // 1. Offscreen ambient shading buffer
     if (renderer.beginLightMask && renderer.punchLightHole && renderer.endLightMask) {
       renderer.beginLightMask(ambient);
 
-      // Player tactical shoulder lamp aura + forward beam cone
-      renderer.punchLightHole(playerX, playerY - 14, 18, 128);
-      renderer.punchLightHole(playerX, playerY - 14, 24, 245, beamAngleRad, Math.PI * 0.42);
+      // Player soft work-lamp aura + directional beam
+      renderer.punchLightHole(playerX, playerY - 14, 24, 150);
+      renderer.punchLightHole(playerX, playerY - 14, 28, 250, beamAngleRad, Math.PI * 0.45);
 
-      // Visible floor light strips, telemetry screens, viewports, and open vacuum outside hull
+      // Visible floor light strips, telemetry screens, viewports, and hull skin
       for (const tile of map.visibleTiles(view)) {
         const cx = tile.tx * size + size / 2;
         const cy = tile.ty * size + size / 2;
         if (tile.type === "floor_light") {
-          renderer.punchLightHole(cx, cy, 12, 118);
+          renderer.punchLightHole(cx, cy, 14, 128);
         } else if (tile.type === "screen") {
-          renderer.punchLightHole(cx, cy + 16, 16, 145);
+          renderer.punchLightHole(cx, cy + 16, 18, 150);
         } else if (tile.type === "window") {
-          renderer.punchLightHole(cx, cy, 24, 112);
+          renderer.punchLightHole(cx, cy, 24, 118);
         } else if (
           tile.type === "hull" &&
           tile.tx % 2 === 0 &&
           tile.ty % 2 === 0 &&
-          exteriorKindAt(map, tile.tx, tile.ty) !== "shield"
+          exteriorKindAt(map, tile.tx, tile.ty) !== "space"
         ) {
-          renderer.punchLightHole(cx, cy, 36, 98);
+          renderer.punchLightHole(cx, cy, 42, 118);
         }
       }
 
@@ -285,7 +366,7 @@ export class ShipAtmosphere {
       renderer.endLightMask();
     }
 
-    // 2. Additive color bloom halos (`lighter`) on top of scene
+    // 2. Restrained additive color bloom halos (`lighter`) on top of scene
     if (renderer.drawRadialLight) {
       for (const tile of map.visibleTiles(view)) {
         const cx = tile.tx * size + size / 2;
@@ -294,12 +375,12 @@ export class ShipAtmosphere {
           renderer.drawRadialLight(
             cx,
             cy,
-            66,
+            54,
             crisisActive
-              ? "rgba(239, 68, 68, 0.22)"
+              ? "rgba(239, 68, 68, 0.20)"
               : place === "agri_module"
-              ? "rgba(74, 222, 128, 0.16)"
-              : "rgba(245, 158, 11, 0.16)",
+              ? "rgba(74, 222, 128, 0.13)"
+              : "rgba(245, 158, 11, 0.11)",
             "rgba(0,0,0,0)",
             true
           );
@@ -328,14 +409,14 @@ export class ShipAtmosphere {
         }
       }
 
-      // Subtle warm tactical rim from player headlamp cone tip
-      const fx = playerX + Math.cos(beamAngleRad) * 62;
-      const fy = playerY - 12 + Math.sin(beamAngleRad) * 62;
+      // Subtle warm cone rim ahead of player
+      const fx = playerX + Math.cos(beamAngleRad) * 56;
+      const fy = playerY - 12 + Math.sin(beamAngleRad) * 56;
       renderer.drawRadialLight(
         fx,
         fy,
-        105,
-        crisisActive ? "rgba(255, 185, 120, 0.13)" : "rgba(255, 224, 165, 0.11)",
+        88,
+        crisisActive ? "rgba(255, 185, 120, 0.11)" : "rgba(255, 232, 186, 0.08)",
         "rgba(0,0,0,0)",
         true
       );
@@ -350,12 +431,12 @@ export class ShipAtmosphere {
           p.x,
           p.y,
           p.size * 3.5,
-          `rgba(251, 146, 60, ${(fade * 0.65).toFixed(2)})`,
+          `rgba(251, 146, 60, ${(fade * 0.60).toFixed(2)})`,
           "rgba(0,0,0,0)",
           true
         );
         renderer.drawRect(p.x - 1, p.y - 1, 2.2, 2.2, {
-          color: `rgba(254, 240, 138, ${(fade * 0.95).toFixed(2)})`,
+          color: `rgba(254, 240, 138, ${(fade * 0.90).toFixed(2)})`,
           radius: 1
         });
       } else if (p.kind === "cryo") {
@@ -372,17 +453,17 @@ export class ShipAtmosphere {
           p.x,
           p.y,
           p.size * 3.2,
-          `rgba(74, 222, 128, ${(fade * 0.45).toFixed(2)})`,
+          `rgba(74, 222, 128, ${(fade * 0.42).toFixed(2)})`,
           "rgba(0,0,0,0)",
           true
         );
         renderer.drawRect(p.x, p.y, p.size, p.size, {
-          color: `rgba(187, 247, 208, ${(fade * 0.7).toFixed(2)})`,
+          color: `rgba(187, 247, 208, ${(fade * 0.65).toFixed(2)})`,
           radius: p.size / 2
         });
       } else {
         renderer.drawRect(p.x, p.y, p.size, p.size, {
-          color: `rgba(245, 215, 165, ${(fade * 0.35).toFixed(2)})`,
+          color: `rgba(245, 224, 184, ${(fade * 0.28).toFixed(2)})`,
           radius: p.size / 2
         });
       }
@@ -392,112 +473,112 @@ export class ShipAtmosphere {
   private ambientForZone(place: Place, crisisActive: boolean, t: number): string {
     if (crisisActive) {
       const pulse = (Math.sin(t * 4.2) + 1) / 2;
-      const r = Math.round(28 + pulse * 36);
-      const a = (0.58 - pulse * 0.08).toFixed(2);
+      const r = Math.round(32 + pulse * 30);
+      const a = (0.34 - pulse * 0.06).toFixed(2);
       return `rgba(${r}, 6, 8, ${a})`;
     }
     switch (place) {
-      case "fore_sensors":
-        return "rgba(5, 9, 19, 0.56)";
-      case "cabin":
-        return "rgba(8, 10, 17, 0.48)";
-      case "bridge":
-        return "rgba(6, 11, 20, 0.42)";
-      case "agri_module":
-        return "rgba(6, 18, 12, 0.42)";
-      case "ring_module":
-        return "rgba(18, 13, 8, 0.38)";
       case "crew_habitat":
-        return "rgba(28, 20, 15, 0.30)";
-      case "industrial_bay":
-        return "rgba(16, 11, 8, 0.52)";
-      case "science_lab":
-        return "rgba(5, 14, 24, 0.44)";
+        return "rgba(28, 20, 12, 0.02)";
       case "medical_bay":
-        return "rgba(5, 15, 22, 0.44)";
+        return "rgba(10, 20, 28, 0.02)";
+      case "ring_module":
+        return "rgba(20, 16, 10, 0.03)";
+      case "science_lab":
+        return "rgba(8, 16, 28, 0.03)";
+      case "agri_module":
+        return "rgba(6, 20, 12, 0.04)";
+      case "cabin":
+        return "rgba(18, 14, 10, 0.05)";
+      case "bridge":
+        return "rgba(8, 14, 24, 0.06)";
+      case "fore_sensors":
+        return "rgba(8, 14, 26, 0.07)";
       case "hangar_bay":
-        return "rgba(8, 12, 20, 0.50)";
+        return "rgba(12, 18, 28, 0.07)";
+      case "industrial_bay":
+        return "rgba(16, 12, 8, 0.08)";
       case "reactor_bay":
-        return "rgba(18, 7, 5, 0.58)";
+        return "rgba(20, 10, 7, 0.10)";
       case "propulsion_aft":
-        return "rgba(20, 8, 6, 0.55)";
+        return "rgba(22, 10, 8, 0.10)";
       default:
-        return "rgba(7, 10, 16, 0.52)";
+        return "rgba(12, 16, 24, 0.04)";
     }
   }
 
   private lightSpecForProp(prop: SceneProp, t: number) {
     const id = prop.assetId;
-    const flicker = 0.92 + Math.sin(t * 5.3 + prop.x * 0.1) * 0.08;
+    const flicker = 0.94 + Math.sin(t * 5.3 + prop.x * 0.1) * 0.06;
 
     if (id === "fx_plant" && (prop.label.includes("水培") || prop.label.includes("氧循环") || prop.label.includes("苗圃"))) {
       return {
-        holeRadius: 155,
-        bloomRadius: 120,
-        colorInner: "rgba(74, 222, 128, 0.24)"
+        holeRadius: 135,
+        bloomRadius: 92,
+        colorInner: "rgba(74, 222, 128, 0.18)"
       };
     }
     if (prop.label.includes("全自动恒温暖餐柜") || prop.label.includes("暖餐柜")) {
       return {
-        holeRadius: 165 * flicker,
-        bloomRadius: 130 * flicker,
-        colorInner: "rgba(251, 191, 36, 0.32)"
+        holeRadius: 145 * flicker,
+        bloomRadius: 96 * flicker,
+        colorInner: "rgba(251, 191, 36, 0.22)"
       };
     }
     if (prop.label.includes("储物柜")) {
       return {
-        holeRadius: 110,
-        bloomRadius: 75,
-        colorInner: "rgba(253, 230, 138, 0.18)"
+        holeRadius: 92,
+        bloomRadius: 56,
+        colorInner: "rgba(253, 230, 138, 0.12)"
       };
     }
     if (id === "fx_reading_lamp" || prop.label.includes("灯") || prop.label.includes("铺位") || prop.label.includes("床位") || prop.label.includes("狭铺")) {
       return {
-        holeRadius: 145 * flicker,
-        bloomRadius: 110 * flicker,
-        colorInner: "rgba(253, 230, 138, 0.24)"
+        holeRadius: 118 * flicker,
+        bloomRadius: 72 * flicker,
+        colorInner: "rgba(253, 230, 138, 0.18)"
       };
     }
     if (prop.label.includes("泄压") || prop.label.includes("反应堆") || prop.label.includes("展开栓") || prop.label.includes("散热") || prop.label.includes("喷口")) {
       return {
-        holeRadius: 165 * flicker,
-        bloomRadius: 135 * flicker,
-        colorInner: "rgba(249, 115, 22, 0.28)"
+        holeRadius: 145 * flicker,
+        bloomRadius: 105 * flicker,
+        colorInner: "rgba(249, 115, 22, 0.22)"
       };
     }
     if (prop.label.includes("休眠舱")) {
       return {
-        holeRadius: 135,
-        bloomRadius: 95,
-        colorInner: "rgba(45, 212, 191, 0.22)"
+        holeRadius: 120,
+        bloomRadius: 78,
+        colorInner: "rgba(45, 212, 191, 0.18)"
       };
     }
     if (id === "fx_command_chair" || id === "fx_meeting_table") {
       return {
-        holeRadius: 185,
-        bloomRadius: 140,
-        colorInner: "rgba(245, 158, 11, 0.15)"
+        holeRadius: 165,
+        bloomRadius: 105,
+        colorInner: "rgba(245, 158, 11, 0.12)"
       };
     }
     if (id === "fx_holo_table" || id === "fx_console" || id === "fx_console_side" || id === "fx_terminal" || id === "fx_screen_lit") {
       return {
-        holeRadius: 125,
-        bloomRadius: 85,
-        colorInner: "rgba(56, 189, 248, 0.18)"
+        holeRadius: 112,
+        bloomRadius: 72,
+        colorInner: "rgba(56, 189, 248, 0.15)"
       };
     }
     if (id === "fx_obswall") {
       return {
-        holeRadius: 170,
-        bloomRadius: 110,
-        colorInner: "rgba(125, 211, 252, 0.14)"
+        holeRadius: 155,
+        bloomRadius: 92,
+        colorInner: "rgba(125, 211, 252, 0.12)"
       };
     }
     if (id === "fx_switch_panel") {
       return {
-        holeRadius: 95,
-        bloomRadius: 65,
-        colorInner: "rgba(245, 158, 11, 0.12)"
+        holeRadius: 88,
+        bloomRadius: 56,
+        colorInner: "rgba(245, 158, 11, 0.11)"
       };
     }
     return null;

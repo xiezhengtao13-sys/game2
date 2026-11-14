@@ -141,7 +141,7 @@ export class ShipWorld implements GameWorld {
 
     props.forEach((prop, index) => {
       // Soft pathfinding penalty for props so automated paths steer neatly around tables/bunk beds
-      const pad = 8;
+      const pad = Math.min(8, Math.min(prop.w, prop.h) * tileSize * 0.22);
       const minTx = Math.floor((prop.x - (prop.w * tileSize) / 2 + pad) / tileSize);
       const maxTx = Math.floor((prop.x + (prop.w * tileSize) / 2 - pad) / tileSize);
       const minTy = Math.floor((prop.y - (prop.h * tileSize) / 2 + pad) / tileSize);
@@ -1888,12 +1888,48 @@ export class ShipWorld implements GameWorld {
           renderer.drawLine?.(gx + gw * 0.67, gy + 4, gx + gw * 0.67, gy + gh - 4, laserColor, 2.5);
         }
 
-        renderer.drawWorldText(`🔒 ${gate.badgeText}`, gx + gw / 2, gy + gh / 2 + 4, {
-          color: gate.id === "gate_cabin" ? "#e9d5ff" : "#fecaca",
-          size: 11,
-          align: "center",
-          baseline: "middle"
-        });
+        const accent = gate.id === "gate_cabin" ? "#c084fc" : "#f59e0b";
+        const parts = gate.badgeText.split("·").map((p) => p.trim()).filter(Boolean);
+        if (gate.orientation === "vertical" && parts.length >= 2) {
+          const pillW = Math.max(gw + 34, 100);
+          const pillH = 30;
+          const px = gx + gw / 2 - pillW / 2;
+          const py = gy + gh / 2 - pillH / 2;
+          renderer.drawRect(px, py, pillW, pillH, {
+            color: "rgba(10, 14, 22, 0.92)",
+            stroke: { width: 1.2, color: accent },
+            radius: 5
+          });
+          renderer.drawWorldText(`🔒 ${parts[0]}`, gx + gw / 2, gy + gh / 2 - 5, {
+            color: gate.id === "gate_cabin" ? "#e9d5ff" : "#fecaca",
+            size: 10,
+            align: "center",
+            baseline: "middle"
+          });
+          renderer.drawWorldText(parts.slice(1).join("·"), gx + gw / 2, gy + gh / 2 + 8, {
+            color: "#fde68a",
+            size: 9,
+            align: "center",
+            baseline: "middle"
+          });
+        } else {
+          const singleLine = `🔒 ${gate.badgeText}`;
+          const pillW = Math.min(Math.max(gw + 12, 142), singleLine.length * 10 + 18);
+          const pillH = 20;
+          const px = gx + gw / 2 - pillW / 2;
+          const py = gy + gh / 2 - pillH / 2;
+          renderer.drawRect(px, py, pillW, pillH, {
+            color: "rgba(10, 14, 22, 0.92)",
+            stroke: { width: 1.2, color: accent },
+            radius: 5
+          });
+          renderer.drawWorldText(singleLine, gx + gw / 2, gy + gh / 2 + 1, {
+            color: gate.id === "gate_cabin" ? "#e9d5ff" : "#fecaca",
+            size: 10,
+            align: "center",
+            baseline: "middle"
+          });
+        }
       } else {
         // Unlocked recessed green sill indicator
         const sillColor = "rgba(34, 197, 94, 0.35)";
@@ -1925,37 +1961,65 @@ export class ShipWorld implements GameWorld {
         const botY = prop.y + ph / 2;
 
         if (prop.assetId === "fx_bed") {
-          // Grounded rectangular bed footprint shadow with soft ambient bleed
-          renderer.drawRect(prop.x - pw / 2 + 2, botY - 7, pw - 4, 9, {
-            color: "rgba(2, 4, 9, 0.58)",
+          renderer.drawRect(prop.x - pw / 2 + 2, botY - 5, pw - 4, 7, {
+            color: "rgba(2, 4, 9, 0.40)",
             radius: 3
           });
-          renderer.drawEllipse(prop.x, botY - 2, pw / 2 + 3, 6, "rgba(2, 4, 9, 0.42)");
+          renderer.drawEllipse(prop.x, botY - 1, pw / 2 + 1, 4.5, "rgba(2, 4, 9, 0.24)");
         } else if (prop.assetId === "fx_meeting_table") {
-          // Circular pedestal drop shadow
-          renderer.drawEllipse(prop.x + 1, botY - 6, pw / 2 - 3, ph / 3.8, "rgba(2, 4, 9, 0.56)");
-          renderer.drawEllipse(prop.x + 1, botY - 6, pw / 3.2, ph / 5.5, "rgba(2, 4, 9, 0.38)");
-        } else if (prop.assetId === "fx_chair" || prop.assetId === "fx_desk_chair" || prop.assetId === "fx_reading_chair") {
-          renderer.drawEllipse(prop.x, botY - 4, 14, 6, "rgba(2, 4, 9, 0.52)");
-        } else if (prop.assetId === "fx_console" || prop.assetId === "fx_bookshelf" || prop.assetId === "fx_terminal" || prop.assetId === "fx_desk") {
-          // Solid base rectangular contact shadow
-          renderer.drawRect(prop.x - pw / 2 + 2, botY - 6, pw - 4, 8, {
-            color: "rgba(2, 4, 9, 0.60)",
+          renderer.drawEllipse(prop.x + 1, botY - 4, pw * 0.42, ph * 0.22, "rgba(2, 4, 9, 0.38)");
+          renderer.drawEllipse(prop.x + 1, botY - 4, pw * 0.26, ph * 0.14, "rgba(2, 4, 9, 0.24)");
+        } else if (
+          prop.assetId === "fx_chair" ||
+          prop.assetId === "fx_desk_chair" ||
+          prop.assetId === "fx_reading_chair"
+        ) {
+          renderer.drawEllipse(
+            prop.x,
+            botY - 3,
+            Math.max(8, pw * 0.36),
+            Math.max(4, ph * 0.16),
+            "rgba(2, 4, 9, 0.36)"
+          );
+        } else if (
+          prop.assetId === "fx_reading_lamp" ||
+          prop.assetId === "fx_plant" ||
+          prop.assetId === "fx_paper_log"
+        ) {
+          renderer.drawEllipse(
+            prop.x,
+            botY - 2,
+            Math.max(7, pw * 0.38),
+            Math.max(4, ph * 0.17),
+            "rgba(2, 4, 9, 0.32)"
+          );
+        } else if (
+          prop.assetId === "fx_console" ||
+          prop.assetId === "fx_console_side" ||
+          prop.assetId === "fx_bookshelf" ||
+          prop.assetId === "fx_terminal" ||
+          prop.assetId === "fx_desk" ||
+          prop.assetId === "fx_holo_table" ||
+          prop.assetId === "fx_command_chair" ||
+          prop.assetId === "fx_switch_panel"
+        ) {
+          renderer.drawRect(prop.x - pw / 2 + 2, botY - 5, pw - 4, 7, {
+            color: "rgba(2, 4, 9, 0.40)",
             radius: 3
           });
-          renderer.drawEllipse(prop.x, botY - 2, pw / 2 + 2, 5, "rgba(2, 4, 9, 0.36)");
+          renderer.drawEllipse(prop.x, botY - 1, pw / 2 + 1, 4.5, "rgba(2, 4, 9, 0.22)");
         } else {
-          renderer.drawEllipse(prop.x + 2, botY - 4, pw / 2 + 2, 7, "rgba(2, 4, 9, 0.56)");
+          renderer.drawEllipse(prop.x + 1, botY - 3, Math.max(8, pw * 0.42), 5, "rgba(2, 4, 9, 0.34)");
         }
       }
       for (const person of this.people) {
-        renderer.drawEllipse(person.x, person.y - 1, 14, 6, "rgba(2, 4, 9, 0.48)");
-        renderer.drawEllipse(person.x - 5, person.y - 1, 5, 2.5, "rgba(1, 2, 5, 0.68)");
-        renderer.drawEllipse(person.x + 5, person.y - 1, 5, 2.5, "rgba(1, 2, 5, 0.68)");
+        renderer.drawEllipse(person.x, person.y - 1, 13, 5.5, "rgba(2, 4, 9, 0.36)");
+        renderer.drawEllipse(person.x - 4, person.y - 1, 4.5, 2.2, "rgba(1, 2, 5, 0.48)");
+        renderer.drawEllipse(person.x + 4, person.y - 1, 4.5, 2.2, "rgba(1, 2, 5, 0.48)");
       }
-      renderer.drawEllipse(this.player.centerX, this.player.y + this.player.height - 1, 14, 6, "rgba(2, 4, 9, 0.52)");
-      renderer.drawEllipse(this.player.centerX - 5, this.player.y + this.player.height - 1, 5, 2.5, "rgba(1, 2, 5, 0.72)");
-      renderer.drawEllipse(this.player.centerX + 5, this.player.y + this.player.height - 1, 5, 2.5, "rgba(1, 2, 5, 0.72)");
+      renderer.drawEllipse(this.player.centerX, this.player.y + this.player.height - 1, 13, 5.5, "rgba(2, 4, 9, 0.40)");
+      renderer.drawEllipse(this.player.centerX - 4, this.player.y + this.player.height - 1, 4.5, 2.2, "rgba(1, 2, 5, 0.52)");
+      renderer.drawEllipse(this.player.centerX + 4, this.player.y + this.player.height - 1, 4.5, 2.2, "rgba(1, 2, 5, 0.52)");
     }
 
     // Multi-segment smart A* path breadcrumb rendering
@@ -2073,8 +2137,8 @@ export class ShipWorld implements GameWorld {
     const vw = cam.viewportWidth;
     const vh = cam.viewportHeight;
 
-    // Restrained, near-pure obsidian void per docs/设定集.md ("几乎全是黑的。星星很小、很锐利")
-    renderer.drawRect(vx, vy, vw, vh, { color: "#03060c" });
+    // Restrained deep-space cosmos backdrop per docs/设定集.md
+    renderer.drawRect(vx, vy, vw, vh, { color: "#050912" });
 
     // Subtle deep-space cosmic dust veil on the starboard horizon
     if (renderer.drawGradientRect) {
@@ -2084,9 +2148,9 @@ export class ShipWorld implements GameWorld {
         vw * 0.45,
         vh,
         [
-          { offset: 0, color: "rgba(15, 29, 54, 0)" },
-          { offset: 0.65, color: "rgba(18, 34, 62, 0.14)" },
-          { offset: 1, color: "rgba(12, 22, 44, 0.05)" }
+          { offset: 0, color: "rgba(18, 36, 66, 0)" },
+          { offset: 0.65, color: "rgba(22, 42, 76, 0.16)" },
+          { offset: 1, color: "rgba(14, 28, 54, 0.06)" }
         ],
         false
       );
@@ -2114,10 +2178,10 @@ export class ShipWorld implements GameWorld {
             tier === 0
               ? "#e0f2fe"
               : tier < 4
-              ? "rgba(226, 232, 240, 0.85)"
+              ? "rgba(226, 232, 240, 0.88)"
               : tier < 8
-              ? "rgba(148, 163, 184, 0.55)"
-              : "rgba(253, 230, 138, 0.48)";
+              ? "rgba(148, 163, 184, 0.58)"
+              : "rgba(253, 230, 138, 0.52)";
           renderer.drawRect(sx, sy, size, size, { color });
         }
       }
@@ -2140,19 +2204,18 @@ export class ShipWorld implements GameWorld {
     // 1. Fore Bow Multi-Layer Carbon-Silicon Ablation Shield Arcs (0-300m)
     if (vy0 < (FORE_ORIGIN.ty + 6) * s && vy1 > 0) {
       const cx = (FORE_ORIGIN.tx + 15) * s;
-      // Forward broad shield bumper plate bridging cols 23..60
       renderer.drawRect(23 * s, 6, 38 * s, 26, {
-        color: "#222936",
-        stroke: { width: 2, color: "#475569" },
+        color: "#334155",
+        stroke: { width: 2, color: "#94a3b8" },
         radius: 6
       });
       renderer.drawRect(cx - 12 * s, 32, 24 * s, 22, {
-        color: "#1a202c",
-        stroke: { width: 2, color: "#334155" },
+        color: "#273447",
+        stroke: { width: 2, color: "#64748b" },
         radius: 3
       });
       for (let x = 25; x <= 58; x += 4) {
-        renderer.drawLine?.(x * s, 32, x * s, 2 * s, "#475569", 3);
+        renderer.drawLine?.(x * s, 32, x * s, 2 * s, "#64748b", 3);
       }
     }
 
@@ -2162,30 +2225,27 @@ export class ShipWorld implements GameWorld {
     const l2Bot = (L2_ORIGIN.ty + 23) * s;
     if (vx0 < l2WestEdge + 32 && vy1 > l2Top - 40 && vy0 < l2Bot + 40) {
       const craneArmY = l2Top + 10.5 * s + Math.sin(t * 0.45) * 42;
-      // Cantilevered steel vacuum work platform projecting into space west of L-2
       renderer.drawRect(8, l2Top + 2 * s, l2WestEdge - 8, 5 * s, {
-        color: "rgba(22, 28, 38, 0.85)",
-        stroke: { width: 2, color: "#475569" },
+        color: "rgba(38, 49, 66, 0.9)",
+        stroke: { width: 2, color: "#94a3b8" },
         radius: 3
       });
       renderer.drawRect(8, l2Top + 14 * s, l2WestEdge - 8, 5 * s, {
-        color: "rgba(22, 28, 38, 0.85)",
-        stroke: { width: 2, color: "#475569" },
+        color: "rgba(38, 49, 66, 0.9)",
+        stroke: { width: 2, color: "#94a3b8" },
         radius: 3
       });
-      // Truss cross-girders & OSHA yellow gantry crane boom
       for (let py = l2Top + 2.5 * s; py < l2Top + 19 * s; py += s) {
-        renderer.drawLine?.(12, py, l2WestEdge - 2, py + s * 0.65, "rgba(71, 85, 105, 0.65)", 2);
+        renderer.drawLine?.(12, py, l2WestEdge - 2, py + s * 0.65, "rgba(148, 163, 184, 0.72)", 2);
       }
       renderer.drawRect(18, craneArmY - 6, l2WestEdge - 14, 12, {
-        color: "#b45309",
-        stroke: { width: 1.5, color: "#fbbf24" },
+        color: "#d97706",
+        stroke: { width: 1.5, color: "#fde68a" },
         radius: 2
       });
-      // Slow beacon strobe on external foundry crane tip
       const strobe = Math.sin(t * 3.5) > 0.35;
       renderer.drawRect(22, craneArmY - 3, 6, 6, {
-        color: strobe ? "#f59e0b" : "#78350f",
+        color: strobe ? "#fbbf24" : "#92400e",
         radius: 3
       });
       if (strobe) {
@@ -2197,26 +2257,22 @@ export class ShipWorld implements GameWorld {
     const r1EastX = (R1_ORIGIN.tx + 20) * s;
     const r1MidY = (R1_ORIGIN.ty + 11) * s;
     if (vx1 > r1EastX - 180 && vy1 > r1MidY - 760 && vy0 < r1MidY + 760) {
-      // Twin radial bearing spoke bridges reaching right from R-1 atrium
       renderer.drawRect(r1EastX, r1MidY - 1.4 * s, 120, 2.8 * s, {
-        color: "#2b3444",
-        stroke: { width: 2, color: "#64748b" }
+        color: "#3b475c",
+        stroke: { width: 2, color: "#94a3b8" }
       });
-      // Counter-rotating vertical ring arcs gliding outside the viewport windows!
       const ringAx = r1EastX + 26;
       const ringBx = r1EastX + 66;
       const bandTop = (R1_ORIGIN.ty - 3) * s;
       const bandH = 28 * s;
 
-      // Ring A hull ribbon moving slowly down (+1.35 rpm rim motion)
       renderer.drawRect(ringAx, bandTop, 28, bandH, {
-        color: "#263040",
-        stroke: { width: 1.5, color: "#64748b" }
+        color: "#334155",
+        stroke: { width: 1.5, color: "#94a3b8" }
       });
-      // Ring B counter-rotating outer hull ribbon moving up (-1.35 rpm)
       renderer.drawRect(ringBx, bandTop, 24, bandH, {
-        color: "#1e2736",
-        stroke: { width: 1.5, color: "#475569" }
+        color: "#293548",
+        stroke: { width: 1.5, color: "#64748b" }
       });
 
       const scrollA = (t * 28) % 64;
@@ -2224,13 +2280,13 @@ export class ShipWorld implements GameWorld {
       for (let wy = bandTop - 64; wy < bandTop + bandH; wy += 64) {
         const ya = wy + scrollA;
         if (ya >= bandTop && ya <= bandTop + bandH - 12) {
-          renderer.drawRect(ringAx + 6, ya, 14, 7, { color: "rgba(253, 224, 155, 0.82)", radius: 1 });
-          renderer.drawLine?.(ringAx, ya + 22, ringAx + 28, ya + 22, "#475569", 1.5);
+          renderer.drawRect(ringAx + 6, ya, 14, 7, { color: "rgba(253, 224, 155, 0.85)", radius: 1 });
+          renderer.drawLine?.(ringAx, ya + 22, ringAx + 28, ya + 22, "#64748b", 1.5);
         }
         const yb = wy + (64 - scrollB);
         if (yb >= bandTop && yb <= bandTop + bandH - 12) {
-          renderer.drawRect(ringBx + 5, yb, 12, 6, { color: "rgba(186, 230, 253, 0.72)", radius: 1 });
-          renderer.drawLine?.(ringBx, yb + 20, ringBx + 24, yb + 20, "#334155", 1.5);
+          renderer.drawRect(ringBx + 5, yb, 12, 6, { color: "rgba(186, 230, 253, 0.78)", radius: 1 });
+          renderer.drawLine?.(ringBx, yb + 20, ringBx + 24, yb + 20, "#475569", 1.5);
         }
       }
     }
@@ -2242,8 +2298,8 @@ export class ShipWorld implements GameWorld {
       for (const railRow of [4.2, 12.2]) {
         const ry = hTopY + railRow * s;
         renderer.drawRect(hWestX - 280, ry, 280, s * 1.4, {
-          color: "#1a2230",
-          stroke: { width: 2, color: "#475569" },
+          color: "#2b3648",
+          stroke: { width: 2, color: "#94a3b8" },
           radius: 3
         });
         for (let k = 0; k < 5; k++) {
@@ -2259,30 +2315,27 @@ export class ShipWorld implements GameWorld {
 
     // 5. Aft Propulsion 1,200m Deployable Crimson Radiator Wings & 4 Fusion Thruster Bells
     const propTopY = PROPULSION_ORIGIN.ty * s;
-    const propPortX = PROPULSION_ORIGIN.tx * s; // 14 * s = 672
-    const propStbdX = (PROPULSION_ORIGIN.tx + 56) * s; // 70 * s = 3360
+    const propPortX = PROPULSION_ORIGIN.tx * s;
+    const propStbdX = (PROPULSION_ORIGIN.tx + 56) * s;
     const propBotY = (PROPULSION_ORIGIN.ty + 15) * s;
     if (vy1 > propTopY - 80 && vy0 < propBotY + 140) {
       const heatPulse = this.crisis.isAlarmActive
-        ? 0.55 + Math.sin(t * 7) * 0.25
-        : 0.28 + Math.sin(t * 1.6) * 0.05;
-      const finColor = this.crisis.isAlarmActive ? "#7f1d1d" : "#451216";
+        ? 0.58 + Math.sin(t * 7) * 0.24
+        : 0.34 + Math.sin(t * 1.6) * 0.06;
+      const finColor = this.crisis.isAlarmActive ? "#991b1b" : "#5c191e";
       const finEdge = this.crisis.isAlarmActive
-        ? `rgba(249, 115, 22, ${heatPulse.toFixed(2)})`
-        : `rgba(220, 38, 38, ${heatPulse.toFixed(2)})`;
+        ? `rgba(251, 146, 60, ${heatPulse.toFixed(2)})`
+        : `rgba(239, 68, 68, ${heatPulse.toFixed(2)})`;
 
-      // Port & Starboard 600m Radiator Wing Spines + Fin Banks spanning across space
       for (const wing of [
         { x: 16, w: propPortX - 18 },
         { x: propStbdX + 2, w: this.map.pixelWidth - propStbdX - 18 }
       ]) {
         if (vx1 < wing.x || vx0 > wing.x + wing.w) continue;
-        // Central deployment titanium boom
         renderer.drawRect(wing.x, propTopY + 7 * s - 8, wing.w, 16, {
-          color: "#2b323d",
-          stroke: { width: 2, color: "#64748b" }
+          color: "#3b4554",
+          stroke: { width: 2, color: "#94a3b8" }
         });
-        // Ribbed high-temperature dark-crimson radiator fins fanning up & down
         for (let fx = wing.x + 14; fx < wing.x + wing.w - 28; fx += 44) {
           renderer.drawRect(fx, propTopY + 1.5 * s, 28, 5 * s - 6, {
             color: finColor,
@@ -2297,20 +2350,19 @@ export class ShipWorld implements GameWorld {
         }
       }
 
-      // 4 Giant Magnetic-Confinement Fusion Thruster Bells on Stern
       for (const localCol of [8.5, 22.0, 33.5, 46.5]) {
         const nx = (PROPULSION_ORIGIN.tx + localCol) * s;
         if (nx + 120 < vx0 || nx - 120 > vx1) continue;
         renderer.drawRect(nx - 68, propBotY, 136, 24, {
-          color: "#252b36",
-          stroke: { width: 2, color: "#64748b" }
+          color: "#334155",
+          stroke: { width: 2, color: "#94a3b8" }
         });
         renderer.drawRect(nx - 88, propBotY + 24, 176, 46, {
-          color: "#151a24",
-          stroke: { width: 2, color: "#475569" },
+          color: "#222b3a",
+          stroke: { width: 2, color: "#64748b" },
           radius: 5
         });
-        renderer.drawEllipse?.(nx, propBotY + 70, 62, 16, "rgba(56, 189, 248, 0.24)", true);
+        renderer.drawEllipse?.(nx, propBotY + 70, 62, 16, "rgba(56, 189, 248, 0.28)", true);
       }
     }
 
@@ -2319,7 +2371,7 @@ export class ShipWorld implements GameWorld {
     const botX = 36 * s + 16;
     if (botX > vx0 - 40 && botX < vx1 + 40 && botY > vy0 - 40 && botY < vy1 + 40) {
       renderer.drawRect(botX - 8, botY - 10, 16, 20, {
-        color: "#d97706",
+        color: "#f59e0b",
         stroke: { width: 1.5, color: "#1e293b" },
         radius: 3
       });
@@ -2328,6 +2380,111 @@ export class ShipWorld implements GameWorld {
         radius: 2
       });
     }
+  }
+
+  /**
+   * Zone-differentiated interior finishes matching docs/设定集.md Section 11,
+   * brighter outer hull plating, and high-contrast bulkhead-to-floor perimeter outlines.
+   */
+  private zoneTileWash(zone: Place, tileType: string): string | null {
+    if (tileType === "deck") {
+      switch (zone) {
+        case "crew_habitat":
+        case "ring_module":
+          return "rgba(234, 214, 178, 0.56)"; // Warm bright pale wood & cream sandstone
+        case "cabin":
+          return "rgba(216, 194, 166, 0.48)"; // Warm executive taupe hardwood
+        case "medical_bay":
+          return "rgba(236, 246, 252, 0.58)"; // Clean bright clinical porcelain
+        case "science_lab":
+        case "fore_sensors":
+          return "rgba(214, 234, 250, 0.50)"; // Crisp ice blue-white lab deck
+        case "agri_module":
+          return "rgba(210, 238, 218, 0.50)"; // Fresh botanical sage-ivory
+        case "bridge":
+          return "rgba(186, 204, 224, 0.36)"; // Aerospace silver-grey
+        case "transit_hub":
+        case "transit_corridor":
+        case "passage":
+          return "rgba(208, 220, 236, 0.46)"; // Airy commuter pearl-terrazzo
+        case "industrial_bay":
+        case "hangar_bay":
+        case "reactor_bay":
+        case "propulsion_aft":
+          return "rgba(168, 182, 202, 0.36)"; // Brushed steel industrial plating
+        default:
+          return "rgba(184, 198, 218, 0.36)";
+      }
+    }
+    if (tileType === "deck_dark") {
+      switch (zone) {
+        case "crew_habitat":
+        case "ring_module":
+          return "rgba(132, 166, 198, 0.34)"; // Cool non-slip galley / wet-utility ceramic
+        case "agri_module":
+          return "rgba(54, 174, 108, 0.42)"; // Hydroponic moisture tray bay
+        case "medical_bay":
+          return "rgba(154, 218, 240, 0.42)"; // Chilled sterile cryo vault deck
+        case "science_lab":
+        case "fore_sensors":
+          return "rgba(132, 184, 230, 0.36)"; // Optical & cleanroom bay
+        case "bridge":
+          return "rgba(92, 114, 146, 0.30)"; // Low-glare slate command pit (设定集)
+        case "industrial_bay":
+        case "hangar_bay":
+        case "reactor_bay":
+        case "propulsion_aft":
+          return "rgba(104, 120, 146, 0.28)"; // Heavy machinery bay steel plating
+        default:
+          return "rgba(122, 142, 168, 0.28)";
+      }
+    }
+    if (tileType === "deck_rug") {
+      return zone === "cabin"
+        ? "rgba(204, 188, 172, 0.32)"
+        : "rgba(232, 194, 152, 0.38)";
+    }
+    if (tileType === "wall") {
+      switch (zone) {
+        case "crew_habitat":
+        case "ring_module":
+        case "cabin":
+          return "rgba(244, 236, 222, 0.52)"; // Warm ivory bulkhead
+        case "medical_bay":
+        case "science_lab":
+        case "agri_module":
+          return "rgba(240, 248, 255, 0.54)"; // Crisp white-cyan sterile bulkhead
+        case "bridge":
+        case "transit_hub":
+        case "transit_corridor":
+        case "passage":
+        case "fore_sensors":
+          return "rgba(226, 236, 248, 0.46)"; // Light aerospace grey bulkhead
+        case "industrial_bay":
+        case "hangar_bay":
+        case "reactor_bay":
+        case "propulsion_aft":
+          return "rgba(196, 208, 224, 0.38)"; // Industrial grey steel
+        default:
+          return "rgba(212, 222, 236, 0.42)";
+      }
+    }
+    if (tileType === "wall_dark") {
+      switch (zone) {
+        case "crew_habitat":
+        case "ring_module":
+        case "cabin":
+          return "rgba(176, 150, 120, 0.30)"; // Warm wood/bronze utility cabinet
+        case "industrial_bay":
+        case "hangar_bay":
+        case "reactor_bay":
+        case "propulsion_aft":
+          return "rgba(108, 122, 144, 0.24)"; // Machined blast bulkhead
+        default:
+          return "rgba(146, 164, 188, 0.24)";
+      }
+    }
+    return null;
   }
 
   private renderDeck(renderer: Renderer): void {
@@ -2339,6 +2496,10 @@ export class ShipWorld implements GameWorld {
       width: camera.viewportWidth,
       height: camera.viewportHeight
     };
+    const isSolidPartition = (nx: number, ny: number) => {
+      const nt = this.map.tileAt(nx, ny);
+      return nt === "wall" || nt === "wall_dark" || nt === "screen" || nt === "window";
+    };
 
     for (const tile of this.map.visibleTiles(view)) {
       const wx = tile.tx * size;
@@ -2349,36 +2510,32 @@ export class ShipWorld implements GameWorld {
         if (kind === "space") continue;
 
         if (kind === "truss") {
-          // Open triangular steel girder framework with cosmic stars visible behind!
           renderer.drawRect(wx + 2, wy + 2, size - 4, size - 4, {
-            stroke: { width: 3, color: "#475569" }
+            stroke: { width: 3, color: "#94a3b8" }
           });
-          renderer.drawLine?.(wx + 2, wy + 2, wx + size - 2, wy + size - 2, "#3b4454", 2.2);
-          renderer.drawLine?.(wx + size - 2, wy + 2, wx + 2, wy + size - 2, "#3b4454", 2.2);
-          // Insulated cryo/copper power conduit running vertically along spine girders
-          renderer.drawLine?.(wx + size / 2, wy, wx + size / 2, wy + size, "rgba(217, 119, 6, 0.45)", 3);
+          renderer.drawLine?.(wx + 2, wy + 2, wx + size - 2, wy + size - 2, "#cbd5e1", 2.2);
+          renderer.drawLine?.(wx + size - 2, wy + 2, wx + 2, wy + size - 2, "#94a3b8", 2.2);
+          renderer.drawLine?.(wx + size / 2, wy, wx + size / 2, wy + size, "rgba(245, 158, 11, 0.72)", 3);
           renderer.drawRect(wx + size / 2 - 4, wy + size / 2 - 4, 8, 8, {
-            color: "#64748b",
+            color: "#cbd5e1",
             stroke: { width: 1, color: "#1e293b" }
           });
           continue;
         }
 
         if (kind === "shield") {
-          // Fore Bow Carbon-Silicon Ablation Armor Disc Plating
           renderer.drawRect(wx, wy, size, size, {
-            color: "#1f242f",
-            stroke: { width: 1.5, color: "#3b4354" }
+            color: "#475569",
+            stroke: { width: 1.5, color: "#94a3b8" }
           });
-          renderer.drawLine?.(wx, wy + 12, wx + size, wy + 12, "#475569", 1.5);
-          renderer.drawLine?.(wx, wy + 34, wx + size, wy + 34, "#334155", 1.5);
+          renderer.drawLine?.(wx, wy + 12, wx + size, wy + 12, "#cbd5e1", 1.5);
+          renderer.drawLine?.(wx, wy + 34, wx + size, wy + 34, "#64748b", 1.5);
           if ((tile.tx + tile.ty) % 5 === 0) {
-            renderer.drawRect(wx + 18, wy + 18, 6, 6, { color: "rgba(180, 83, 9, 0.38)", radius: 2 });
+            renderer.drawRect(wx + 18, wy + 18, 6, 6, { color: "rgba(251, 191, 36, 0.70)", radius: 2 });
           }
           continue;
         }
 
-        // Sleek contoured exterior spacecraft titanium hull fairing hugging solid walls
         const isSolidShip = (nx: number, ny: number) => {
           const nt = this.map.tileAt(nx, ny);
           return nt === "wall" || nt === "wall_dark" || nt === "screen";
@@ -2390,38 +2547,38 @@ export class ShipWorld implements GameWorld {
 
         if (touchesS) {
           renderer.drawRect(wx, wy + size - 13, size, 13, {
-            color: "#222936",
-            stroke: { width: 1, color: "#151a23" }
+            color: "#52627a",
+            stroke: { width: 1, color: "#0f172a" }
           });
-          renderer.drawLine?.(wx, wy + size - 13, wx + size, wy + size - 13, "#475569", 1.5);
-          renderer.drawLine?.(wx + 6, wy + size - 6, wx + size - 6, wy + size - 6, "#334155", 1);
+          renderer.drawLine?.(wx, wy + size - 13, wx + size, wy + size - 13, "#cbd5e1", 2);
+          renderer.drawLine?.(wx + 6, wy + size - 6, wx + size - 6, wy + size - 6, "#94a3b8", 1);
         }
         if (touchesN) {
           renderer.drawRect(wx, wy, size, 13, {
-            color: "#222936",
-            stroke: { width: 1, color: "#151a23" }
+            color: "#52627a",
+            stroke: { width: 1, color: "#0f172a" }
           });
-          renderer.drawLine?.(wx, wy + 13, wx + size, wy + 13, "#475569", 1.5);
+          renderer.drawLine?.(wx, wy + 13, wx + size, wy + 13, "#cbd5e1", 2);
         }
         if (touchesE) {
           renderer.drawRect(wx + size - 13, wy, 13, size, {
-            color: "#222936",
-            stroke: { width: 1, color: "#151a23" }
+            color: "#52627a",
+            stroke: { width: 1, color: "#0f172a" }
           });
-          renderer.drawLine?.(wx + size - 13, wy, wx + size - 13, wy + size, "#475569", 1.5);
+          renderer.drawLine?.(wx + size - 13, wy, wx + size - 13, wy + size, "#cbd5e1", 2);
         }
         if (touchesW) {
           renderer.drawRect(wx, wy, 13, size, {
-            color: "#222936",
-            stroke: { width: 1, color: "#151a23" }
+            color: "#52627a",
+            stroke: { width: 1, color: "#0f172a" }
           });
-          renderer.drawLine?.(wx + 13, wy, wx + 13, wy + size, "#475569", 1.5);
+          renderer.drawLine?.(wx + 13, wy, wx + 13, wy + size, "#cbd5e1", 2);
         }
         if ((tile.tx * 7 + tile.ty * 13) % 19 === 0 && (touchesS || touchesN || touchesE || touchesW)) {
           const bx = touchesE ? wx + size - 8 : touchesW ? wx + 4 : wx + size / 2 - 2;
           const by = touchesS ? wy + size - 8 : touchesN ? wy + 4 : wy + size / 2 - 2;
           renderer.drawRect(bx, by, 4, 4, {
-            color: "rgba(245, 158, 11, 0.72)",
+            color: "rgba(251, 191, 36, 0.90)",
             radius: 2
           });
         }
@@ -2429,16 +2586,15 @@ export class ShipWorld implements GameWorld {
       }
 
       if (tile.type === "window") {
-        // Transparent armored spacecraft viewport looking directly into real stars, cranes & rings!
         renderer.drawRect(wx, wy, size, size, {
-          color: "rgba(12, 24, 42, 0.28)",
-          stroke: { width: 4, color: "#475569" }
+          color: "rgba(32, 58, 96, 0.36)",
+          stroke: { width: 3.5, color: "#cbd5e1" }
         });
         renderer.drawRect(wx + 4, wy + 4, size - 8, size - 8, {
-          stroke: { width: 1.5, color: "#94a3b8" }
+          stroke: { width: 1.5, color: "#e2e8f0" }
         });
-        renderer.drawLine?.(wx + 10, wy + size - 10, wx + 22, wy + 12, "rgba(186, 230, 253, 0.22)", 2);
-        renderer.drawLine?.(wx + 22, wy + size - 8, wx + 34, wy + 18, "rgba(186, 230, 253, 0.14)", 1.5);
+        renderer.drawLine?.(wx + 10, wy + size - 10, wx + 22, wy + 12, "rgba(186, 230, 253, 0.36)", 2);
+        renderer.drawLine?.(wx + 22, wy + size - 8, wx + 34, wy + 18, "rgba(186, 230, 253, 0.22)", 1.5);
         continue;
       }
 
@@ -2448,6 +2604,76 @@ export class ShipWorld implements GameWorld {
         size: { w: size, h: size },
         fallbackColor: "#ff00ff"
       });
+
+      // Zone architectural finish wash (keeps tile seams & grain intact)
+      const zone = placeAt(tile.tx, tile.ty);
+      const wash = this.zoneTileWash(zone, tile.type);
+      if (wash) {
+        renderer.drawRect(wx, wy, size, size, { color: wash });
+      }
+
+      // Preserve sharp modular deck-plate grid seams over brighter washes
+      if (tile.type === "deck" || tile.type === "deck_dark") {
+        renderer.drawRect(wx, wy, size, size, {
+          stroke: { width: 1, color: "rgba(15, 23, 42, 0.16)" }
+        });
+        renderer.drawLine?.(wx + 1, wy + 1, wx + size - 1, wy + 1, "rgba(255, 255, 255, 0.08)", 1);
+      }
+
+      // Crisp architectural perimeter boundaries between walls, rooms, rugs, and functional bays
+      const isIndustrial =
+        zone === "industrial_bay" || zone === "hangar_bay" || zone === "reactor_bay" || zone === "propulsion_aft";
+      if (isSolidPartition(tile.tx, tile.ty)) {
+        const edgeHi = isIndustrial
+          ? tile.type === "wall_dark"
+            ? "rgba(251, 191, 36, 0.85)"
+            : "rgba(241, 245, 249, 0.78)"
+          : "rgba(248, 250, 252, 0.78)";
+
+        if (isFloor(this.map.tileAt(tile.tx, tile.ty - 1) ?? undefined)) {
+          renderer.drawLine?.(wx, wy + 1, wx + size, wy + 1, edgeHi, 2);
+          renderer.drawLine?.(wx, wy, wx + size, wy, "#0f172a", 1.2);
+        }
+        if (isFloor(this.map.tileAt(tile.tx - 1, tile.ty) ?? undefined)) {
+          renderer.drawLine?.(wx + 1, wy, wx + 1, wy + size, edgeHi, 2);
+          renderer.drawLine?.(wx, wy, wx, wy + size, "#0f172a", 1.2);
+        }
+        if (isFloor(this.map.tileAt(tile.tx + 1, tile.ty) ?? undefined)) {
+          renderer.drawLine?.(wx + size - 1, wy, wx + size - 1, wy + size, edgeHi, 2);
+          renderer.drawLine?.(wx + size, wy, wx + size, wy + size, "#0f172a", 1.2);
+        }
+        if (this.map.tileAt(tile.tx, tile.ty - 1) === "hull") {
+          renderer.drawLine?.(wx, wy, wx + size, wy, "#cbd5e1", 2.2);
+        }
+        if (this.map.tileAt(tile.tx, tile.ty + 1) === "hull") {
+          renderer.drawLine?.(wx, wy + size, wx + size, wy + size, "#cbd5e1", 2.2);
+        }
+        if (this.map.tileAt(tile.tx - 1, tile.ty) === "hull") {
+          renderer.drawLine?.(wx, wy, wx, wy + size, "#cbd5e1", 2.2);
+        }
+        if (this.map.tileAt(tile.tx + 1, tile.ty) === "hull") {
+          renderer.drawLine?.(wx + size, wy, wx + size, wy + size, "#cbd5e1", 2.2);
+        }
+      } else if (tile.type === "deck_rug") {
+        const trim = zone === "cabin" ? "rgba(226, 208, 184, 0.72)" : "rgba(238, 200, 152, 0.72)";
+        if (this.map.tileAt(tile.tx, tile.ty - 1) !== "deck_rug") renderer.drawLine?.(wx, wy + 1, wx + size, wy + 1, trim, 1.8);
+        if (this.map.tileAt(tile.tx, tile.ty + 1) !== "deck_rug") renderer.drawLine?.(wx, wy + size - 1, wx + size, wy + size - 1, trim, 1.8);
+        if (this.map.tileAt(tile.tx - 1, tile.ty) !== "deck_rug") renderer.drawLine?.(wx + 1, wy, wx + 1, wy + size, trim, 1.8);
+        if (this.map.tileAt(tile.tx + 1, tile.ty) !== "deck_rug") renderer.drawLine?.(wx + size - 1, wy, wx + size - 1, wy + size, trim, 1.8);
+      } else if (tile.type === "deck_dark") {
+        const curb =
+          zone === "agri_module"
+            ? "rgba(74, 222, 128, 0.62)"
+            : zone === "medical_bay"
+            ? "rgba(103, 232, 249, 0.62)"
+            : isIndustrial
+            ? "rgba(245, 158, 11, 0.72)"
+            : "rgba(226, 232, 240, 0.48)";
+        if (this.map.tileAt(tile.tx, tile.ty - 1) === "deck") renderer.drawLine?.(wx, wy + 1, wx + size, wy + 1, curb, 2);
+        if (this.map.tileAt(tile.tx, tile.ty + 1) === "deck") renderer.drawLine?.(wx, wy + size - 1, wx + size, wy + size - 1, curb, 2);
+        if (this.map.tileAt(tile.tx - 1, tile.ty) === "deck") renderer.drawLine?.(wx + 1, wy, wx + 1, wy + size, curb, 2);
+        if (this.map.tileAt(tile.tx + 1, tile.ty) === "deck") renderer.drawLine?.(wx + size - 1, wy, wx + size - 1, wy + size, curb, 2);
+      }
     }
   }
 
