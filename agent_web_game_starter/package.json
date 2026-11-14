@@ -13,6 +13,7 @@
     "art:brief": "node scripts/gen-art-brief.mjs"
   },
   "devDependencies": {
+    "puppeteer-core": "^25.17.0",
     "typescript": "^5.6.0",
     "vite": "^7.0.0"
   }

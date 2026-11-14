@@ -70,6 +70,8 @@ export class DialogueBox {
     if (!speaker) return undefined;
     if (speaker === "舰长") return "portrait_captain";
     if (speaker === "老周" || speaker.includes("老周") || speaker.includes("轮机")) return "portrait_engineer";
+    if (speaker === "小宋" || speaker.includes("小宋") || speaker.includes("机工")) return "portrait_engineer";
+    if (speaker === "老马" || speaker.includes("老马") || speaker.includes("配餐")) return "portrait_transit";
     if (speaker === "陈医生" || speaker.includes("医")) return "portrait_medic";
     if (speaker === "调度员小刘" || speaker.includes("调度")) return "portrait_transit";
     if (speaker === "领航员" || speaker.includes("领航")) return "portrait_navigator";
@@ -98,6 +100,12 @@ export class DialogueBox {
     } else if (speaker === "老周" || speaker?.includes("老周") || speaker?.includes("轮机")) {
       this.badgeEl.textContent = "ENG · 轮机维护二班班长";
       this.badgeEl.className = "dialogue-badge badge-eng";
+    } else if (speaker === "老马" || speaker?.includes("老马") || speaker?.includes("配餐")) {
+      this.badgeEl.textContent = "GALLEY · 生活区公共配餐中心";
+      this.badgeEl.className = "dialogue-badge badge-eng";
+    } else if (speaker === "小宋" || speaker?.includes("小宋") || speaker?.includes("机工")) {
+      this.badgeEl.textContent = "CREW · 底层工勤夜班机修";
+      this.badgeEl.className = "dialogue-badge badge-crew";
     } else if (speaker === "陈医生" || speaker?.includes("医")) {
       this.badgeEl.textContent = "MED & CRYO · 休眠监护中心";
       this.badgeEl.className = "dialogue-badge badge-med";

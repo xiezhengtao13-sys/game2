@@ -404,6 +404,7 @@ function readProbe(): Probe {
 }
 
 (window as unknown as { __probe: unknown }).__probe = readProbe;
+(window as unknown as { ship: unknown }).ship = ship;
 
 const probeElement = document.createElement("div");
 probeElement.id = "debug-probe";

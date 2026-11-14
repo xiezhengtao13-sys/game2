@@ -187,8 +187,8 @@ describe("the complete 13-compartment 2,800m Yuanwang ship architecture", () => 
 });
 
 describe("crew and fixtures across the 13-compartment ship", () => {
-  test("all 9 crew members are aboard and standing on walkable floor", () => {
-    assert.equal(ALL_SHIP_PEOPLE.length, 9);
+  test("all 11 crew members are aboard and standing on walkable floor", () => {
+    assert.equal(ALL_SHIP_PEOPLE.length, 11);
 
     for (const person of ALL_SHIP_PEOPLE) {
       const tx = Math.floor(person.x / TILE);

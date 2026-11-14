@@ -652,6 +652,14 @@ export class ShipWorld implements GameWorld {
           detail = check.ok
             ? "【感知检定成功】老周左腿步态略沉，右袖口别着一枚备用的黄铜泄压销钉。他是真的把这截冷冰冰的铁壳当自家锅炉房守着。"
             : "【感知观察】老周正皱眉盯着水循环压力表，手里攥着一把油光锃亮的扳手。";
+        } else if (person.id === "dorm_roommate") {
+          detail = check.ok
+            ? "【感知洞察成功】小宋眼眶微红发青，指甲缝里还残留着冷切削液的气味。他昨晚确实在车间连轴转抢修机床，累坏了。"
+            : "【感知观察】小宋靠着寝室隔断揉着太阳穴，正打着大大的哈欠。";
+        } else if (person.id === "cook_ma") {
+          detail = check.ok
+            ? "【感知洞察成功】老马围裙系得一丝不苟，袖口绣着已退役地球联合航天餐饮署的旧徽记。配餐灶台被他擦得能倒映出人影。"
+            : "【感知观察】老马正利落地在恒温暖餐柜前分装早餐保温餐盒。";
         } else {
           detail = check.ok
             ? `【感知检定成功】你敏锐地察觉到 ${person.name} 的工位呼吸灯节奏轻微紊乱，显然对方已经连续高强度值守了十几个小时。`
@@ -673,6 +681,24 @@ export class ShipWorld implements GameWorld {
           } else {
             detail = "【细微勘察】留言板上密密麻麻钉着三十年来船员的琐碎心事，每一张泛黄的纸角都在提醒这里住着活生生的人。";
           }
+        } else if (prop.label.includes("A1 个人储物柜")) {
+          if (check.ok && !this.rpg.hasItem("family_letter")) {
+            this.rpg.addItem({
+              id: "family_letter",
+              name: "泛黄的海滩照片与家书",
+              icon: "✉️",
+              category: "quest",
+              desc: "从地球启航前父母塞在行囊夹层里的海滩胶片照片，背面用圆珠笔写着：『平安到达新星。』",
+              bonusDesc: "全检定意志 +5%"
+            }, anchor.x, anchor.y);
+            detail = "【感知翻检成功】你在储物柜暗格深处翻出一张塑料塑封的旧照片与家书——那是三十年前地球旧海滩的日落，背面字迹工整：『平安到达新星。』装备后【全检定意志 +5%】！";
+          } else {
+            detail = "【细致翻看】储物柜里整齐叠放着二班换洗工装与安全卡。暗格里已被翻阅过。";
+          }
+        } else if (prop.label.includes("全自动恒温暖餐柜")) {
+          detail = check.ok
+            ? "【感知勘察成功】暖餐柜温控器维持在 68.5℃，蒸汽孔喷出的余温带着浓郁的炒麦香味，让寒冷深空下的胃部感到阵阵踏实。"
+            : "【观察结果】全自动恒温暖餐柜正嗡嗡低鸣，柜门透着柔和的橙黄色保温灯光。";
         } else {
           detail = check.ok
             ? `【感知勘察成功】你在【${prop.label}】接缝处发现了出厂铭牌与微米级热胀冷缩划痕——这台老设备已经在深空中稳定服役了二十八年零七个月。`
@@ -698,6 +724,8 @@ export class ShipWorld implements GameWorld {
         if (prop?.label === "聚变反应堆状态监测台" && this.crisis.isAlarmActive) {
           this.rpg.grantXp(40, "机房抢修辅助", anchor.x, anchor.y);
           msg = "【机械校准成功】你迅速清理了传感器积碳并紧固接线端子，副泵压降曲线稳定了下来 (+85 XP)！";
+        } else if (prop?.label.includes("全自动恒温暖餐柜")) {
+          msg = "【机械保养完成】你顺手清理了出餐保温槽的滑轨冷凝水并拧紧铰链，暖餐柜滑动变得异常顺畅！";
         } else {
           msg = `【机械维保完成】你熟练地拧紧了【${prop?.label}】的防松螺栓与机械拨钮阻尼。设备发出一声清脆惬意的咔嗒声！`;
         }
@@ -730,6 +758,8 @@ export class ShipWorld implements GameWorld {
             bonusDesc: "话术交涉 +10%"
           }, anchor.x, anchor.y);
           msg = "【科学解码突破】你接通离线解码板，意外激活桌面隐蔽维护协议，发现并取得【舰长旧地球暗号卡】！";
+        } else if (prop?.label.includes("全自动恒温暖餐柜")) {
+          msg = "【营养配比解析】解码板读取热食成分：热量 2,400 kcal，富含植物蛋白、水解谷氨酸与合成 B 族维生素，营养配比极佳。";
         } else {
           msg = `【硬件解码成功】你成功读取了【${prop?.label}】的底层自检校验码，完整转储近三十年的固件日志。`;
         }
@@ -749,6 +779,34 @@ export class ShipWorld implements GameWorld {
         return;
       }
       const check = this.rpg.attemptSkillCheck(`speech_${person.id}`, "speech", 55, 110, anchor.x, anchor.y);
+      if (person.id === "cook_ma") {
+        if (check.ok && !this.rpg.hasItem("malt_drink")) {
+          this.rpg.addItem({
+            id: "malt_drink",
+            name: "「温热高蛋白麦芽饮」",
+            icon: "☕",
+            category: "consumable",
+            desc: "老马配餐灶台刚温好的加浓麦芽热饮，暖胃提神。",
+            bonusDesc: "+25 HP / -30 热应激 / 饱腹感"
+          }, anchor.x, anchor.y);
+        }
+        const text = check.ok
+          ? `【交涉成功】[口才生效] 老马爽朗一笑，从恒温暖餐柜里盛出一杯刚热透的热饮递给你：「底层二班的小徐是吧？小伙子面善，这杯浓麦芽饮刚出锅，趁热喝了暖暖身子再下车间！」`
+          : `【交涉受挫】老马笑着递过一张配餐条：「小伙子，领餐按班次工号来，等打完卡再来打汤啊。」`;
+        this.dialogue.open([{ speaker: person.name, text, portraitId: this.portraitForPerson(person.id) }]);
+        this.onDialogueChange?.(this.dialogue);
+        this.onRpgChange?.(this.rpg);
+        return;
+      }
+      if (person.id === "dorm_roommate") {
+        const text = check.ok
+          ? `【交涉成功】小宋揉着眼睛笑了笑：「小徐，等今晚换班，我从老马那换两罐合成麦汁，咱们在寝室打两把纸牌！」`
+          : `【交涉】小宋打了个大大的哈欠，摆了摆手：「困得眼皮打架了……我先眯两个小时，换班再聊。」`;
+        this.dialogue.open([{ speaker: person.name, text, portraitId: this.portraitForPerson(person.id) }]);
+        this.onDialogueChange?.(this.dialogue);
+        this.onRpgChange?.(this.rpg);
+        return;
+      }
       if (check.ok && !this.rpg.hasItem("med_stim")) {
         this.rpg.addItem({
           id: "med_stim",
@@ -978,6 +1036,7 @@ export class ShipWorld implements GameWorld {
         return "portrait_captain";
       case "engineer":
       case "mechanic_liu":
+      case "dorm_roommate":
         return "portrait_engineer";
       case "medic":
       case "agronomist":
@@ -987,6 +1046,7 @@ export class ShipWorld implements GameWorld {
         return "portrait_navigator";
       case "transit_guard":
       case "ring_steward":
+      case "cook_ma":
         return "portrait_transit";
       default:
         return "portrait_player";
@@ -1115,9 +1175,184 @@ export class ShipWorld implements GameWorld {
           { label: "轻手轻脚退出医疗室", tone: "leave", action: () => {} }
         ];
       }
+
+      if (person.id === "dorm_roommate") {
+        const repPct = this.rpg.checkChance("repair", 48);
+        const speechPct = this.rpg.checkChance("speech", 50);
+        return [
+          {
+            tag: `[机械 ${repPct}%]`,
+            label: "「小宋，昨晚车床卡轴的问题，主轴承是不是缺润滑？我教你调旁通注油阀。」",
+            tone: "skill",
+            action: () => {
+              const r = this.rpg.attemptSkillCheck("roommate_lathe", "repair", 48, 90, person.x, person.y);
+              if (r.ok && !this.rpg.completedChecks.has("roommate_repair_bonus")) {
+                this.rpg.completedChecks.add("roommate_repair_bonus");
+                this.rpg.allocatedSkills.repair += 3;
+                this.rpg.pushLog("check_ok", "同寝交流车床排故要领，永久获得【机械工程 +3%】！");
+              }
+              return [
+                {
+                  speaker: "小宋",
+                  portraitId: "portrait_engineer",
+                  text: r.ok
+                    ? "小宋眼睛一亮，拍了拍床柱：「哎哟！原来要在回油管前泄压？难怪我扳得满头大汗！谢了兄弟，这下今天下午交班我不愁了！」"
+                    : "小宋揉了揉太阳穴：「唉，可能还是主轴磨损了，我等睡醒了再去报给大刘看看吧。」"
+                }
+              ];
+            }
+          },
+          {
+            tag: `[话术 ${speechPct}%]`,
+            label: "「夜班辛苦了，你安心补觉，今天车间和水循环巡检交给我。」",
+            tone: "skill",
+            action: () => {
+              const r = this.rpg.attemptSkillCheck("roommate_speech", "speech", 50, 75, person.x, person.y);
+              return [
+                {
+                  speaker: "小宋",
+                  portraitId: "portrait_engineer",
+                  text: r.ok
+                    ? "小宋感激地笑了笑，将被子往上拉了拉：「够仗义！隔壁桌上有两颗薄荷润喉糖，你拿去含着提神！」"
+                    : "小宋迷迷糊糊应了一声：「好……门帮我带上点，光照太晃眼……」"
+                }
+              ];
+            }
+          },
+          { label: "轻声走出寝室隔间", tone: "leave", action: () => {} }
+        ];
+      }
+
+      if (person.id === "cook_ma") {
+        const speechPct = this.rpg.checkChance("speech", 50);
+        const sciPct = this.rpg.checkChance("science", 48);
+        return [
+          {
+            tag: `[话术 ${speechPct}%]`,
+            label: "「老马师傅，今天这锅麦芽饮闻着真香，能给我盛一杯热的提提神吗？」",
+            tone: "skill",
+            action: () => {
+              const r = this.rpg.attemptSkillCheck("cook_speech", "speech", 50, 95, person.x, person.y);
+              if (r.ok && !this.rpg.hasItem("malt_drink")) {
+                this.rpg.addItem({
+                  id: "malt_drink",
+                  name: "「温热高蛋白麦芽饮」",
+                  icon: "☕",
+                  category: "consumable",
+                  desc: "老马配餐灶台刚温好的加浓麦芽热饮，暖胃提神。",
+                  bonusDesc: "+25 HP / -30 热应激 / 饱腹感"
+                }, person.x, person.y);
+              }
+              return [
+                {
+                  speaker: "老马",
+                  portraitId: "portrait_transit",
+                  text: r.ok
+                    ? "老马爽朗一笑，从暖餐柜取出一只保温杯满上热饮递给你：「小徐啊，就属你嘴甜！这杯趁热喝，高蛋白又暖身子，下车间干重活不发慌！」"
+                    : "老马和气地摆了摆手：「小徐啊，早晨配额卡得紧，先去打卡巡检，待会开饭点再来领啊。」"
+                }
+              ];
+            }
+          },
+          {
+            tag: `[科学 ${sciPct}%]`,
+            label: "「老马，我用解码板核对一下保温柜的谷氨酸水解曲线？」",
+            tone: "skill",
+            action: () => {
+              const r = this.rpg.attemptSkillCheck("cook_science", "science", 48, 80, person.x, person.y);
+              return [
+                {
+                  speaker: "老马",
+                  portraitId: "portrait_transit",
+                  text: r.ok
+                    ? "老马惊奇地看着你的解码板：「嚯！连大豆发酵的温度曲线都能测出来？现在的年轻机修工真神了，这批谷饼火候正好！」"
+                    : "老马呵呵一笑：「做饭靠的是几十年的手感，你那冷冰冰的探头可测不出饭香味来！」"
+                }
+              ];
+            }
+          },
+          { label: "离开配餐台", tone: "leave", action: () => {} }
+        ];
+      }
     }
 
     if (prop) {
+      if (prop.label === "A1 个人储物柜") {
+        const perPct = this.rpg.checkChance("perception", 42);
+        return [
+          {
+            tag: `[洞察 ${perPct}%]`,
+            label: "仔细翻找储物柜内衬夹层与旧杂物",
+            tone: "skill",
+            action: () => {
+              const r = this.rpg.attemptSkillCheck("locker_per", "perception", 42, 90, prop.x, prop.y);
+              if (r.ok && !this.rpg.hasItem("family_letter")) {
+                this.rpg.addItem({
+                  id: "family_letter",
+                  name: "泛黄的海滩照片与家书",
+                  icon: "✉️",
+                  category: "quest",
+                  desc: "从地球启航前父母塞在行囊夹层里的海滩胶片照片，背面用圆珠笔写着：『平安到达新星。』",
+                  bonusDesc: "全检定意志 +5%"
+                }, prop.x, prop.y);
+              }
+              return [
+                {
+                  speaker: null,
+                  portraitId: "portrait_player",
+                  text: r.ok
+                    ? "【暗格发现旧物】你在储物柜铝塑夹层底翻出了一张泛黄的海滩照片与家书——获得关键回忆信物【泛黄的海滩照片与家书】（全检定意志 +5%）！"
+                    : "柜门里除了一套洗干净压平的二班备用工作服和毛巾，没有发现其他夹层。"
+                }
+              ];
+            }
+          },
+          { label: "合上储物柜门", tone: "leave", action: () => {} }
+        ];
+      }
+
+      if (prop.label === "全自动恒温暖餐柜") {
+        const repPct = this.rpg.checkChance("repair", 45);
+        const sciPct = this.rpg.checkChance("science", 45);
+        return [
+          {
+            tag: `[机械 ${repPct}%]`,
+            label: "校准暖餐柜保温门铰链与滑轨阻尼",
+            tone: "skill",
+            action: () => {
+              const r = this.rpg.attemptSkillCheck("warmer_rep", "repair", 45, 80, prop.x, prop.y);
+              return [
+                {
+                  speaker: null,
+                  portraitId: "portrait_terminal",
+                  text: r.ok
+                    ? "【机械校准成功】你用扳手微调了暖餐柜保温气封铰链，门合上时发出一声密闭严实的轻响，热气不再微量外泄。"
+                    : "铰链上的陈年油污有点顽固，阻尼依然略显发涩。"
+                }
+              ];
+            }
+          },
+          {
+            tag: `[科学 ${sciPct}%]`,
+            label: "读取餐柜恒温灭菌监测读数",
+            tone: "skill",
+            action: () => {
+              const r = this.rpg.attemptSkillCheck("warmer_sci", "science", 45, 80, prop.x, prop.y);
+              return [
+                {
+                  speaker: null,
+                  portraitId: "portrait_terminal",
+                  text: r.ok
+                    ? "【灭菌指标优良】红外光谱读数显示：恒温 68.5℃，巴氏保鲜灭菌率 99.99%，膳食营养损耗低于 1.2%。"
+                    : "无线信号受到配餐台微波屏蔽干扰，读取超时。"
+                }
+              ];
+            }
+          },
+          { label: "离开暖餐柜", tone: "leave", action: () => {} }
+        ];
+      }
+
       if (prop.label === "舰长的办公桌" || prop.label === "离线资料终端" || prop.label === "休眠生理监测终端" || prop.label === "聚变反应堆状态监测台") {
         const sciPct = this.rpg.checkChance("science", 54);
         const perPct = this.rpg.checkChance("perception", 46);
@@ -1685,12 +1920,42 @@ export class ShipWorld implements GameWorld {
         ) {
           continue;
         }
-        renderer.drawEllipse(prop.x + 2, prop.y + (prop.h * size) / 2 - 4, (prop.w * size) / 2 + 2, 7, "rgba(2, 4, 9, 0.56)");
+        const pw = prop.w * size;
+        const ph = prop.h * size;
+        const botY = prop.y + ph / 2;
+
+        if (prop.assetId === "fx_bed") {
+          // Grounded rectangular bed footprint shadow with soft ambient bleed
+          renderer.drawRect(prop.x - pw / 2 + 2, botY - 7, pw - 4, 9, {
+            color: "rgba(2, 4, 9, 0.58)",
+            radius: 3
+          });
+          renderer.drawEllipse(prop.x, botY - 2, pw / 2 + 3, 6, "rgba(2, 4, 9, 0.42)");
+        } else if (prop.assetId === "fx_meeting_table") {
+          // Circular pedestal drop shadow
+          renderer.drawEllipse(prop.x + 1, botY - 6, pw / 2 - 3, ph / 3.8, "rgba(2, 4, 9, 0.56)");
+          renderer.drawEllipse(prop.x + 1, botY - 6, pw / 3.2, ph / 5.5, "rgba(2, 4, 9, 0.38)");
+        } else if (prop.assetId === "fx_chair" || prop.assetId === "fx_desk_chair" || prop.assetId === "fx_reading_chair") {
+          renderer.drawEllipse(prop.x, botY - 4, 14, 6, "rgba(2, 4, 9, 0.52)");
+        } else if (prop.assetId === "fx_console" || prop.assetId === "fx_bookshelf" || prop.assetId === "fx_terminal" || prop.assetId === "fx_desk") {
+          // Solid base rectangular contact shadow
+          renderer.drawRect(prop.x - pw / 2 + 2, botY - 6, pw - 4, 8, {
+            color: "rgba(2, 4, 9, 0.60)",
+            radius: 3
+          });
+          renderer.drawEllipse(prop.x, botY - 2, pw / 2 + 2, 5, "rgba(2, 4, 9, 0.36)");
+        } else {
+          renderer.drawEllipse(prop.x + 2, botY - 4, pw / 2 + 2, 7, "rgba(2, 4, 9, 0.56)");
+        }
       }
       for (const person of this.people) {
-        renderer.drawEllipse(person.x, person.y - 2, 13, 6, "rgba(2, 4, 9, 0.65)");
+        renderer.drawEllipse(person.x, person.y - 1, 14, 6, "rgba(2, 4, 9, 0.48)");
+        renderer.drawEllipse(person.x - 5, person.y - 1, 5, 2.5, "rgba(1, 2, 5, 0.68)");
+        renderer.drawEllipse(person.x + 5, person.y - 1, 5, 2.5, "rgba(1, 2, 5, 0.68)");
       }
-      renderer.drawEllipse(this.player.centerX, this.player.y + this.player.height - 2, 13, 6, "rgba(2, 4, 9, 0.7)");
+      renderer.drawEllipse(this.player.centerX, this.player.y + this.player.height - 1, 14, 6, "rgba(2, 4, 9, 0.52)");
+      renderer.drawEllipse(this.player.centerX - 5, this.player.y + this.player.height - 1, 5, 2.5, "rgba(1, 2, 5, 0.72)");
+      renderer.drawEllipse(this.player.centerX + 5, this.player.y + this.player.height - 1, 5, 2.5, "rgba(1, 2, 5, 0.72)");
     }
 
     // Multi-segment smart A* path breadcrumb rendering
@@ -2257,9 +2522,34 @@ export class ShipWorld implements GameWorld {
         renderer.drawRect(wx, curbY, s, 4, { color: "rgba(245, 158, 11, 0.55)" });
       }
 
-      // 3. Crew Habitat Water-Recycling Utility Wet-Room Drainage Grates & Dorm Trim
+      // 3. Crew Habitat Warm Wood Baseboard Trim, Brass Thresholds & Drainage Grates
       const habX = tx - HABITAT_ORIGIN.tx;
       const habY = ty - HABITAT_ORIGIN.ty;
+      if (habX >= 1 && habX <= 12 && habY >= 1 && habY <= 9) {
+        // Soft warm wood skirting along dorm partition bulkheads
+        if (isSolidBulkhead(tx, ty - 1) && isFloor(type)) {
+          renderer.drawRect(wx, wy, s, 3, { color: "rgba(169, 131, 90, 0.45)" });
+        }
+        // Brass threshold sill plate at Dorm A room door (x: 9..10, y: 9)
+        if ((habX === 9 || habX === 10) && habY === 9) {
+          renderer.drawRect(wx, wy + s - 4, s, 4, { color: "rgba(217, 119, 6, 0.65)" });
+          renderer.drawLine?.(wx, wy + s - 2, wx + s, wy + s - 2, "#fef08a", 1);
+        }
+      }
+      if (habX >= 19 && habX <= 30 && habY >= 1 && habY <= 9) {
+        // Soft warm wood skirting along Mess Hall bulkheads
+        if (isSolidBulkhead(tx, ty - 1) && isFloor(type)) {
+          renderer.drawRect(wx, wy, s, 3, { color: "rgba(169, 131, 90, 0.45)" });
+        }
+        // Mess Hall dining area brass threshold plates at doors (x: 19, y: 4..5 and x: 22..24, y: 9)
+        if (habX === 19 && (habY === 4 || habY === 5)) {
+          renderer.drawRect(wx, wy, 4, s, { color: "rgba(217, 119, 6, 0.65)" });
+        }
+        if (habX >= 22 && habX <= 24 && habY === 9) {
+          renderer.drawRect(wx, wy + s - 4, s, 4, { color: "rgba(217, 119, 6, 0.65)" });
+          renderer.drawLine?.(wx, wy + s - 2, wx + s, wy + s - 2, "#fef08a", 1);
+        }
+      }
       if ((habX === 28 && habY === 16) || (habX === 28 && habY === 19)) {
         renderer.drawRect(wx + 10, wy + 10, s - 20, s - 20, {
           color: "#0f172a",

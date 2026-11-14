@@ -408,7 +408,7 @@ export class ShipAtmosphere {
       case "ring_module":
         return "rgba(18, 13, 8, 0.38)";
       case "crew_habitat":
-        return "rgba(12, 10, 12, 0.45)";
+        return "rgba(28, 20, 15, 0.30)";
       case "industrial_bay":
         return "rgba(16, 11, 8, 0.52)";
       case "science_lab":
@@ -437,11 +437,25 @@ export class ShipAtmosphere {
         colorInner: "rgba(74, 222, 128, 0.24)"
       };
     }
-    if (id === "fx_reading_lamp" || prop.label.includes("灯") || prop.label.includes("铺位")) {
+    if (prop.label.includes("全自动恒温暖餐柜") || prop.label.includes("暖餐柜")) {
       return {
-        holeRadius: 150 * flicker,
-        bloomRadius: 115 * flicker,
-        colorInner: "rgba(251, 191, 36, 0.28)"
+        holeRadius: 165 * flicker,
+        bloomRadius: 130 * flicker,
+        colorInner: "rgba(251, 191, 36, 0.32)"
+      };
+    }
+    if (prop.label.includes("储物柜")) {
+      return {
+        holeRadius: 110,
+        bloomRadius: 75,
+        colorInner: "rgba(253, 230, 138, 0.18)"
+      };
+    }
+    if (id === "fx_reading_lamp" || prop.label.includes("灯") || prop.label.includes("铺位") || prop.label.includes("床位") || prop.label.includes("狭铺")) {
+      return {
+        holeRadius: 145 * flicker,
+        bloomRadius: 110 * flicker,
+        colorInner: "rgba(253, 230, 138, 0.24)"
       };
     }
     if (prop.label.includes("泄压") || prop.label.includes("反应堆") || prop.label.includes("展开栓") || prop.label.includes("散热") || prop.label.includes("喷口")) {

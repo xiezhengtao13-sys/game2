@@ -315,19 +315,26 @@ export const RING_PROPS: readonly SceneProp[] = [
 // --- 6. Crew Habitat & Mess Hall (Starting Zone!) ---------------------------
 
 export const HABITAT_PROPS: readonly SceneProp[] = [
-  habitat("fx_bed", 3.8, 3.8, 2, 3, "船员起居铺位", [
-    { speaker: null, text: "公共宿舍区 A1 隔间的标准窄铺，防失重睡眠约束带刚解开，铺垫还留着余温。" },
-    { speaker: null, text: "床头小格里放着二班手抄单与日常工装——出门去生活区走廊找老周点卯吧。" }
+  habitat("fx_bed", 3.6, 3.5, 1.2, 1.85, "船员起居铺位", [
+    { speaker: null, text: "公共宿舍区 A1 隔间的标准单人窄铺。防失重睡眠约束带刚解开，薄绒毯还留着体温。" },
+    { speaker: null, text: "床头小格里放着二班巡检排班单——例行晨起巡检从这里开始。" }
   ]),
-  habitat("fx_bed", 8.8, 3.8, 2, 3, "邻铺夜班床位", [
-    { speaker: null, text: "A2 隔间夜班机修工友的铺位，床单折得像豆腐块，墙面挂着工装安全带。" }
+  habitat("fx_bookshelf", 2.0, 3.5, 1.0, 1.5, "A1 个人储物柜", [
+    { speaker: null, text: "嵌入隔墙的单人铁皮储物柜，门锁贴着二班工号标签「02-308 徐」。" },
+    { speaker: null, text: "里面整齐码放着绝缘手套、备用工装和内务安检回执。暗格夹层似乎还夹着薄薄的纸片。" }
+  ]),
+  habitat("fx_bed", 8.6, 3.5, 1.2, 1.85, "邻铺夜班床位", [
+    { speaker: null, text: "A2 隔间夜班机修工友小宋的铺位，床单折得像豆腐块，墙角挂着满是油污的减震工作服。" }
+  ]),
+  habitat("fx_bookshelf", 10.0, 3.5, 1.0, 1.5, "A2 隔间储物柜", [
+    { speaker: null, text: "小宋的个人储物柜。顶格塞着半包润喉糖和几本翻卷了边的数控车床刀具手册。" }
   ]),
   habitat("fx_chair", 3.2, 6.8, 1, 1, "寝室固定椅", null),
   habitat("fx_reading_lamp", 7.5, 6.8, 1, 1, "寝室夜灯", null),
-  habitat("fx_bed", 3.8, 18.0, 2, 3, "备用轮值铺位", [
+  habitat("fx_bed", 3.6, 17.8, 1.2, 1.85, "备用轮值铺位", [
     { speaker: null, text: "南宿舍 B1 隔间工友的床铺，被子按照内务条例整整齐齐压进约束扣。" }
   ]),
-  habitat("fx_bed", 8.8, 18.0, 2, 3, "轮休狭铺", null),
+  habitat("fx_bed", 8.6, 17.8, 1.2, 1.85, "轮休狭铺", null),
   habitat("fx_chair", 3.5, 15.0, 1, 1, "宿舍矮凳", null),
   habitat("fx_meeting_table", 23.5, 4.5, 3, 3, "公共餐桌", [
     { speaker: null, text: "生活区公共餐桌。浅木纹复合阻燃台面带有一圈防溢饮水杯凹槽。" },
@@ -337,10 +344,14 @@ export const HABITAT_PROPS: readonly SceneProp[] = [
   habitat("fx_chair", 25.5, 4.5, 1, 1, "固定餐椅", null),
   habitat("fx_chair", 23.5, 2.3, 1, 1, "固定餐椅", null),
   habitat("fx_chair", 23.5, 6.7, 1, 1, "固定餐椅", null),
-  habitat("fx_plant", 20.8, 2.0, 1, 1, "食堂窗台绿植", null),
-  habitat("fx_terminal", 28.2, 4.5, 1, 1, "营养配餐终端", [
+  habitat("fx_console", 28.5, 3.2, 1.0, 1.8, "全自动恒温暖餐柜", [
+    { speaker: null, text: "公共配餐中心的自动恒温暖餐柜，出餐口弥漫着烘烤麦芽与大豆蛋白的温热香气。" },
+    { speaker: null, text: "保温格里整齐码着保温杯与加热餐盒，指示灯呈温暖的橙黄色。" }
+  ]),
+  habitat("fx_terminal", 28.2, 5.8, 1, 1, "营养配餐终端", [
     { speaker: null, text: "自动化合成食品补给站。底层二班每天按工号定量领取蛋白质膏、压干谷饼和饮用水。" }
   ]),
+  habitat("fx_plant", 20.8, 2.0, 1, 1, "食堂窗台绿植", null),
   habitat("fx_paper_log", 20.8, 15.0, 1, 1, "船员便签留言板", [
     { speaker: null, text: "软木板上密密麻麻钉着三十年来船员写的便签：" },
     { speaker: null, text: "「老周，你落在值班室台沿底的三号铬钒管路扳手，谁眼神好自己摸一下领回去还老头。」「周日配餐加菜：脱水素丸。」" }
@@ -546,6 +557,32 @@ export const SHIP_PEOPLE: readonly ScenePerson[] = [
 ];
 
 export const OTHER_CREW: readonly ScenePerson[] = [
+  {
+    id: "dorm_roommate",
+    name: "夜班机工小宋",
+    assetId: "crew_down_idle",
+    x: (HABITAT_ORIGIN.tx + 9.5) * TILE,
+    y: (HABITAT_ORIGIN.ty + 6.5) * TILE,
+    facing: "left",
+    promptLabel: "和夜班机工小宋说话",
+    lines: [
+      { speaker: "小宋", text: "哈欠……小徐你醒啦？昨晚后半夜 L-2 车间那台激光车床主轴有点咬死，我折腾到清晨四点才回舱躺下。" },
+      { speaker: "小宋", text: "待会下 L-2 记得帮我瞄一眼镗铣机油温——老周那脾气你是知道的，要是车间读数没核准，他准得扣咱们中层卡。" }
+    ]
+  },
+  {
+    id: "cook_ma",
+    name: "配餐员老马",
+    assetId: "crew_down_idle",
+    x: (HABITAT_ORIGIN.tx + 26.2) * TILE,
+    y: (HABITAT_ORIGIN.ty + 5.2) * TILE,
+    facing: "right",
+    promptLabel: "和配餐员老马说话",
+    lines: [
+      { speaker: "老马", text: "早啊小徐！今天早班伙食是烘烤高蛋白麦芽饮配脱水谷饼，刚从恒温暖餐柜里盛出来。" },
+      { speaker: "老马", text: "这几十年来天天吃合成膏，也就温热这口麦芽汤能喝出点地球家乡的味道。干活前先喝一口暖暖肠胃吧！" }
+    ]
+  },
   {
     id: "transit_guard",
     name: "交通调度员",
