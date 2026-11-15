@@ -113,12 +113,19 @@ async function main() {
 
   // 8. Jump across representative zones with dialogue cleanly closed
   const zoneHops = [
-    { file: "/tmp/shot_10_industrial_l2.png", tx: 12.5, ty: 101.5, facing: "up" },
+    { file: "/tmp/shot_10_industrial_l2.png", tx: 10.5, ty: 101.5, facing: "up" },
     { file: "/tmp/shot_11_medical_cryo.png", tx: 41.0, ty: 125.0, facing: "up" },
     { file: "/tmp/shot_12_bridge_hall.png", tx: 43.5, ty: 28.5, facing: "up" },
     { file: "/tmp/shot_13_cabin_suite.png", tx: 41.5, ty: 49.0, facing: "up" },
     { file: "/tmp/shot_14_rehab_c7.png", tx: 11.5, ty: 125.5, facing: "up" },
-    { file: "/tmp/shot_15_archives.png", tx: 72.5, ty: 126.5, facing: "down" }
+    { file: "/tmp/shot_15_archives.png", tx: 72.5, ty: 126.5, facing: "down" },
+    { file: "/tmp/shot_18_agri_l1.png", tx: 10.5, ty: 74.5, facing: "up" },
+    { file: "/tmp/shot_19_ring_r1.png", tx: 72.5, ty: 74.5, facing: "right" },
+    { file: "/tmp/shot_20_transit_shuttle.png", tx: 41.0, ty: 73.5, facing: "left" },
+    { file: "/tmp/shot_21_hangar_pioneer.png", tx: 37.5, ty: 151.5, facing: "left" },
+    { file: "/tmp/shot_22_reactor_bay.png", tx: 41.5, ty: 174.5, facing: "down" },
+    { file: "/tmp/shot_23_propulsion_aft.png", tx: 42.0, ty: 194.0, facing: "down" },
+    { file: "/tmp/shot_24_habitat_wet_dorm_b.png", tx: 45.0, ty: 108.5, facing: "right" }
   ];
 
   await page.evaluate(() => {

@@ -543,42 +543,63 @@ export class ShipAtmosphere {
         colorInner: "rgba(167, 139, 250, 0.20)"
       };
     }
-    if (prop.label.includes("MNA-01") || prop.label.includes("卡戎号")) {
+    if (prop.label.includes("MNA-01") || prop.label.includes("卡戎号") || prop.label.includes("只读光隔离")) {
       return {
         holeRadius: 124,
         bloomRadius: 78,
         colorInner: "rgba(251, 191, 36, 0.18)"
       };
     }
-    if (id === "fx_plant" && (prop.label.includes("水培") || prop.label.includes("氧循环") || prop.label.includes("苗圃"))) {
+    if (
+      id === "fx_plant" &&
+      (prop.label.includes("水培") ||
+        prop.label.includes("氧循环") ||
+        prop.label.includes("苗圃") ||
+        prop.label.includes("微藻") ||
+        prop.label.includes("固碳"))
+    ) {
       return {
-        holeRadius: 135,
-        bloomRadius: 92,
+        holeRadius: 138,
+        bloomRadius: 94,
         colorInner: "rgba(74, 222, 128, 0.18)"
       };
     }
-    if (prop.label.includes("全自动恒温暖餐柜") || prop.label.includes("暖餐柜")) {
+    if (prop.label.includes("全自动恒温暖餐柜") || prop.label.includes("暖餐柜") || prop.label.includes("茶饮")) {
       return {
         holeRadius: 145 * flicker,
         bloomRadius: 96 * flicker,
         colorInner: "rgba(251, 191, 36, 0.22)"
       };
     }
-    if (prop.label.includes("储物柜")) {
+    if (prop.label.includes("无菌药械")) {
       return {
-        holeRadius: 92,
-        bloomRadius: 56,
+        holeRadius: 128,
+        bloomRadius: 82,
+        colorInner: "rgba(125, 211, 252, 0.20)"
+      };
+    }
+    if (prop.label.includes("储物柜") || prop.label.includes("备件") || prop.label.includes("胚料")) {
+      return {
+        holeRadius: 96,
+        bloomRadius: 58,
         colorInner: "rgba(253, 230, 138, 0.12)"
       };
     }
-    if (id === "fx_reading_lamp" || prop.label.includes("灯") || prop.label.includes("铺位") || prop.label.includes("床位") || prop.label.includes("狭铺") || prop.label.includes("康复监护床")) {
+    if (prop.label.includes("穿梭机磁吸主泊位")) {
+      return {
+        holeRadius: 195,
+        bloomRadius: 135,
+        colorInner: "rgba(186, 230, 253, 0.18)"
+      };
+    }
+    if (id === "fx_reading_lamp" || prop.label.includes("灯") || prop.label.includes("铺位") || prop.label.includes("床位") || prop.label.includes("狭铺") || prop.label.includes("康复监护床") || prop.label.includes("写字台") || prop.label.includes("拼图桌")) {
       return {
         holeRadius: 118 * flicker,
         bloomRadius: 72 * flicker,
         colorInner: "rgba(253, 230, 138, 0.18)"
       };
     }
-    if (prop.label.includes("泄压") || prop.label.includes("反应堆") || prop.label.includes("展开栓") || prop.label.includes("散热") || prop.label.includes("喷口")) {
+    if (prop.label.includes("泄压") || prop.label.includes("反应堆") || prop.label.includes("展开栓") || prop.label.includes("散热") || prop.label.includes("喷口") || prop.label.includes("泵压")) {
       return {
         holeRadius: 145 * flicker,
         bloomRadius: 105 * flicker,
@@ -599,7 +620,7 @@ export class ShipAtmosphere {
         colorInner: "rgba(245, 158, 11, 0.12)"
       };
     }
-    if (id === "fx_holo_table" || id === "fx_console" || id === "fx_console_side" || id === "fx_terminal" || id === "fx_screen_lit") {
+    if (id === "fx_holo_table" || id === "fx_console" || id === "fx_console_side" || id === "fx_terminal" || id === "fx_screen_lit" || prop.label.includes("体能训练")) {
       return {
         holeRadius: 112,
         bloomRadius: 72,

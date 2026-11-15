@@ -132,6 +132,7 @@ export function ringGrid(): TileType[][] {
     // Sized seating rugs beneath lounge table and library nook (leaving walk aisles around)
     { x: 8, y: 3, w: 6, h: 5, type: "deck_rug", note: "0.45g 交谊茶座地毯" },
     { x: 7, y: 15, w: 7, h: 5, type: "deck_rug", note: "人文怀旧图书角地毯" },
+    { x: 15, y: 15, w: 2, h: 4, type: "deck_dark", note: "0.45g 离心抗阻体能锻炼防滑垫" },
 
     { x: 2, y: 11, w: 15, h: 1, type: "floor_light", note: "辐条离心过渡通道导引光带" },
     { x: 17, y: 4, w: 1, h: 14, type: "floor_light", note: "东弦观景环廊导引地灯" }

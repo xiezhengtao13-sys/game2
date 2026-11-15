@@ -41,6 +41,10 @@ import { SpaceFlight } from "./SpaceFlight";
 import { PlanetSurface } from "./PlanetSurface";
 import { ShipAtmosphere } from "./shipLighting";
 import {
+  renderShipInteriorFloorDetails,
+  renderShipInteriorPropDetailsAndBots
+} from "./shipInteriors";
+import {
   SHIP_PROPS,
   ALL_SHIP_PEOPLE,
   PLACE_LABELS,
@@ -2395,9 +2399,11 @@ export class ShipWorld implements GameWorld {
     this.renderDeck(renderer);
     this.atmosphere.renderWallDepthAndAO(renderer, this.map);
     this.renderArchitecturalDetails(renderer);
+    renderShipInteriorFloorDetails(renderer, this.map, this.props, this.elapsedTime, this.crisis.isAlarmActive);
     this.renderSecurityGates(renderer);
     this.renderShadowsAndPaths(renderer);
     this.renderProps(renderer);
+    renderShipInteriorPropDetailsAndBots(renderer, this.map, this.props, this.elapsedTime, this.crisis.isAlarmActive);
     this.renderPeople(renderer);
     this.renderPlayer(renderer);
     this.renderLightingOverlay(renderer);

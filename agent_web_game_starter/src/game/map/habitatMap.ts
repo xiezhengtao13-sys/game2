@@ -77,6 +77,7 @@ const SHAPES: Shape[] = [
   { x: 19, y: 9, w: 12, h: 1, type: "wall", note: "食堂南侧走廊隔墙" },
   { x: 19, y: 4, w: 1, h: 2, type: "floor_light", note: "食堂大厅西门" },
   { x: 22, y: 9, w: 3, h: 1, type: "floor_light", note: "食堂南向双开门" },
+  { x: 21, y: 3, w: 5, h: 4, type: "deck_rug", note: "公共餐饮区防滑暖色餐垫" },
   { x: 28, y: 1, w: 3, h: 8, type: "deck_dark", note: "自动化营养配餐厨房工作区防滑地砖" },
   { x: 30, y: 2, w: 1, h: 5, type: "wall_dark", note: "自动热食配餐机与餐盘回收柜" },
 

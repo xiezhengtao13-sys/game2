@@ -103,7 +103,7 @@ const propulsion = (a: string, tx: number, ty: number, w: number, h: number, lab
 // --- 0. Fore Deep-Space Sensor Array & Ablation Shield Gallery (0-300m Bow) ---
 
 export const FORE_PROPS: readonly SceneProp[] = [
-  fore("fx_screen_lit", 12.6, 2.25, 0.78, 0.78, "前向消融护盾传感器阵列", [
+  fore("fx_screen_lit", 12.6, 2.45, 0.78, 0.78, "前向消融护盾传感器阵列", [
     { speaker: null, text: "嵌入多层碳化硅消融护盾后方的综合测损终端。按《远望号结构规范》，舰首最前沿不设任何实体采光窗。" },
     { speaker: null, text: "遥测示波器显示：2439 年启航以来经由走廊助推段与 0.05c–0.12c 亚相对论长距巡航，累计消融厚度 24.6 厘米，结构完整度 94.8%。" }
   ]),
@@ -280,14 +280,25 @@ export const AGRI_PROPS: readonly SceneProp[] = [
   ]),
   agri("fx_plant", 4.2, 4.4, 0.60, 0.60, "水培谷物株丛", null),
   agri("fx_plant", 6.8, 5.6, 0.60, 0.60, "水培谷物株丛", null),
+  agri("fx_plant", 4.0, 6.1, 0.56, 0.56, "耐寒麦苗试验行", null),
+  agri("fx_plant", 6.8, 3.8, 0.56, 0.56, "高产大豆育苗槽", null),
   agri("fx_plant", 12.5, 5.0, 0.76, 0.76, "二号氧循环藻类培植池", [
     { speaker: null, text: "高密度光合固碳微藻液正发出淡淡气泡，为全船及休眠仓维持氧气份额。" }
   ]),
   agri("fx_plant", 13.8, 5.5, 0.60, 0.60, "藻类培养槽分池", null),
+  agri("fx_plant", 11.0, 4.0, 0.58, 0.58, "高光效微藻光反应器列", [
+    { speaker: null, text: "透明圆柱光生物反应器中翻涌着翠绿螺旋藻液，每小时稳定产出供全舰两百名执勤人员消耗的净氧。" }
+  ]),
+  agri("fx_plant", 11.2, 6.0, 0.56, 0.56, "水培绿叶生菜苗床", null),
   agri("fx_plant", 5.5, 17.0, 0.76, 0.76, "三号根茎常绿作物苗圃", [
     { speaker: null, text: "潮湿的培养岩棉里抽出绿油油的嫩芽。农艺师们常说，闻到泥水青草味才算活着。" }
   ]),
   agri("fx_plant", 4.2, 16.4, 0.60, 0.60, "培育苗木槽", null),
+  agri("fx_plant", 6.8, 17.6, 0.56, 0.56, "茄果类恒温育苗株", null),
+  agri("fx_plant", 10.9, 15.8, 0.64, 0.64, "四号常绿固碳灌木槽", [
+    { speaker: null, text: "修剪整齐的多年生矮化樟木与迷迭香丛，为沉闷的封闭模块持续释放微弱清香与固碳作用。" }
+  ]),
+  agri("fx_plant", 14.1, 17.8, 0.56, 0.56, "生态固碳观叶群", null),
   agri("fx_terminal", 12.5, 17.0, 0.70, 0.70, "营养液浓度分析终端", [
     { speaker: null, text: "实时显示钾氮磷微量元素流速与电解水循环回用效率（99.2%）。" }
   ]),
@@ -298,6 +309,9 @@ export const AGRI_PROPS: readonly SceneProp[] = [
   agri("fx_switch_panel", 17.8, 7.5, 1.30, 0.65, "2488 应急分离焊封止动栓", [
     { speaker: null, text: "一套被重型钨钢焊道永久锁死的模块化爆炸分离止动螺栓，接口盖上还留着 2488 年手工刻下的「船长令禁切 · 永久联锁」冲压字。" },
     { speaker: null, text: "当年危机最炽烈时，弥涅瓦-A 曾伪造紧急授权企图抛弃 L-1 农业模块以自保，是现任船长第一时间发现日志破绽并下令死锁该栓。" }
+  ]),
+  agri("fx_terminal", 18.2, 16.5, 0.70, 0.70, "L-1 氧分压与湿度采样仪", [
+    { speaker: null, text: "实时监测气闸缓冲廊氧分压（21.4 kPa）与露点湿度，防止农业区富氧湿气倒灌中央干线。" }
   ])
 ];
 
@@ -307,6 +321,13 @@ export const RING_PROPS: readonly SceneProp[] = [
   ring("fx_meeting_table", 11.0, 5.5, 1.70, 1.70, "生活环休憩交谊圆桌", [
     { speaker: null, text: "R-1 社会模块公共交谊厅。下班船员和刚解冻适应重力的技术员常来这里喝合成麦芽茶；和平号与阿育王号的互助电报简报也常贴在茶吧边。" },
     { speaker: null, text: "从这往东穿过桁架电梯就能进入 440 米直径的双反向旋转生活环。" }
+  ]),
+  ring("fx_chair", 9.65, 5.5, 0.62, 0.62, "交谊桌西座", null),
+  ring("fx_chair", 12.35, 5.5, 0.62, 0.62, "交谊桌东座", null),
+  ring("fx_chair", 11.0, 4.15, 0.62, 0.62, "交谊桌北座", null),
+  ring("fx_chair", 11.0, 6.85, 0.62, 0.62, "交谊桌南座", null),
+  ring("fx_console_side", 5.8, 4.8, 0.72, 1.40, "生活环麦芽茶饮服务台", [
+    { speaker: null, text: "木饰面双槽麦芽茶与热饮吧台。0.45g 模拟重力下，茶壶里的滚水总算能顺着倾角安稳注入瓷杯。" }
   ]),
   ring("fx_chair", 16.5, 5.5, 0.66, 0.66, "休整座椅", null),
   ring("fx_chair", 16.5, 7.2, 0.66, 0.66, "休整座椅", null),
@@ -319,6 +340,12 @@ export const RING_PROPS: readonly SceneProp[] = [
   ]),
   ring("fx_reading_chair", 10.5, 17.8, 0.70, 0.70, "休息角扶手椅", null),
   ring("fx_reading_lamp", 12.0, 17.8, 0.46, 0.46, "温馨阅读地灯", null),
+  ring("fx_plant", 6.2, 19.6, 0.58, 0.58, "阅读角地球盆景", [
+    { speaker: null, text: "一株用铁丝精心蟠扎过的罗汉松盆景，随航半个多世纪至今仍抽出新芽。" }
+  ]),
+  ring("fx_terminal", 16.0, 16.8, 0.85, 0.85, "0.45g 离心抗阻体能训练台", [
+    { speaker: null, text: "配备滑轮阻力带与骨密度补偿仪的体能训练台。双环反向旋转营造出宝贵的 0.45g 重力，常年驻舰船员每周必须来此打卡预防肌萎缩。" }
+  ]),
   ring("fx_switch_panel", 16.5, 11.2, 1.30, 0.65, "旋转环离心重力调速指示箱", [
     { speaker: null, text: "透过右侧耐压弧窗，可见 440 米巨型生活环如星舰巨轮般悄然缓缓旋转，双环反向对消掉全部旋转扭矩。" },
     { speaker: null, text: "表盘显示：当前环外缘稳态离心重力为 0.45g，结构轴承噪声零异常。" }
@@ -336,6 +363,9 @@ export const HABITAT_PROPS: readonly SceneProp[] = [
     { speaker: null, text: "靠墙码放的个人金属储物格与日用品架，门牌贴着二班工号标签「02-308 徐」。" },
     { speaker: null, text: "里面整齐码放着绝缘手套、备用工装和内务安检回执。暗格夹层似乎还夹着薄薄的纸片。" }
   ]),
+  habitat("fx_desk", 2.4, 7.6, 1.30, 0.70, "A1 工勤便签写字台", [
+    { speaker: null, text: "固定在舱板上的小型折叠写字台。压着铅笔、游标卡尺与一张写给老周的管线阀门拆装草图。" }
+  ]),
   habitat("fx_bed", 9.2, 3.2, 0.85, 1.28, "邻铺夜班床位", [
     { speaker: null, text: "A2 隔间夜班机修工友小宋的铺位，床单折得像豆腐块，墙角挂着满是油污的减震工作服。" }
   ]),
@@ -344,14 +374,33 @@ export const HABITAT_PROPS: readonly SceneProp[] = [
   ]),
   habitat("fx_chair", 2.6, 5.8, 0.66, 0.66, "寝室固定椅", null),
   habitat("fx_reading_lamp", 4.45, 2.45, 0.46, 0.46, "寝室夜灯", null),
+  habitat("fx_reading_lamp", 8.2, 2.45, 0.46, 0.46, "A2 夜班床头微光灯", null),
   habitat("fx_bed", 3.5, 18.2, 0.85, 1.28, "备用轮值铺位", [
     { speaker: null, text: "南宿舍 B1 隔间工友的床铺，被子按照内务条例整整齐齐压进约束扣。" }
   ]),
   habitat("fx_bed", 9.2, 18.2, 0.85, 1.28, "轮休狭铺", null),
+  habitat("fx_bookshelf", 3.5, 14.32, 1.50, 0.50, "B1 轮休班储物柜", [
+    { speaker: null, text: "贴着「机械三班休整柜」标识的浅色储物柜，锁扣整齐扣在防震槽中。" }
+  ]),
+  habitat("fx_bookshelf", 9.2, 20.9, 1.50, 0.50, "B2 轮休班储物柜", [
+    { speaker: null, text: "B2 隔间轮值人员的工装储物柜，旁边摆着备用防静电安全靴。" }
+  ]),
+  habitat("fx_reading_lamp", 4.45, 17.45, 0.46, 0.46, "B1 床头夜灯", null),
+  habitat("fx_plant", 2.0, 14.3, 0.54, 0.54, "宿舍耐阴绿萝", [
+    { speaker: null, text: "B 宿舍门口架子上的水培绿萝，全班轮流用洗漱净化回收水照料。" }
+  ]),
   habitat("fx_chair", 3.0, 15.6, 0.64, 0.64, "宿舍矮凳", null),
+  habitat("fx_chair", 8.0, 15.6, 0.64, 0.64, "B2 休整固定椅", null),
   habitat("fx_meeting_table", 23.5, 4.8, 1.75, 1.75, "公共餐桌", [
     { speaker: null, text: "生活区公共餐桌。浅木纹复合阻燃台面带有一圈防溢饮水杯凹槽，四周固定着四把乘员座椅。" },
     { speaker: null, text: "上面留着半杯已经晾凉的温水，和几张刚签收完的值班饭票。" }
+  ]),
+  habitat("fx_chair", 22.15, 4.8, 0.62, 0.62, "餐桌西座", null),
+  habitat("fx_chair", 24.85, 4.8, 0.62, 0.62, "餐桌东座", null),
+  habitat("fx_chair", 23.5, 3.45, 0.62, 0.62, "餐桌北座", null),
+  habitat("fx_chair", 23.5, 6.15, 0.62, 0.62, "餐桌南座", null),
+  habitat("fx_switch_panel", 26.2, 1.65, 1.35, 0.65, "自助饮水与餐盘回收台", [
+    { speaker: null, text: "恒温直饮水接水口与磁吸餐盘清洗滑槽，全船食堂零一次性纸杯，餐具经超声波消杀后循环使用。" }
   ]),
   habitat("fx_console_side", 29.2, 3.6, 0.75, 1.50, "全自动恒温暖餐柜", [
     { speaker: null, text: "公共配餐中心的自动恒温暖餐柜，出餐口弥漫着烘烤麦芽与大豆蛋白的温热香气。" },
@@ -368,9 +417,13 @@ export const HABITAT_PROPS: readonly SceneProp[] = [
   habitat("fx_plant", 20.8, 18.0, 0.64, 0.64, "水培生机展示槽", [
     { speaker: null, text: "生活区公共植物槽中茂盛生长的地球常春藤——全区最有温度的色彩。" }
   ]),
+  habitat("fx_plant", 24.8, 14.6, 0.56, 0.56, "休息角恒温观叶盆景", null),
   habitat("fx_reading_chair", 22.9, 17.8, 0.68, 0.68, "休闲阅读椅", null),
   habitat("fx_reading_lamp", 24.0, 17.8, 0.46, 0.46, "休闲角落暖灯", null),
   habitat("fx_bookshelf", 22.6, 21.3, 1.80, 0.60, "公共闲书架", null),
+  habitat("fx_terminal", 13.6, 5.5, 0.68, 0.68, "二班应急呼吸面罩与灭火柜", [
+    { speaker: null, text: "主走廊应急壁柜。铅封条完好，内置十二套半小时闭路化学生氧呼吸面罩与干粉灭火筒。" }
+  ]),
   habitat("fx_terminal", 28.5, 15.5, 0.72, 0.72, "水循环监测阀台", [
     { speaker: null, text: "生活区二级水净化处理终端（已用防水格栅墙隔离在湿区机房）。指针稳定落在绿区，纯净度 99.98%。" }
   ])
@@ -390,17 +443,29 @@ export const INDUSTRIAL_PROPS: readonly SceneProp[] = [
   industrial("fx_switch_panel", 4.5, 16.5, 1.40, 0.70, "真空焊切机械臂控制柜", [
     { speaker: null, text: "用于远程操控外舷冷焊机械臂的双摇杆重工业控制台。指示灯呈平稳待机蓝。" }
   ]),
+  industrial("fx_desk", 11.0, 15.6, 1.50, 0.90, "热交换器焊修钳工台", [
+    { speaker: null, text: "表面布满弧焊飞溅斑点的铸铁钳工台，虎钳上还夹着一枚刚校平的冷凝回路铜法兰。" }
+  ]),
+  industrial("fx_bookshelf", 11.5, 19.8, 1.80, 0.65, "重型钛铝合金胚料架", [
+    { speaker: null, text: "叠放整齐的 Ti-6Al-4V 船用钛合金方坯与耐烧蚀碳化硅修补板材，每根端头都打着 2439 联邦冶炼钢印。" }
+  ]),
   industrial("fx_paper_log", 5.8, 2.5, 0.58, 0.58, "重工备件领用台账", [
     { speaker: null, text: "压在探伤台旁边的实体登记本，沾着黑机油，记满了高负荷阀芯与密封圈的领用记录。" }
   ]),
   industrial("fx_terminal", 4.8, 2.5, 0.72, 0.72, "材料应力探伤终端", [
     { speaker: null, text: "超声探伤仪屏幕不断回放焊缝波形：「主龙骨承受应力在安全上限以内」。" }
+  ]),
+  industrial("fx_terminal", 18.6, 6.0, 0.72, 0.72, "工勤借还工具核销台", [
+    { speaker: null, text: "L-2 钳工领料单离线核销机。所有硼钢力矩扳手与防静电烙铁均实行借还实物牌双签制度。" }
   ])
 ];
 
 // --- 8. R-2 Deep-Space Science & Exploration Lab (Starboard Wing) -----------
 
 export const SCIENCE_PROPS: readonly SceneProp[] = [
+  science("fx_terminal", 2.4, 5.5, 0.72, 0.72, "无尘风淋吹扫自检台", [
+    { speaker: null, text: "R-2 白区无尘微粒计数器与风淋压差表。进入光学实验室前需吹扫掉来自生活区和车间的金属微尘。" }
+  ]),
   science("fx_holo_table", 11.5, 5.0, 1.80, 1.20, "深空光谱折射测绘台", [
     { speaker: null, text: "高精度光学与尘埃光谱折射测绘台，直连舰体外舷广角传感器阵列。" },
     { speaker: null, text: "图谱末端标注着一组刚刚出现的高能碎冰粉尘反射峰——远望号正转向追查疑似「卡戎号」信标空域，并先期掠过一条未标绘的小型星际尘埃微带。" }
@@ -413,6 +478,9 @@ export const SCIENCE_PROPS: readonly SceneProp[] = [
   ]),
   science("fx_bookshelf", 16.0, 19.0, 1.80, 0.60, "科研手抄档案架", [
     { speaker: null, text: "按照地球年代整理的光谱定标卷宗与前哨无人探测器遥测打印稿。" }
+  ]),
+  science("fx_plant", 18.5, 16.5, 0.58, 0.58, "辐射耐受对比样本盆", [
+    { speaker: null, text: "放置在星光辐射窗口旁的植物拟南芥对照组，用于比对亚相对论飞行期间微弱宇宙射线的细胞修复速率。" }
   ])
 ];
 
@@ -422,6 +490,10 @@ export const MEDICAL_PROPS: readonly SceneProp[] = [
   medical("fx_holo_table", 15.5, 11.5, 1.80, 1.20, "生理全景诊断台", [
     { speaker: null, text: "中央医疗中心的生理多参数全景诊断台。配备失重负压吸附与深层组织扫描阵列。" }
   ]),
+  medical("fx_console_side", 11.8, 13.0, 0.65, 1.40, "无菌药械与冷藏血浆柜", [
+    { speaker: null, text: "4℃ 恒温生物制品冷藏柜。按远望号启航编制规定，全船 12,408 人无植入义体，库存全部为针对原版生理基线的冻干血浆、抗生素与抗辐射螯合剂。" }
+  ]),
+  medical("fx_plant", 17.6, 5.2, 0.56, 0.56, "无菌护理绿植台", null),
   medical("fx_bed", 15.0, 15.0, 0.94, 1.41, "医疗监护病床", [
     { speaker: null, text: "浅灰白色的医用可调软垫病床，配有独立的生命体征遥测腕带。" }
   ]),
@@ -468,7 +540,11 @@ export const REHAB_PROPS: readonly SceneProp[] = [
   ]),
   rehab("fx_bed", 13.0, 16.0, 0.90, 1.40, "康复监护床·三号", [
     { speaker: null, text: "第三床位，此刻空置。档案批注：「第 31 号康复员本月获准转入 R-1 生活环适应期」。" }
-  ])
+  ]),
+  rehab("fx_desk", 14.2, 13.0, 1.30, 0.70, "康复手工绘画与认知拼图桌", [
+    { speaker: null, text: "桌面上拼着一幅未完工的蓝色海洋与白桦林木质拼图——物理拼图与水彩纸是帮助受试者重建线性时间感的最佳疗法。" }
+  ]),
+  rehab("fx_plant", 2.2, 12.6, 0.56, 0.56, "向阳舒缓琴叶榕", null)
 ];
 
 // --- 9C. Yuanwang Historical Archives & MNA-01 Study (Starboard Wing) --------
@@ -493,6 +569,9 @@ export const ARCHIVES_PROPS: readonly SceneProp[] = [
     { speaker: null, text: "「特殊数字船员 MNA-01」在此拥有一台物理剥离全舰控制权、军务权和医疗权的孤岛编目终端。" },
     { speaker: null, text: "它像个再寻常不过的文职研究员般，每天通过这台屏幕整理太阳系旧史与九舰通史——没有人形躯壳，只有安静闪烁的光标。" }
   ]),
+  archive("fx_terminal", 17.5, 16.5, 0.76, 0.76, "物理只读光隔离磁带编目阵列", [
+    { speaker: null, text: "只读单向光闸阵列柜。MNA-01 的历史文献检索全部经过玻璃光纤单向校验输出，从物理层面杜绝任何逆向写入舰内核心网络的可能性。" }
+  ]),
   archive("fx_bookshelf", 15.5, 13.5, 1.80, 0.60, "档案馆纸质典籍书架", null)
 ];
 
@@ -505,6 +584,9 @@ export const HANGAR_PROPS: readonly SceneProp[] = [
   ]),
   hangar("fx_holo_table", 5.5, 9.5, 2.25, 1.50, "穿梭机磁吸主泊位", [
     { speaker: null, text: "穿梭机重型磁吸液压停泊基座。仪表显示电磁锁止状态正常。" }
+  ]),
+  hangar("fx_bookshelf", 3.2, 2.3, 1.50, 0.65, "穿梭机微重力密封备件箱架", [
+    { speaker: null, text: "标着「拓荒者一号 · 碳化硅隔热瓦备件与姿控推进肼联轴」的重型抗震货架。" }
   ]),
   hangar("fx_screen_lit", 24.5, 2.0, 0.78, 0.78, "机库气压监测屏", [
     { speaker: null, text: "加压整备间气压监测大屏：内部 101.3 kPa，西侧发射区外为深空真空。" }
@@ -529,8 +611,14 @@ export const REACTOR_PROPS: readonly SceneProp[] = [
   reactor("fx_switch_panel", 6.0, 8.5, 1.40, 0.70, "应急旁路泄压转轮", [
     { speaker: null, text: "位于独立防护间内、带有厚重机械齿轮啮合的巨型红色泄压手轮。手动操作能迅速释放过载高压冷却蒸气。" }
   ]),
+  reactor("fx_terminal", 4.5, 4.5, 0.72, 0.72, "一回路重水冷却泵压手检表", [
+    { speaker: null, text: "机械指针直接压接在第一回路重水钛管上的实地手检表——即便全舰断电也能读出当前泵压。" }
+  ]),
   reactor("fx_switch_panel", 25.5, 8.5, 1.40, 0.70, "副散热翼机械强制展开栓", [
     { speaker: null, text: "被黄色防误触护罩罩住的重型液压释放杠杆。紧急时利用爆破火工品弹开备用散热翼！" }
+  ]),
+  reactor("fx_terminal", 27.0, 12.8, 0.72, 0.72, "散热翼作动蓄能压力缸表", [
+    { speaker: null, text: "实时显示 600 米副散热翼液压蓄能瓶气液背压读数，安全绿线刻度清晰。" }
   ]),
   reactor("fx_terminal", 15.5, 13.5, 0.72, 0.72, "散热循环压力双针表", [
     { speaker: null, text: "第一回路与副回路压力双联机械指针表。南侧通门直抵尾部主推进阵列与散热翼传动长廊。" }
