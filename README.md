@@ -4,16 +4,16 @@
 > 驾驶「拓荒者一号」孤身登临失联三年的姐妹舰「卡戎号」残骸：**强攻（FIGHT）** 还是 **干预与解耦（ACT + MERCY）**，你的每一次抉择都将改写结局。
 
 <p align="center">
-  <a href="https://codespaces.new/xiezhengtao13-sys/game2?quickstart=1">
-    <img src="https://img.shields.io/badge/%E2%98%81%EF%B8%8F_%E4%BA%91%E7%AB%AF%E4%B8%80%E9%94%AE%E6%B8%B8%E7%8E%A9-GitHub_Codespaces-22c55e?style=for-the-badge&logo=github" alt="GitHub Codespaces 一键云端游玩" />
-  </a>
-  &nbsp;
   <a href="https://xiezhengtao13-sys.github.io/game2/">
-    <img src="https://img.shields.io/badge/%F0%9F%9A%80_%E6%B5%8F%E8%A7%88%E5%99%A8%E7%A7%92%E5%BC%80%E7%9B%B4%E7%8E%A9-GitHub_Pages-38bdf8?style=for-the-badge&logo=githubpages" alt="GitHub Pages 在线直玩" />
+    <img src="https://img.shields.io/badge/%F0%9F%9A%80_%E7%AB%8B%E5%8D%B3%E6%B5%8F%E8%A7%88%E5%99%A8%E7%A7%92%E5%BC%80%E6%B8%B8%E7%8E%A9-Play_Now-22c55e?style=for-the-badge&logo=githubpages" alt="立即在浏览器中秒开游玩" />
   </a>
   &nbsp;
   <a href="https://stackblitz.com/github/xiezhengtao13-sys/game2/tree/main/agent_web_game_starter">
     <img src="https://img.shields.io/badge/%E2%9A%A1_%E4%BA%91%E7%AB%AF_IDE_%E8%BF%90%E8%A1%8C-StackBlitz-f59e0b?style=for-the-badge&logo=stackblitz" alt="StackBlitz 云端运行" />
+  </a>
+  &nbsp;
+  <a href="https://codespaces.new/xiezhengtao13-sys/game2?quickstart=1">
+    <img src="https://img.shields.io/badge/%E2%98%81%EF%B8%8F_%E4%BA%91%E7%AB%AF%E5%AE%B9%E5%99%A8-Codespaces-38bdf8?style=for-the-badge&logo=github" alt="GitHub Codespaces 云端启动" />
   </a>
 </p>
 
@@ -21,11 +21,15 @@
 
 ## 🎮 云端一键游玩入口（浏览器直接运行）
 
+### 👉 **[▶ 点击这里立即开始游玩：https://xiezhengtao13-sys.github.io/game2/](https://xiezhengtao13-sys.github.io/game2/)**
+
+*(已启用 GitHub Pages 自动部署，全量单文件仅 `134 KB`，免登录、免下载、点击即玩！)*
+
 | 入口方式 | 直接点击启动 | 特点与说明 |
 | :--- | :--- | :--- |
-| **☁️ GitHub Codespaces（私有仓库直接可用）** | **[▶ 一键云端启动游玩](https://codespaces.new/xiezhengtao13-sys/game2?quickstart=1)** | 点击后在 GitHub 云端容器自动启动内置零依赖服务（`8080` 端口），并自动弹出浏览器窗口即刻开玩；**无需公开仓库、无需本地安装任何环境**。 |
-| **🚀 GitHub Pages（0 秒免加载直玩）** | **[▶ https://xiezhengtao13-sys.github.io/game2/](https://xiezhengtao13-sys.github.io/game2/)** | 静态托管单文件完整版（仅 `134 KB`），点击秒开、支持分享给好友直玩。<br><sub>※ 当前仓库为 Private，需在 GitHub 仓库 `Settings → Pages → Source` 选择 `GitHub Actions`（免费版账号需先将仓库设为 Public）后自动激活。</sub> |
-| **⚡ StackBlitz（浏览器 WebContainers）** | **[▶ 在 StackBlitz 中启动](https://stackblitz.com/github/xiezhengtao13-sys/game2/tree/main/agent_web_game_starter)** | 浏览器内直接运行 Vite 源码并实时热重载（适合公开仓库边玩边改）。 |
+| **🚀 GitHub Pages（推荐 · 0 秒秒开直玩）** | **[▶ https://xiezhengtao13-sys.github.io/game2/](https://xiezhengtao13-sys.github.io/game2/)** | 云端静态直出，打开即玩，支持电脑浏览器全屏沉浸游玩与直接分享链接给好友。 |
+| **⚡ StackBlitz（浏览器云端 IDE）** | **[▶ 在 StackBlitz 中启动](https://stackblitz.com/github/xiezhengtao13-sys/game2/tree/main/agent_web_game_starter)** | 浏览器内直接以 WebContainers 运行 Vite 源码，适合边玩边改代码。 |
+| **☁️ GitHub Codespaces（云端容器）** | **[▶ 一键启动 Codespaces](https://codespaces.new/xiezhengtao13-sys/game2?quickstart=1)** | 自动在云端容器启动 `8080` 端口并弹出浏览器窗口运行。 |
 
 > 💡 **单文件离线兜底**：仓库根目录的 [`index.html`](./index.html)（以及 [`game.html`](./game.html)）均为 **100% 自包含单文件 HTML**，直接下载双击即可用任意浏览器离线畅玩。
 
