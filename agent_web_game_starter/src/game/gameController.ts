@@ -5,7 +5,15 @@ import { sound } from "./audio/soundEngine";
 import { BattleEngine } from "./battle/battleEngine";
 import { TILE_PX } from "./data/rooms";
 import { OverworldEngine } from "./overworld/overworldEngine";
-import type { EnemyId, EndingKind, GameScreen, InputSnapshot, PortraitId, RouteState } from "./types";
+import type {
+  DifficultyMode,
+  EnemyId,
+  EndingKind,
+  GameScreen,
+  InputSnapshot,
+  PortraitId,
+  RouteState
+} from "./types";
 
 interface IntroSlide {
   year: string;
@@ -39,7 +47,15 @@ const INTRO_SLIDES: IntroSlide[] = [
   }
 ];
 
-export function createInitialRoute(): RouteState {
+const DIFFICULTY_ORDER: DifficultyMode[] = ["story", "normal", "hardcore"];
+
+export function difficultyDisplayName(d: DifficultyMode): string {
+  if (d === "story") return "叙事护航 (STORY)";
+  if (d === "hardcore") return "深空极限 (HARDCORE)";
+  return "标准巡航 (NORMAL)";
+}
+
+export function createInitialRoute(difficulty: DifficultyMode = "normal"): RouteState {
   return {
     lv: 1,
     xp: 0,
@@ -47,11 +63,13 @@ export function createInitialRoute(): RouteState {
     maxHp: 20,
     atk: 10,
     def: 4,
+    difficulty,
     kills: 0,
     spares: 0,
     totalGraze: 0,
     outcomes: {},
     items: ["protein_bar", "malt_tea"],
+    gear: [],
     flags: {},
     currentRoomId: "airlock",
     saveRoomId: "airlock",
@@ -68,7 +86,8 @@ export function determineEnding(route: RouteState): EndingKind {
 
 export class GameController {
   screen: GameScreen = "title";
-  route: RouteState = createInitialRoute();
+  selectedDifficulty: DifficultyMode = "normal";
+  route: RouteState = createInitialRoute("normal");
   overworld: OverworldEngine;
   battle: BattleEngine | null = null;
 
@@ -99,7 +118,7 @@ export class GameController {
   }
 
   restartGame(): void {
-    this.route = createInitialRoute();
+    this.route = createInitialRoute(this.selectedDifficulty);
     this.overworld = this.makeOverworld(this.route);
     this.battle = null;
     this.pendingEnemyId = null;
@@ -112,7 +131,7 @@ export class GameController {
   startNewRunFromTitle(): void {
     sound.unlock();
     sound.playConfirm();
-    this.route = createInitialRoute();
+    this.route = createInitialRoute(this.selectedDifficulty);
     this.overworld = this.makeOverworld(this.route);
     this.battle = null;
     this.introIdx = 0;
@@ -149,13 +168,37 @@ export class GameController {
     sound.setMusic(this.endingKind === "ruthless" ? "none" : "ending");
   }
 
+  private cycleTitleDifficulty(dir: 1 | -1): void {
+    const idx = DIFFICULTY_ORDER.indexOf(this.selectedDifficulty);
+    this.selectedDifficulty = DIFFICULTY_ORDER[(idx + dir + DIFFICULTY_ORDER.length) % DIFFICULTY_ORDER.length];
+    this.route.difficulty = this.selectedDifficulty;
+    sound.playMenuMove();
+  }
+
   update(dt: number, input: InputSnapshot): void {
     const safeDt = Math.min(0.05, Math.max(0, dt));
     this.t += safeDt;
     sound.update(safeDt);
 
     if (this.screen === "title") {
-      if (input.confirmPressed || (input.clickX !== null && input.clickY !== null)) {
+      if (input.leftPressed) {
+        this.cycleTitleDifficulty(-1);
+        return;
+      }
+      if (input.rightPressed) {
+        this.cycleTitleDifficulty(1);
+        return;
+      }
+      if (input.clickX !== null && input.clickY !== null) {
+        // Click on Difficulty Selector Pill cycles mode without launching
+        if (input.clickX >= 400 && input.clickX <= 880 && input.clickY >= 604 && input.clickY <= 650) {
+          this.cycleTitleDifficulty(input.clickX < 640 ? -1 : 1);
+          return;
+        }
+        this.startNewRunFromTitle();
+        return;
+      }
+      if (input.confirmPressed) {
         this.startNewRunFromTitle();
       }
       return;
@@ -336,15 +379,31 @@ export class GameController {
 
     // Iconic Pulsing Start Button
     const pulse = Math.sin(this.t * 4.5) > -0.35;
-    drawUndertaleBox(ctx, 450, 548, 380, 64, pulse ? "#fde047" : "#f97316", "#04050a", 4);
+    drawUndertaleBox(ctx, 450, 534, 380, 58, pulse ? "#fde047" : "#f97316", "#04050a", 4);
     ctx.textAlign = "center";
     ctx.fillStyle = pulse ? "#fde047" : "#f8fafc";
     ctx.font = "bold 22px 'JetBrains Mono', 'Noto Sans SC', monospace";
-    ctx.fillText("▶ 登舰调查  [Z / Enter / 点击]", 640, 587);
+    ctx.fillText("▶ 登舰调查  [Z / Enter / 点击]", 640, 571);
 
-    ctx.fillStyle = "#64748b";
-    ctx.font = "14px 'JetBrains Mono', 'Noto Sans SC', monospace";
-    ctx.fillText("强攻 (FIGHT) 还是 解耦 (ACT + MERCY) — 你的每个抉择都将改写卡戎号的命运", 640, 656);
+    // 3-Tier Difficulty Selector Pill (← / → or click pill)
+    const diffCol =
+      this.selectedDifficulty === "story"
+        ? "#4ade80"
+        : this.selectedDifficulty === "hardcore"
+        ? "#f87171"
+        : "#38bdf8";
+    drawUndertaleBox(ctx, 410, 606, 460, 40, diffCol, "#060913", 2.5);
+    ctx.fillStyle = diffCol;
+    ctx.font = "bold 16px 'JetBrains Mono', 'Noto Sans SC', monospace";
+    ctx.fillText(`◀  难度：${difficultyDisplayName(this.selectedDifficulty)}  ▶`, 640, 632);
+
+    ctx.fillStyle = "#94a3b8";
+    ctx.font = "13px 'JetBrains Mono', 'Noto Sans SC', monospace";
+    ctx.fillText(
+      "[←/→ 或点击切换难度]  ·  强攻 (FIGHT) 还是 解耦 (ACT + MERCY) — 你的每个抉择都将改写卡戎号的命运",
+      640,
+      678
+    );
     ctx.restore();
   }
 
@@ -503,10 +562,10 @@ export class GameController {
     drawUndertaleBox(ctx, 160, 548, 960, 68, "#475569", "#04050a", 3);
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.font = "bold 18px 'JetBrains Mono', 'Noto Sans SC', monospace";
+    ctx.font = "bold 17px 'JetBrains Mono', 'Noto Sans SC', monospace";
     ctx.fillStyle = "#fde047";
     ctx.fillText(
-      `最终等级 LV ${this.route.lv}   ·   和平解耦 ${this.route.spares}   ·   武力摧毁 ${this.route.kills}   ·   极限擦弹/盾反 ${this.route.totalGraze} 次`,
+      `难度 ${difficultyDisplayName(this.route.difficulty)}  ·  LV ${this.route.lv}  ·  解耦 ${this.route.spares}  ·  摧毁 ${this.route.kills}  ·  擦弹/盾反 ${this.route.totalGraze} 次`,
       640,
       582
     );
@@ -521,6 +580,7 @@ export class GameController {
   getProbe() {
     return {
       screen: this.screen,
+      difficulty: this.route.difficulty,
       roomId: this.route.currentRoomId,
       roomName: this.overworld.room.name,
       playerX: Math.round(this.overworld.playerX),
@@ -528,6 +588,7 @@ export class GameController {
       lv: this.route.lv,
       hp: this.route.hp,
       maxHp: this.route.maxHp,
+      gearCount: this.route.gear.length,
       kills: this.route.kills,
       spares: this.route.spares,
       totalGraze: this.route.totalGraze,
@@ -536,6 +597,7 @@ export class GameController {
       battlePhase: this.battle?.phase ?? null,
       battleSoulMode: this.battle?.soulMode ?? null,
       battleSpareable: this.battle?.spareable ?? false,
+      battleBarrier: this.battle?.barrierActive ?? false,
       battleRuthless: this.battle?.ruthlessMode ?? false,
       endingKind: this.screen === "ending" ? this.endingKind : null
     };

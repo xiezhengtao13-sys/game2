@@ -2,6 +2,8 @@ export type Direction = "down" | "up" | "left" | "right";
 
 export type SoulMode = "red" | "blue" | "green" | "yellow";
 
+export type DifficultyMode = "story" | "normal" | "hardcore";
+
 export type GameScreen = "title" | "intro" | "overworld" | "battle_transition" | "battle" | "ending";
 
 export type EndingKind = "pacifist" | "neutral" | "ruthless";
@@ -51,7 +53,6 @@ export interface DialogueLine {
   portrait?: PortraitId;
   voice?: VoiceId;
   text: string;
-  /** Optional text highlight color (defaults to crisp white). */
   color?: string;
 }
 
@@ -70,6 +71,7 @@ export type EnemyId = "kiosk" | "med07" | "weaver" | "vark" | "charon";
 export type EncounterOutcome = "spared" | "destroyed";
 
 export interface RouteState {
+  difficulty: DifficultyMode;
   lv: number;
   xp: number;
   hp: number;
@@ -81,6 +83,7 @@ export interface RouteState {
   totalGraze: number;
   outcomes: Partial<Record<EnemyId, EncounterOutcome>>;
   items: string[];
+  gear: string[];
   flags: Record<string, boolean>;
   currentRoomId: string;
   saveRoomId: string;
@@ -91,11 +94,8 @@ export interface RouteState {
 export interface ActOption {
   id: string;
   label: string;
-  /** Optional TP cost (e.g. Resonance skill). */
   tpCost?: number;
-  /** Highlight option gold when it directly advances sparing. */
   hintGold?: boolean;
-  /** Only show when predicate holds. */
   visible?: (ctx: BattleActContext) => boolean;
 }
 
@@ -108,6 +108,7 @@ export interface BattleActContext {
   spareable: boolean;
   ruthlessMode: boolean;
   tp: number;
+  barrierActive: boolean;
   route: RouteState;
   flags: Record<string, boolean>;
 }
@@ -115,10 +116,11 @@ export interface BattleActContext {
 export interface ActOutcome {
   lines: string[];
   bubble?: string;
-  /** Increment or set spare progress. */
   nextStage?: number;
   makeSpareable?: boolean;
   healPlayer?: number;
+  grantBarrier?: boolean;
+  weakenNextWave?: boolean;
   enemyDefDelta?: number;
   tpDelta?: number;
   setFlag?: string;
@@ -143,9 +145,7 @@ export interface EnemyDef {
   portrait: PortraitId;
   acts: ActOption[];
   handleAct: (actId: string, ctx: BattleActContext) => ActOutcome;
-  /** Speech bubble shown right before bullet-hell turn. */
   enemyTurnBubble: (ctx: BattleActContext) => string;
-  /** Select bullet pattern ID and soul mode for the turn. */
   selectWave: (ctx: BattleActContext) => {
     patternId: BulletPatternId;
     soulMode: SoulMode;
@@ -187,6 +187,7 @@ export interface Bullet {
     | "node"
     | "ring_pellet"
     | "heart_tear"
+    | "heal_orb"
     | "player_shot";
   x: number;
   y: number;
@@ -201,21 +202,14 @@ export interface Bullet {
   age: number;
   maxAge: number;
   grazed?: boolean;
-  /** For green-soul directional spears: direction coming FROM ("up"|"down"|"left"|"right"). */
   fromDir?: Direction;
-  /** Yellow spear flips to opposite side mid-flight! */
   isReverse?: boolean;
   reversed?: boolean;
-  /** For warning beams: telegraph time before active damage. */
   telegraph?: number;
-  /** Shootable by yellow soul. */
   destructible?: boolean;
   hp?: number;
-  /** Blue/Orange Undertale rule: "blue" only hurts if moving, "orange" only hurts if still. */
   motionRule?: "blue" | "orange";
-  /** Pull strength toward center (Continuum probe). */
   pullForce?: number;
-  /** Rotation in radians for visual rendering. */
   angle?: number;
 }
 
@@ -255,12 +249,11 @@ export interface InputSnapshot {
   downPressed: boolean;
   leftPressed: boolean;
   rightPressed: boolean;
-  /** Optional canvas-space click point in 1280x720 coordinates. */
   clickX: number | null;
   clickY: number | null;
 }
 
-export type RoomTheme = "airlock" | "cryo" | "relay" | "corridor" | "sanctum";
+export type RoomTheme = "airlock" | "cryo" | "vault" | "relay" | "corridor" | "sanctum";
 
 export interface Rect {
   x: number;
@@ -269,13 +262,60 @@ export interface Rect {
   h: number;
 }
 
+/** Architectural floor sub-zone painted cleanly over the neutral steel deck to create crisp visual hierarchy. */
+export interface RoomFloorZone {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  kind:
+    | "walkway"
+    | "grate"
+    | "cryo_bay"
+    | "warm_pad"
+    | "hazard_pad"
+    | "server_pit"
+    | "void_breach"
+    | "sanctum_carpet"
+    | "evidence_pad";
+  label?: string;
+}
+
+/** Focused overhead pool of light guiding the player's eye directly to key focal points. */
+export interface RoomSpotlight {
+  x: number;
+  y: number;
+  radius: number;
+  color: string;
+}
+
+/** Decorative non-blocking environmental prop (pipes, server racks, cargo, frost, barricades, pillars). */
+export interface RoomDecor {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  kind:
+    | "cargo_stack"
+    | "server_rack"
+    | "pipe_run"
+    | "barricade"
+    | "crater"
+    | "frost_drift"
+    | "holo_sign"
+    | "gold_pillar"
+    | "med_cross_inlay"
+    | "desk_unit";
+  text?: string;
+}
+
 export interface RoomExit {
   rect: Rect;
   targetRoomId: string;
   spawnX: number;
   spawnY: number;
   spawnDir: Direction;
-  /** Optional flag that must be true (or enemy that must be resolved) to unlock. */
+  edge: "left" | "right" | "top" | "bottom";
   requireFlag?: string;
   requireEnemyResolved?: EnemyId;
   lockedText?: string;
@@ -308,35 +348,31 @@ export interface RoomObject {
   h: number;
   solid?: boolean;
   label: string;
-  /** Linked enemy ID (removed/visual-changed once resolved). */
   enemyId?: EnemyId;
-  /** Item granted on interact (one-time via flag). */
   pickupItemId?: string;
-  /** Puzzle switch index (0, 1, 2). */
+  pickupGearId?: string;
   switchIndex?: number;
-  /** Auto-trigger when player steps within radius (for 15-sec ambush / boss confront). */
   autoTriggerRadius?: number;
-  /** Interaction handler data. */
   lines?: DialogueLine[];
   sparedLines?: DialogueLine[];
   destroyedLines?: DialogueLine[];
-  /** Custom flag set when inspected. */
   setFlag?: string;
 }
 
 export interface RoomDef {
   id: string;
+  code: string;
   name: string;
   subtitle: string;
   theme: RoomTheme;
-  /** Playable room dimensions in 48px tiles. */
   cols: number;
   rows: number;
-  /** Playable walkable interior rectangles (world pixels) or solid obstacles. */
   walls: Rect[];
+  zones: RoomFloorZone[];
+  spotlights: RoomSpotlight[];
+  decor: RoomDecor[];
   exits: RoomExit[];
   objects: RoomObject[];
-  /** Optional room-enter radio banter (fires once via flag). */
   onEnterFlag?: string;
   onEnterLines?: (route: RouteState) => DialogueLine[];
 }

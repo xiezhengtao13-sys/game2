@@ -40,16 +40,33 @@ async function main() {
   await new Promise((r) => setTimeout(r, 250));
   await page.screenshot({ path: "/tmp/ut_04_room1_airlock_clear.png" });
 
-  // 4. Overworld Room 2: Frozen Conservatory
+  // 4. Overworld Room 2: Frozen Conservatory (with cryo_sw_2 active showing North 02B Hatch open!)
   await page.evaluate(() => {
     window.__game.overworld.enterRoom("cryo", 240, 310, "right");
     window.__game.overworld.dialogue = null;
     window.__game.route.flags.cryo_sw_0 = true;
+    window.__game.route.flags.cryo_sw_2 = true;
   });
   await new Promise((r) => setTimeout(r, 350));
   await page.screenshot({ path: "/tmp/ut_05_room2_cryo.png" });
 
-  // 5. Overworld Room 4: Scorched Corridor + Vark
+  // 4B. Overworld Optional Secret Room 02B: Cryo Record Vault
+  await page.evaluate(() => {
+    window.__game.overworld.enterRoom("vault", 528, 390, "up");
+    window.__game.overworld.dialogue = null;
+  });
+  await new Promise((r) => setTimeout(r, 350));
+  await page.screenshot({ path: "/tmp/ut_05b_room2b_vault.png" });
+
+  // 4C. Overworld Room 3: Silent Signal Relay Atrium (Suspended Catwalk + Server Pits)
+  await page.evaluate(() => {
+    window.__game.overworld.enterRoom("relay", 340, 310, "right");
+    window.__game.overworld.dialogue = null;
+  });
+  await new Promise((r) => setTimeout(r, 350));
+  await page.screenshot({ path: "/tmp/ut_05c_room3_relay.png" });
+
+  // 5. Overworld Room 4: Scorched Corridor + Stark White Surrender Beacon Pad + Vark
   await page.evaluate(() => {
     window.__game.overworld.enterRoom("corridor", 360, 310, "right");
     window.__game.overworld.dialogue = null;
@@ -65,11 +82,25 @@ async function main() {
   await new Promise((r) => setTimeout(r, 350));
   await page.screenshot({ path: "/tmp/ut_07_room5_sanctum.png" });
 
-  // 7. Battle: MED-07 BLUE Soul 0.45g Gravity Dodge!
+  // 6B. Field Menu Status & Gear Panel (with equipped Pacifist + Vault modules!)
   await page.evaluate(() => {
+    window.__game.overworld.equipGear("med_shield");
+    window.__game.overworld.equipGear("fifth_charm");
+    window.__game.overworld.equipGear("pulse_lens");
+    window.__game.overworld.menuOpen = true;
+    window.__game.overworld.menuSub = "status";
+    window.__game.overworld.menuIdx = 1;
+  });
+  await new Promise((r) => setTimeout(r, 250));
+  await page.screenshot({ path: "/tmp/ut_07b_field_menu_gear.png" });
+
+  // 7. Battle: MED-07 BLUE Soul 0.45g Gravity Dodge + Active TP Energy Barrier!
+  await page.evaluate(() => {
+    window.__game.overworld.menuOpen = false;
     window.__game.startBattleImmediate("med07");
     const b = window.__game.battle;
     b.tp = 42;
+    b.barrierActive = true;
     b.phase = "enemy_talk";
     b.bubbleTimer = 0;
   });
@@ -89,7 +120,7 @@ async function main() {
   await new Promise((r) => setTimeout(r, 140));
   await page.screenshot({ path: "/tmp/ut_09_battle_weaver_yellow.png" });
 
-  // 9. Battle: MID-BOSS EXECUTOR VARK GREEN Soul 4-Way Shield + Speech Bubble & Spears!
+  // 9. Battle: MID-BOSS EXECUTOR VARK GREEN Soul 4-Way Shield + Spears!
   await page.evaluate(() => {
     window.__game.startBattleImmediate("vark");
     const b = window.__game.battle;
@@ -100,8 +131,9 @@ async function main() {
   await new Promise((r) => setTimeout(r, 1150));
   await page.screenshot({ path: "/tmp/ut_10_battle_vark_green.png" });
 
-  // 10. Battle: FINAL BOSS CHARON-Ω (ACT submenu & Speech Bubble + Spareable Golden Glow!)
+  // 10. Battle: FINAL BOSS CHARON-Ω (6-option ACT submenu with Captain Key + TP Barrier + Resonance!)
   await page.evaluate(() => {
+    window.__game.route.flags.has_charon_captain_key = true;
     window.__game.startBattleImmediate("charon");
     const b = window.__game.battle;
     b.tp = 75;
@@ -136,7 +168,7 @@ async function main() {
   }
 
   await browser.close();
-  console.log("All 13 Undertale-reboot visual checks completed cleanly with 0 errors!");
+  console.log("All 16 upgraded visual checks completed cleanly with 0 errors!");
 }
 
 main().catch((err) => {

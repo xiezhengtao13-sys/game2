@@ -60,6 +60,8 @@ export class BattleEngine {
   spareable = false;
   tp = 0; // Deltarune-style 0..100 Tension Gauge from grazing & parrying!
   mercySlashed = false;
+  barrierActive = false;
+  weakenNextWave = false;
 
   // Typewriter message state
   messageLines: string[] = [];
@@ -161,6 +163,7 @@ export class BattleEngine {
       spareable: this.spareable,
       ruthlessMode: this.ruthlessMode,
       tp: this.tp,
+      barrierActive: this.barrierActive,
       route: this.route,
       flags: this.flags
     };
@@ -350,7 +353,9 @@ export class BattleEngine {
       sound.playConfirm();
       this.fightBarX = -1;
       this.fightBarDir = 1;
-      this.fightBarSpeed = this.ruthlessMode ? 2.55 : 2.05;
+      const baseSpeed =
+        this.route.difficulty === "story" ? 1.65 : this.route.difficulty === "hardcore" ? 2.35 : 2.0;
+      this.fightBarSpeed = baseSpeed + (this.ruthlessMode ? 0.35 : 0);
       this.phase = "fight_bar";
       return;
     }
@@ -392,15 +397,17 @@ export class BattleEngine {
       return;
     }
 
-    // Mouse click inside submenu grid
+    // Mouse click inside submenu grid (2 cols x up to 4 rows)
     if (input.clickX !== null && input.clickY !== null) {
       const box = this.getBoxRect();
+      const rowStep = count > 6 ? 37 : 42;
+      const startY = count > 6 ? 31 : 36;
       for (let i = 0; i < count; i++) {
         const col = i % 2;
         const row = Math.floor(i / 2);
-        const ox = box.x + 48 + col * 320;
-        const oy = box.y + 32 + row * 48;
-        if (input.clickX >= ox - 20 && input.clickX <= ox + 290 && input.clickY >= oy - 6 && input.clickY <= oy + 36) {
+        const ox = box.x + 56 + col * 324;
+        const oy = box.y + startY + row * rowStep;
+        if (input.clickX >= ox - 24 && input.clickX <= ox + 296 && input.clickY >= oy - 17 && input.clickY <= oy + 17) {
           this.subIndex = i;
           this.executeSubmenuChoice();
           return;
@@ -453,9 +460,29 @@ export class BattleEngine {
         this.spareable = true;
         sound.playSpare();
       }
+      if (res.grantBarrier) {
+        this.barrierActive = true;
+        sound.playParry();
+      }
+      if (res.weakenNextWave) {
+        this.weakenNextWave = true;
+      }
       if (res.healPlayer) {
+        const before = this.route.hp;
         this.route.hp = Math.min(this.route.maxHp, this.route.hp + res.healPlayer);
         sound.playHeal();
+        const gained = this.route.hp - before;
+        if (gained > 0) {
+          this.floatNums.push({
+            x: 560,
+            y: 585,
+            vy: -55,
+            text: `+${gained} HP`,
+            color: "#4ade80",
+            life: 0,
+            maxLife: 0.95
+          });
+        }
       }
       if (res.enemyDefDelta) this.enemyDef = Math.max(0, this.enemyDef + res.enemyDefDelta);
       if (res.tpDelta) this.tp = Math.max(0, Math.min(100, this.tp + res.tpDelta));
@@ -526,15 +553,21 @@ export class BattleEngine {
     }
   }
 
+  private getCritThreshold(): number {
+    if (this.route.difficulty === "story") return 0.72;
+    if (this.route.gear.includes("pulse_lens")) return 0.78;
+    return 0.86;
+  }
+
   private updateFightBar(dt: number, input: InputSnapshot): void {
     this.fightBarX += this.fightBarDir * this.fightBarSpeed * dt;
     const triggered = input.confirmPressed || (input.clickX !== null && input.clickY !== null);
 
     if (triggered) {
       const accuracy = Math.max(0, 1 - Math.abs(this.fightBarX));
-      this.lastCrit = accuracy >= 0.88;
-      const baseDmg = Math.max(8, this.route.atk * 2.2 - this.enemyDef * 0.45);
-      const dealt = Math.max(6, Math.round(baseDmg * (0.45 + accuracy * 1.15) * (this.lastCrit ? 1.35 : 1)));
+      this.lastCrit = accuracy >= this.getCritThreshold();
+      const baseDmg = Math.max(7, this.route.atk * 1.65 - this.enemyDef * 0.35);
+      const dealt = Math.max(5, Math.round(baseDmg * (0.5 + accuracy * 0.95) * (this.lastCrit ? 1.32 : 1)));
 
       this.enemyHp = Math.max(0, this.enemyHp - dealt);
       this.tp = Math.min(100, this.tp + (this.lastCrit ? 12 : 6));
@@ -696,7 +729,8 @@ export class BattleEngine {
         this.soulX,
         this.soulY,
         this.enemy.atk,
-        this.spareable
+        this.spareable,
+        { difficulty: this.route.difficulty, weakened: this.weakenNextWave }
       );
       if (spawned.length > 0) this.bullets.push(...spawned);
       this.boxOffX = this.patternState.boxOffsetX;
@@ -769,9 +803,9 @@ export class BattleEngine {
         }
       }
 
-      // YELLOW SOUL PULSE SHOOTER!
+      // YELLOW SOUL PULSE SHOOTER! (Pulse Lens accelerates cooldown!)
       if (this.soulMode === "yellow" && input.confirmPressed && this.shootCooldown <= 0) {
-        this.shootCooldown = 0.16;
+        this.shootCooldown = this.route.gear.includes("pulse_lens") ? 0.11 : 0.16;
         sound.playLaserShoot();
         this.bullets.push({
           id: 900000 + Math.floor(Math.random() * 99999),
@@ -798,9 +832,10 @@ export class BattleEngine {
     this.soulY = Math.max(activeBox.y + pad, Math.min(activeBox.y + activeBox.h - pad, this.soulY));
     const soulMoved = Math.hypot(this.soulX - prevSoulX, this.soulY - prevSoulY) > 0.6;
 
-    // 3. Step all bullets, check player shots, shield parries, grazes, and hits
+    // 3. Step all bullets, check player shots, shield parries, heal orbs, grazes, and hits
     const soulHitRadius = 7.5;
     const grazeRadius = 26;
+    const droppedOrbs: Bullet[] = [];
 
     for (let i = this.bullets.length - 1; i >= 0; i--) {
       const b = this.bullets[i];
@@ -810,17 +845,17 @@ export class BattleEngine {
         continue;
       }
 
-      // Yellow reversing spear (Undyne magic!): flips to opposite side at distance 85px!
+      // Yellow reversing spear (Undyne magic!): fair 118px reaction beat before flipping!
       if (b.kind === "spear" && b.isReverse && !b.reversed) {
         const dist = Math.hypot(b.x - activeBox.cx, b.y - activeBox.cy);
-        if (dist <= 92) {
+        if (dist <= 118) {
           b.reversed = true;
           const opp: Record<Direction, Direction> = { up: "down", down: "up", left: "right", right: "left" };
           b.fromDir = opp[b.fromDir ?? "up"];
           const dx = b.x - activeBox.cx;
           const dy = b.y - activeBox.cy;
-          b.x = activeBox.cx - dx * 1.15;
-          b.y = activeBox.cy - dy * 1.15;
+          b.x = activeBox.cx - dx * 1.12;
+          b.y = activeBox.cy - dy * 1.12;
           b.vx = -b.vx;
           b.vy = -b.vy;
           b.angle = (b.angle ?? 0) + Math.PI;
@@ -831,16 +866,32 @@ export class BattleEngine {
       b.x += b.vx * dt;
       b.y += b.vy * dt;
 
-      // Player Yellow-Soul shots hit destructible purple/gold nodes!
+      // Player Yellow-Soul shots hit destructible purple/gold nodes & drop +2 HP Heal Orbs!
       if (b.kind === "player_shot") {
         let consumed = false;
         for (let j = this.bullets.length - 1; j >= 0; j--) {
           const target = this.bullets[j];
           if (!target.destructible) continue;
-          if (Math.hypot(b.x - target.x, b.y - target.y) <= target.radius + b.radius + 4) {
+          if (Math.hypot(b.x - target.x, b.y - target.y) <= target.radius + b.radius + 5) {
             this.spawnBurst(target.x, target.y, "#fde047", 12, 170);
             sound.playParry();
             this.tp = Math.min(100, this.tp + 6);
+            droppedOrbs.push({
+              id: 800000 + Math.floor(Math.random() * 99999),
+              kind: "heal_orb",
+              x: target.x,
+              y: target.y,
+              vx: 0,
+              vy: 56,
+              w: 16,
+              h: 16,
+              radius: 8,
+              color: "#4ade80",
+              accent: "#ffffff",
+              damage: 0,
+              age: 0,
+              maxAge: 4.5
+            });
             this.bullets.splice(j, 1);
             if (j < i) i--;
             consumed = true;
@@ -848,6 +899,29 @@ export class BattleEngine {
           }
         }
         if (consumed) this.bullets.splice(i, 1);
+        continue;
+      }
+
+      // Collectible Green Heal Orbs dropped from destroyed Yellow-Soul nodes!
+      if (b.kind === "heal_orb") {
+        if (Math.hypot(b.x - this.soulX, b.y - this.soulY) <= b.radius + soulHitRadius + 8) {
+          const before = this.route.hp;
+          this.route.hp = Math.min(this.route.maxHp, this.route.hp + 2);
+          const healed = this.route.hp - before;
+          sound.playHeal();
+          this.spawnBurst(b.x, b.y, "#4ade80", 8, 130);
+          this.floatNums.push({
+            x: this.soulX,
+            y: this.soulY - 16,
+            vy: -52,
+            text: healed > 0 ? `+${healed}` : "+TP",
+            color: "#4ade80",
+            life: 0,
+            maxLife: 0.75
+          });
+          if (healed === 0) this.tp = Math.min(100, this.tp + 4);
+          this.bullets.splice(i, 1);
+        }
         continue;
       }
 
@@ -899,6 +973,10 @@ export class BattleEngine {
       }
     }
 
+    if (droppedOrbs.length > 0) {
+      this.bullets.push(...droppedOrbs);
+    }
+
     if (this.waveTimer <= 0) {
       this.turn++;
       this.bullets = [];
@@ -918,9 +996,33 @@ export class BattleEngine {
   }
 
   private damagePlayer(rawDmg: number): void {
-    const reduced = Math.max(1, Math.round(rawDmg - this.route.def * 0.25));
+    // 25% TP Energy Barrier absorbs 1 full hit cleanly with 0 HP lost!
+    if (this.barrierActive) {
+      this.barrierActive = false;
+      this.iFrames = 0.78;
+      this.hitStop = 0.05;
+      this.addShake(5, 0.16);
+      sound.playParry();
+      this.spawnBurst(this.soulX, this.soulY, "#38bdf8", 14, 175);
+      this.floatNums.push({
+        x: this.soulX,
+        y: this.soulY - 18,
+        vy: -58,
+        text: "SHIELD!",
+        color: "#38bdf8",
+        life: 0,
+        maxLife: 0.85
+      });
+      return;
+    }
+
+    const diffMul =
+      this.route.difficulty === "story" ? 0.65 : this.route.difficulty === "hardcore" ? 1.25 : 1.0;
+    const reduced = Math.max(1, Math.round((rawDmg - this.route.def * 0.42) * diffMul));
     this.route.hp = Math.max(0, this.route.hp - reduced);
-    this.iFrames = 0.92;
+    const baseIFrames =
+      this.route.difficulty === "story" ? 1.25 : this.route.difficulty === "hardcore" ? 0.72 : 0.95;
+    this.iFrames = baseIFrames + (this.route.gear.includes("fifth_charm") ? 0.25 : 0);
     this.hitStop = 0.05;
     this.addShake(9, 0.26);
     sound.playHit();
@@ -952,6 +1054,7 @@ export class BattleEngine {
   private returnToMenu(): void {
     this.phase = "menu";
     this.soulMode = "red";
+    this.weakenNextWave = false;
     this.boxOffX = 0;
     this.boxOffY = 0;
     this.targetBoxW = MENU_BOX_W;
@@ -1170,18 +1273,23 @@ export class BattleEngine {
     ctx.save();
     ctx.fillStyle = "#090a14";
     ctx.fillRect(x, y, w, h);
-    ctx.strokeStyle = this.tp >= 40 ? "#fde047" : "#64748b";
+    ctx.strokeStyle = this.tp >= 50 ? "#fde047" : this.tp >= 25 ? "#38bdf8" : "#64748b";
     ctx.lineWidth = 2.5;
     ctx.strokeRect(x, y, w, h);
 
     ctx.fillStyle = this.tp >= 50 ? "#f59e0b" : "#38bdf8";
     ctx.fillRect(x + 3, y + h - 3 - fillH, w - 6, fillH);
 
+    // Subtle 25% (Barrier) & 50% (Resonance) tactical threshold notches
+    ctx.fillStyle = "rgba(255, 255, 255, 0.45)";
+    ctx.fillRect(x + 2, Math.round(y + h - 3 - (h - 6) * 0.25), w - 4, 2);
+    ctx.fillRect(x + 2, Math.round(y + h - 3 - (h - 6) * 0.5), w - 4, 2);
+
     ctx.fillStyle = "#f8fafc";
     ctx.font = "bold 14px 'JetBrains Mono', monospace";
     ctx.textAlign = "center";
     ctx.fillText("TP", x + w / 2, y - 12);
-    ctx.fillStyle = this.tp >= 40 ? "#fde047" : "#94a3b8";
+    ctx.fillStyle = this.tp >= 50 ? "#fde047" : this.tp >= 25 ? "#7dd3fc" : "#94a3b8";
     ctx.fillText(`${Math.round(this.tp)}%`, x + w / 2, y + h + 18);
     ctx.restore();
   }
@@ -1209,10 +1317,6 @@ export class BattleEngine {
 
   private renderSubmenu(ctx: CanvasRenderingContext2D, box: { x: number; y: number; w: number; h: number }): void {
     ctx.save();
-    ctx.font = "bold 20px 'JetBrains Mono', 'Noto Sans SC', 'PingFang SC', monospace";
-    ctx.textAlign = "left";
-    ctx.textBaseline = "middle";
-
     const entries: Array<{ label: string; gold?: boolean; disabled?: boolean }> = [];
     if (this.selectedBtn === 1) {
       for (const a of this.getVisibleActs()) {
@@ -1235,14 +1339,21 @@ export class BattleEngine {
       entries.push({ label: "尝试撤退" });
     }
 
+    const fontPx = entries.length > 6 ? 17 : entries.length > 4 ? 18 : 20;
+    const rowStep = entries.length > 6 ? 37 : 42;
+    const startY = entries.length > 6 ? 31 : 36;
+    ctx.font = `bold ${fontPx}px 'JetBrains Mono', 'Noto Sans SC', 'PingFang SC', monospace`;
+    ctx.textAlign = "left";
+    ctx.textBaseline = "middle";
+
     entries.forEach((e, idx) => {
       const col = idx % 2;
       const row = Math.floor(idx / 2);
-      const ox = box.x + 62 + col * 320;
-      const oy = box.y + 46 + row * 48;
+      const ox = box.x + 56 + col * 324;
+      const oy = box.y + startY + row * rowStep;
       const sel = idx === this.subIndex;
       if (sel) {
-        drawPixelHeart(ctx, ox - 22, oy, "red", 1.3);
+        drawPixelHeart(ctx, ox - 22, oy, "red", 1.2);
       }
       ctx.fillStyle = e.disabled ? "#475569" : e.gold ? "#fde047" : sel ? "#ffffff" : "#cbd5e1";
       ctx.fillText(`* ${e.label}`, ox, oy);
@@ -1251,7 +1362,7 @@ export class BattleEngine {
     ctx.fillStyle = "#64748b";
     ctx.font = "14px 'JetBrains Mono', monospace";
     ctx.textAlign = "right";
-    ctx.fillText("[方向键选择 · Z确认 · X返回]", box.x + box.w - 20, box.y + box.h - 20);
+    ctx.fillText("[方向键选择 · Z确认 · X返回]", box.x + box.w - 20, box.y + box.h - 18);
     ctx.restore();
   }
 
@@ -1266,12 +1377,13 @@ export class BattleEngine {
     ctx.ellipse(box.cx, box.cy, rx, ry, 0, 0, Math.PI * 2);
     ctx.stroke();
 
-    // Sweet-spot critical gold core
+    // Sweet-spot critical gold core (dynamically widens with Pulse Lens / Story mode!)
+    const halfGold = Math.max(24, Math.round((1 - this.getCritThreshold()) * (box.w * 0.46)));
     ctx.fillStyle = "rgba(250, 204, 21, 0.25)";
-    ctx.fillRect(box.cx - 24, box.y + 20, 48, box.h - 40);
+    ctx.fillRect(box.cx - halfGold, box.y + 20, halfGold * 2, box.h - 40);
     ctx.strokeStyle = "#fde047";
     ctx.lineWidth = 2;
-    ctx.strokeRect(box.cx - 24, box.y + 20, 48, box.h - 40);
+    ctx.strokeRect(box.cx - halfGold, box.y + 20, halfGold * 2, box.h - 40);
 
     // Sweeping vertical strike bar
     const barPx = box.cx + this.fightBarX * (box.w * 0.46);
@@ -1299,13 +1411,14 @@ export class BattleEngine {
       red: { text: "♥ 自由核 · WASD/方向键闪避 (Shift微调)", color: "#fca5a5" },
       blue: { text: "♥ 0.45g 重力核 · W/↑跳跃躲避低空光束", color: "#93c5fd" },
       green: { text: "♥ 电磁护盾核 · 方向键切换四向盾牌格挡！(黄矛会翻转)", color: "#6ee7b7" },
-      yellow: { text: "♥ 脉冲射击核 · 移动并按 Z/空格 击碎紫色/金色节点！", color: "#fde047" }
+      yellow: { text: "♥ 脉冲射击核 · 移动并按 Z/空格 击碎节点掉落绿球回血！", color: "#fde047" }
     };
     const hint = modeHints[this.soulMode];
     ctx.fillStyle = hint.color;
     ctx.font = "bold 14px 'JetBrains Mono', 'Noto Sans SC', monospace";
     ctx.textAlign = "center";
-    ctx.fillText(hint.text, box.cx, box.y - 12);
+    const statusSuffix = this.weakenNextWave ? "  [✦共鸣减速]" : "";
+    ctx.fillText(`${hint.text}${statusSuffix}`, box.cx, box.y - 12);
 
     // Clip non-spear projectiles cleanly inside box
     ctx.save();
@@ -1366,6 +1479,20 @@ export class BattleEngine {
         ctx.fillStyle = "#ffffff";
         ctx.fillRect(-4, -4, 8, 8);
         ctx.restore();
+      } else if (b.kind === "heal_orb") {
+        // Glowing emerald +2 HP recovery orb dropped from destroyed Yellow-Soul nodes!
+        const pulseR = b.radius + Math.sin(this.t * 10 + b.id) * 1.2;
+        ctx.fillStyle = "rgba(74, 222, 128, 0.28)";
+        ctx.beginPath();
+        ctx.arc(Math.round(b.x), Math.round(b.y), pulseR + 4, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = "#22c55e";
+        ctx.beginPath();
+        ctx.arc(Math.round(b.x), Math.round(b.y), pulseR, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(Math.round(b.x - 4), Math.round(b.y - 1.5), 8, 3);
+        ctx.fillRect(Math.round(b.x - 1.5), Math.round(b.y - 4), 3, 8);
       } else if (b.kind === "player_shot") {
         ctx.fillStyle = "#fef08a";
         ctx.fillRect(Math.round(b.x - 3), Math.round(b.y - 9), 6, 18);
@@ -1383,6 +1510,21 @@ export class BattleEngine {
     }
 
     ctx.restore();
+
+    // 25% TP Energy Barrier glowing cyan aura around Soul!
+    if (this.barrierActive) {
+      const br = 20 + Math.sin(this.t * 8) * 1.5;
+      ctx.strokeStyle = "#38bdf8";
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(Math.round(this.soulX), Math.round(this.soulY), br, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.strokeStyle = "rgba(186, 230, 253, 0.55)";
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(Math.round(this.soulX), Math.round(this.soulY), br + 3, 0, Math.PI * 2);
+      ctx.stroke();
+    }
 
     // Graze Ring Spark around Soul!
     if (this.grazeFlash > 0) {
@@ -1417,7 +1559,7 @@ export class BattleEngine {
 
   private renderBottomHud(ctx: CanvasRenderingContext2D): void {
     ctx.save();
-    // Player Status Row (`徐   LV 1   HP [====] 20 / 20`)
+    // Player Status Row (`小徐 (远望号)   LV 1   HP [====] 20 / 20  [✦护盾就绪]`)
     const sy = 588;
     ctx.font = "bold 20px 'JetBrains Mono', 'Noto Sans SC', monospace";
     ctx.textAlign = "left";
@@ -1440,7 +1582,14 @@ export class BattleEngine {
     ctx.strokeRect(565, sy - 11, barW, 22);
 
     ctx.fillStyle = "#f8fafc";
-    ctx.fillText(`${this.route.hp} / ${this.route.maxHp}`, 580 + barW, sy);
+    const hpText = `${this.route.hp} / ${this.route.maxHp}`;
+    ctx.fillText(hpText, 580 + barW, sy);
+
+    if (this.barrierActive) {
+      ctx.fillStyle = "#38bdf8";
+      ctx.font = "bold 16px 'JetBrains Mono', 'Noto Sans SC', monospace";
+      ctx.fillText("[✦护盾就绪]", 686 + barW, sy);
+    }
 
     // 4 Iconic Undertale Action Buttons
     const labels = ["⚔ FIGHT 强攻", "◈ ACT 干预", "✦ ITEM 补给", "✧ MERCY 解耦"];

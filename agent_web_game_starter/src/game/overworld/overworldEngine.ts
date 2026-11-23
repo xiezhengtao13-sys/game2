@@ -82,15 +82,40 @@ export class OverworldEngine {
     this.pendingEndingAfterDialogue = options?.endingAfter ?? false;
   }
 
+  /** Equip an overworld or Pacifist-earned field module and apply its stat boost once. */
+  equipGear(gearId: string): void {
+    if (this.route.gear.includes(gearId)) return;
+    this.route.gear.push(gearId);
+    if (gearId === "med_shield") {
+      this.route.maxHp += 6;
+      this.route.hp = Math.min(this.route.maxHp, this.route.hp + 6);
+      this.route.def += 2;
+    } else if (gearId === "fifth_charm") {
+      this.route.maxHp += 6;
+      this.route.hp = Math.min(this.route.maxHp, this.route.hp + 6);
+    } else if (gearId === "pulse_lens") {
+      this.route.atk += 3;
+    } else if (gearId === "vark_plate") {
+      this.route.maxHp += 4;
+      this.route.hp = Math.min(this.route.maxHp, this.route.hp + 4);
+      this.route.def += 3;
+    }
+  }
+
   /** Called right after returning from a won battle (spared or destroyed). */
   handleBattleComplete(enemyId: EnemyId, outcome: "spared" | "destroyed"): void {
     const def = ENEMIES[enemyId];
     sound.setMusic("wreck_ambient");
 
-    // Grant MED-07 gift if spared!
+    // Grant Pacifist gear & supply rewards so LV 1 Pacifist runs stay genuinely empowered!
     if (enemyId === "med07" && outcome === "spared" && !this.route.flags.med07_gift) {
       this.route.flags.med07_gift = true;
       this.route.items.push("fifth_ampoule");
+      this.equipGear("med_shield");
+    }
+    if (enemyId === "vark" && outcome === "spared" && !this.route.flags.vark_gift) {
+      this.route.flags.vark_gift = true;
+      this.equipGear("vark_plate");
     }
 
     const postLines = outcome === "spared" ? def.spareDialogue : def.destroyDialogue;
@@ -227,6 +252,13 @@ export class OverworldEngine {
     }
   }
 
+  private cycleDifficulty(dir: 1 | -1): void {
+    const order = ["story", "normal", "hardcore"] as const;
+    const cur = order.indexOf(this.route.difficulty);
+    this.route.difficulty = order[(cur + dir + order.length) % order.length];
+    sound.playPuzzleClick();
+  }
+
   private updateFieldMenu(input: InputSnapshot): void {
     if (input.cancelPressed) {
       sound.playCancel();
@@ -240,19 +272,25 @@ export class OverworldEngine {
 
     if (this.menuSub === "root") {
       if (input.upPressed) {
-        this.menuIdx = (this.menuIdx + 2) % 3;
+        this.menuIdx = (this.menuIdx + 3) % 4;
         sound.playMenuMove();
       } else if (input.downPressed) {
-        this.menuIdx = (this.menuIdx + 1) % 3;
+        this.menuIdx = (this.menuIdx + 1) % 4;
         sound.playMenuMove();
+      } else if (this.menuIdx === 2 && (input.leftPressed || input.rightPressed)) {
+        this.cycleDifficulty(input.rightPressed ? 1 : -1);
       } else if (input.confirmPressed) {
-        sound.playConfirm();
         if (this.menuIdx === 0) {
+          sound.playConfirm();
           this.menuSub = "items";
           this.itemIdx = 0;
         } else if (this.menuIdx === 1) {
+          sound.playConfirm();
           this.menuSub = "status";
+        } else if (this.menuIdx === 2) {
+          this.cycleDifficulty(1);
         } else {
+          sound.playCancel();
           this.menuOpen = false;
         }
       }
@@ -311,7 +349,7 @@ export class OverworldEngine {
 
     for (const obj of room.objects) {
       if (!obj.solid) continue;
-      if (obj.pickupItemId && this.route.flags[`picked_${obj.id}`]) continue;
+      if ((obj.pickupItemId || obj.pickupGearId) && this.route.flags[`picked_${obj.id}`]) continue;
       if (obj.enemyId && this.route.outcomes[obj.enemyId] === "destroyed") continue;
       const box: Rect = { x: obj.x + 4, y: obj.y + obj.h * 0.4, w: obj.w - 8, h: obj.h * 0.55 };
       if (rectsOverlap(r, box)) return true;
@@ -349,7 +387,7 @@ export class OverworldEngine {
           portrait: "minerva_v",
           voice: "minerva_v",
           color: "#4ade80",
-          text: "* 咔嗒——全部 3 枚冰封压力继电器同步接通！东侧通往【信号中继厅】的防爆门锁解除了！"
+          text: "* 咔嗒——全部 3 枚冰封压力继电器同步接通！东侧通往【信号中继厅】的防爆门锁与北侧【02B 暗室】门禁均已解除！"
         }
       ]);
     }
@@ -378,9 +416,11 @@ export class OverworldEngine {
       const blockedByFlag = ex.requireFlag && !this.route.flags[ex.requireFlag];
       if (blockedByEnemy || blockedByFlag) {
         sound.playCancel();
-        // Gently nudge player back inside room
-        if (ex.rect.x > TILE_PX * 10) this.playerX -= 28;
-        else this.playerX += 28;
+        // Gently nudge player back inside room along the exit edge axis
+        if (ex.edge === "right") this.playerX -= 28;
+        else if (ex.edge === "left") this.playerX += 28;
+        else if (ex.edge === "top") this.playerY += 28;
+        else this.playerY -= 28;
         this.exitCooldown = 0.35;
         if (ex.lockedText) {
           this.openDialogue([{ speaker: "封锁门禁", portrait: "none", voice: "narrator", text: ex.lockedText }]);
@@ -399,7 +439,7 @@ export class OverworldEngine {
     let best: RoomObject | null = null;
     let bestDist = 72;
     for (const obj of this.room.objects) {
-      if (obj.pickupItemId && this.route.flags[`picked_${obj.id}`]) continue;
+      if ((obj.pickupItemId || obj.pickupGearId) && this.route.flags[`picked_${obj.id}`]) continue;
       const cx = obj.x + obj.w / 2;
       const cy = obj.y + obj.h / 2;
       const d = Math.hypot(this.playerX - cx, this.playerY - 14 - cy);
@@ -427,11 +467,13 @@ export class OverworldEngine {
       return;
     }
 
-    if (obj.pickupItemId) {
+    if (obj.pickupItemId || obj.pickupGearId) {
       const flag = `picked_${obj.id}`;
       if (!this.route.flags[flag]) {
         this.route.flags[flag] = true;
-        this.route.items.push(obj.pickupItemId);
+        if (obj.pickupItemId) this.route.items.push(obj.pickupItemId);
+        if (obj.pickupGearId) this.equipGear(obj.pickupGearId);
+        if (obj.setFlag) this.route.flags[obj.setFlag] = true;
         sound.playHeal();
         if (obj.lines) this.openDialogue(obj.lines);
       }

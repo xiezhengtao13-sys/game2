@@ -5,18 +5,18 @@ export const ITEMS: Record<string, ItemDef> = {
     id: "malt_tea",
     name: "烘烤麦芽热饮",
     shortName: "麦芽热饮",
-    heal: 10,
-    tpGain: 10,
+    heal: 12,
+    tpGain: 12,
     description: "老马配餐台装进保温瓶的麦芽热饮，带着一点点旧地球麦田的香气。",
-    useText: "* 你拧开保温瓶喝了一口烘烤麦芽热饮。暖意直透掌心！(HP +10, TP +10%)"
+    useText: "* 你拧开保温瓶喝了一口烘烤麦芽热饮。暖意直透掌心！(HP +12, TP +12%)"
   },
   protein_bar: {
     id: "protein_bar",
     name: "无菌蛋白谷饼",
     shortName: "蛋白谷饼",
-    heal: 8,
+    heal: 9,
     description: "远望号 L-1 农业舱压制的标准配给口粮，啃起来略硬但很扛饿。",
-    useText: "* 你咔嚓咬下一块无菌蛋白谷饼。虽然像在嚼隔热棉，但体力恢复了。(HP +8)"
+    useText: "* 你咔嚓咬下一块无菌蛋白谷饼。虽然像在嚼隔热棉，但体力恢复了。(HP +9)"
   },
   ma_soup: {
     id: "ma_soup",
@@ -31,10 +31,10 @@ export const ITEMS: Record<string, ItemDef> = {
     id: "fifth_ampoule",
     name: "第五协议稳定剂",
     shortName: "协议稳定剂",
-    heal: 14,
+    heal: 15,
     tpGain: 35,
     description: "陈艾琳亲手调制的神经节律稳态口服液，能瞬间拉满个体意识共鸣。",
-    useText: "* 神经节律瞬间归位，弥涅瓦-V 的护航脉搏与你完美同步！(HP +14, TP +35%)"
+    useText: "* 神经节律瞬间归位，弥涅瓦-V 的护航脉搏与你完美同步！(HP +15, TP +35%)"
   },
   nano_gel: {
     id: "nano_gel",

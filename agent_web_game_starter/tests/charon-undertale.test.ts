@@ -234,6 +234,200 @@ describe("Overworld Rooms, Puzzle Flow & Full Render Integrity", () => {
     assert.equal(ctrl.route.flags.cryo_door_open, true, "Activating all 3 switches must open Cryo blast door");
   });
 
+  test("Branching Room 02B (Vault) unlocks via cryo_sw_2, grants Captain Key shortcuts & gear stats", () => {
+    const ctrl = new GameController();
+    ctrl.skipIntroToOverworld();
+    ctrl.overworld.dialogue = null;
+    ctrl.overworld.enterRoom("cryo", 120, 300, "right");
+    ctrl.overworld.dialogue = null;
+
+    // North Hatch should bounce player south when cryo_sw_2 is not yet lit
+    const northExit = ROOMS.cryo.exits.find((e) => e.targetRoomId === "vault");
+    assert.ok(northExit, "Room 02 must have a North Hatch leading to optional Room 02B vault");
+    ctrl.overworld.playerX = northExit.rect.x + northExit.rect.w / 2;
+    ctrl.overworld.playerY = northExit.rect.y + northExit.rect.h - 2;
+    const yBeforeLock = ctrl.overworld.playerY;
+    ctrl.overworld.exitCooldown = 0;
+    ctrl.overworld.update(0.016, emptyInput());
+    assert.equal(ctrl.route.currentRoomId, "cryo", "Locked vault hatch must block entry");
+    assert.ok(ctrl.overworld.playerY > yBeforeLock, "Locked top exit must nudge player south");
+    ctrl.overworld.dialogue = null;
+
+    // Activate cryo_sw_2 -> North Hatch opens into Room 02B!
+    ctrl.route.flags.cryo_sw_2 = true;
+    ctrl.overworld.exitCooldown = 0;
+    ctrl.overworld.playerX = northExit.rect.x + northExit.rect.w / 2;
+    ctrl.overworld.playerY = northExit.rect.y + northExit.rect.h - 2;
+    ctrl.overworld.update(0.016, emptyInput());
+    assert.equal(ctrl.route.currentRoomId, "vault", "cryo_sw_2 must unlock Room 02B Vault");
+    ctrl.overworld.dialogue = null;
+
+    // Interact with Captain Key Terminal & Fifth Charm Crate inside Vault
+    const keyObj = ROOMS.vault.objects.find((o) => o.id === "vault_captain_term")!;
+    ctrl.overworld.playerX = keyObj.x + keyObj.w / 2;
+    ctrl.overworld.playerY = keyObj.y + keyObj.h + 10;
+    ctrl.overworld.update(0.016, emptyInput({ confirmPressed: true }));
+    assert.equal(ctrl.route.flags.has_charon_captain_key, true, "Vault terminal must grant Captain Key flag");
+    ctrl.overworld.dialogue = null;
+
+    const charmObj = ROOMS.vault.objects.find((o) => o.id === "vault_charm_crate")!;
+    const maxHpBefore = ctrl.route.maxHp;
+    ctrl.overworld.playerX = charmObj.x + charmObj.w / 2;
+    ctrl.overworld.playerY = charmObj.y + charmObj.h + 10;
+    ctrl.overworld.update(0.016, emptyInput({ confirmPressed: true }));
+    assert.ok(ctrl.route.gear.includes("fifth_charm"), "Vault crate must equip fifth_charm");
+    assert.equal(ctrl.route.maxHp, maxHpBefore + 6, "fifth_charm must boost maxHp by +6");
+
+    // Verify Captain Key unlocks secret ACT option on both Vark and Charon-Omega!
+    const varkBattle = new BattleEngine("vark", ctrl.route);
+    assert.ok(
+      varkBattle.getVisibleActs().some((a) => a.id === "captain_key_vark"),
+      "Captain Key must unlock secret shortcut ACT on Vark"
+    );
+    const charonBattle = new BattleEngine("charon", ctrl.route);
+    assert.ok(
+      charonBattle.getVisibleActs().some((a) => a.id === "captain_key_charon"),
+      "Captain Key must unlock secret shortcut ACT on Charon-Omega"
+    );
+  });
+
+  test("25% TP Energy Barrier absorbs 1 hit with 0 HP lost and Pacifist spares grant gear rewards", () => {
+    const ctrl = new GameController();
+    ctrl.skipIntroToOverworld();
+    ctrl.overworld.dialogue = null;
+
+    // Sparing MED-07 grants med_shield (+6 maxHP, +2 DEF) + fifth_ampoule
+    const hp0 = ctrl.route.maxHp;
+    const def0 = ctrl.route.def;
+    ctrl.overworld.handleBattleComplete("med07", "spared");
+    assert.ok(ctrl.route.gear.includes("med_shield"));
+    assert.equal(ctrl.route.maxHp, hp0 + 6);
+    assert.equal(ctrl.route.def, def0 + 2);
+
+    // Sparing Vark grants vark_plate (+4 maxHP, +3 DEF)
+    ctrl.overworld.handleBattleComplete("vark", "spared");
+    assert.ok(ctrl.route.gear.includes("vark_plate"));
+    assert.equal(ctrl.route.maxHp, hp0 + 10);
+    assert.equal(ctrl.route.def, def0 + 5);
+
+    // Activate 25% TP Energy Barrier in battle -> absorbs incoming hit with 0 HP lost!
+    const b = new BattleEngine("kiosk", ctrl.route);
+    b.tp = 30;
+    b.selectedBtn = 1;
+    b.phase = "submenu";
+    const shieldIdx = b.getVisibleActs().findIndex((a) => a.id === "tp_shield");
+    assert.ok(shieldIdx >= 0, "All fights must expose 25% TP Energy Barrier");
+    b.subIndex = shieldIdx;
+    b.update(0.016, emptyInput({ confirmPressed: true }));
+    assert.equal(b.barrierActive, true, "tp_shield ACT must activate Energy Barrier");
+    assert.equal(b.tp, 5, "tp_shield ACT must spend 25 TP");
+
+    // Inject bullet right onto Soul during bullet_hell
+    b.phase = "bullet_hell";
+    b.waveTimer = 3;
+    b.iFrames = 0;
+    const hpBeforeHit = ctrl.route.hp;
+    b.bullets = [
+      {
+        id: 999,
+        kind: "orb",
+        x: b.soulX,
+        y: b.soulY,
+        vx: 0,
+        vy: 0,
+        w: 16,
+        h: 16,
+        radius: 10,
+        color: "#ef4444",
+        damage: 9,
+        age: 0,
+        maxAge: 2
+      }
+    ];
+    b.update(0.016, emptyInput());
+    assert.equal(ctrl.route.hp, hpBeforeHit, "Active Energy Barrier must absorb full hit with 0 HP lost");
+    assert.equal(b.barrierActive, false, "Energy Barrier should be consumed after blocking 1 hit");
+  });
+
+  test("YELLOW soul node shatter drops emerald heal_orb that restores +2 HP and difficulty modes scale cleanly", () => {
+    const routeStory = createInitialRoute("story");
+    const routeHard = createInitialRoute("hardcore");
+    routeStory.hp = 14;
+
+    // Verify Yellow-Soul heal_orb drop + collection
+    const b = new BattleEngine("weaver", routeStory);
+    b.phase = "bullet_hell";
+    b.soulMode = "yellow";
+    b.waveTimer = 4;
+    b.bullets = [
+      {
+        id: 555,
+        kind: "node",
+        x: b.soulX,
+        y: b.soulY - 65,
+        vx: 0,
+        vy: 0,
+        w: 24,
+        h: 24,
+        radius: 12,
+        color: "#a855f7",
+        damage: 5,
+        age: 0,
+        maxAge: 5,
+        destructible: true
+      }
+    ];
+    b.update(0.016, emptyInput({ confirmPressed: true }));
+    for (let i = 0; i < 6; i++) b.update(0.016, emptyInput());
+    const orb = b.bullets.find((x) => x.kind === "heal_orb");
+    assert.ok(orb, "Destroying a Yellow-Soul node must spawn a collectible heal_orb");
+
+    // Move heal_orb onto Soul -> restores +2 HP!
+    orb.x = b.soulX;
+    orb.y = b.soulY;
+    b.update(0.016, emptyInput());
+    assert.equal(routeStory.hp, 16, "Collecting heal_orb must restore +2 HP");
+
+    // Verify Story takes strictly less damage than Hardcore from identical bullet!
+    const bStory = new BattleEngine("vark", routeStory);
+    const bHard = new BattleEngine("vark", routeHard);
+    for (const eng of [bStory, bHard]) {
+      eng.phase = "bullet_hell";
+      eng.waveTimer = 3;
+      eng.iFrames = 0;
+      eng.bullets = [
+        {
+          id: 42,
+          kind: "orb",
+          x: eng.soulX,
+          y: eng.soulY,
+          vx: 0,
+          vy: 0,
+          w: 14,
+          h: 14,
+          radius: 10,
+          color: "#ef4444",
+          damage: 10,
+          age: 0,
+          maxAge: 2
+        }
+      ];
+      eng.update(0.016, emptyInput());
+    }
+    const lostStory = 16 - routeStory.hp;
+    const lostHard = 20 - routeHard.hp;
+    assert.ok(lostStory < lostHard, `Story damage (${lostStory}) must be strictly lower than Hardcore (${lostHard})`);
+    assert.ok(bStory.iFrames > bHard.iFrames, "Story i-frames must be strictly longer than Hardcore");
+
+    // Verify Title Screen Left/Right difficulty toggle
+    const ctrl = new GameController();
+    assert.equal(ctrl.selectedDifficulty, "normal");
+    ctrl.update(0.016, emptyInput({ rightPressed: true }));
+    assert.equal(ctrl.selectedDifficulty, "hardcore");
+    ctrl.update(0.016, emptyInput({ rightPressed: true }));
+    assert.equal(ctrl.selectedDifficulty, "story");
+  });
+
   test("all 17 bullet patterns spawn valid projectiles and every game screen renders with zero exceptions", () => {
     const box = { x: 470, y: 340, w: 340, h: 215, cx: 640, cy: 448 };
     const patterns = [
@@ -273,6 +467,7 @@ describe("Overworld Rooms, Puzzle Flow & Full Render Integrity", () => {
     ctrl.render(ctx); // intro
 
     ctrl.skipIntroToOverworld();
+    assert.equal(Object.keys(ROOMS).length, 6, "Ship must have 6 rooms including optional Room 02B vault");
     for (const roomId of Object.keys(ROOMS)) {
       ctrl.overworld.enterRoom(roomId, 200, 310, "right");
       ctrl.render(ctx);
@@ -282,6 +477,7 @@ describe("Overworld Rooms, Puzzle Flow & Full Render Integrity", () => {
       ctrl.startBattleImmediate(eid);
       ctrl.render(ctx);
       ctrl.battle!.phase = "bullet_hell";
+      ctrl.battle!.barrierActive = true;
       ctrl.battle!.update(0.1, emptyInput());
       ctrl.render(ctx);
     }
