@@ -3,37 +3,23 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>离散星海 · 远望号</title>
+  <title>离散星海 · 卡戎号残响</title>
   <link rel="stylesheet" href="/src/style.css" />
 </head>
 <body>
-  <!--
-    Surfaces uncaught errors in the HUD instead of only the console. This makes
-    "no obvious console errors" checkable from a headless screenshot or DOM dump,
-    which is otherwise impossible in this environment.
-  -->
   <script>
     window.__errors = [];
-    function showError(message) {
-      window.__errors.push(String(message));
-      var el = document.getElementById("status");
-      if (el) el.textContent = "ERROR: " + message;
+    function recordError(msg) {
+      window.__errors.push(String(msg));
     }
-    window.addEventListener("error", function (e) { showError(e.message); });
-    window.addEventListener("unhandledrejection", function (e) { showError(e.reason); });
+    window.addEventListener("error", function (e) { recordError(e.message); });
+    window.addEventListener("unhandledrejection", function (e) { recordError(e.reason); });
   </script>
-  <div id="app">
-    <div id="hud">
-      <div class="hud-brand">
-        <span class="brand-emblem">✦</span>
-        <span class="brand-title">离散星海 · 远望号</span>
-        <span class="brand-sep">|</span>
-        <span id="status">加载中…</span>
-      </div>
-      <div id="hud-tools"></div>
-    </div>
-    <div id="canvas-stage">
-      <canvas id="gameCanvas" width="1280" height="720"></canvas>
+  <div id="stage">
+    <canvas id="gameCanvas" width="1280" height="720"></canvas>
+    <div id="corner-controls">
+      <button id="btn-mute" type="button" title="切换配乐与音效 (M)">🔊 音效</button>
+      <button id="btn-fs" type="button" title="切换全屏 (F)">⛶ 全屏</button>
     </div>
   </div>
   <script type="module" src="/src/main.ts"></script>
