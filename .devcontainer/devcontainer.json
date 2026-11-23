@@ -1,0 +1,16 @@
+{
+  "name": "离散星海 · 卡戎号残响 (Cloud Play)",
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:1-22-bookworm",
+  "forwardPorts": [8080, 5173],
+  "portsAttributes": {
+    "8080": {
+      "label": "离散星海 · 浏览器一键游玩",
+      "onAutoForward": "openBrowser"
+    },
+    "5173": {
+      "label": "Vite 开发热重载",
+      "onAutoForward": "notify"
+    }
+  },
+  "postStartCommand": "nohup node .devcontainer/serve.mjs >/tmp/charon-server.log 2>&1 &"
+}
